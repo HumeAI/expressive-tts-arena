@@ -1,14 +1,14 @@
 """
 app.py
 
-This file defines the Gradio user interface for interacting with the Anthropic API and Hume TTS API.
+This file defines the Gradio user interface for interacting with the Anthropic API, Hume TTS API, and ElevenLabs TTS API.
 Users can input prompts, which are processed to generate text using the Claude model via the Anthropic API.
-The generated text is then converted to audio using the Hume TTS API, allowing playback in the Gradio UI.
+The generated text is then converted to audio using both Hume and ElevenLabs TTS APIs, allowing playback in the Gradio UI.
 
 Key Features:
 - Gradio interface for user interaction.
 - Input validation via prompt length constraints.
-- Integration with the Anthropic and Hume APIs.
+- Integration with the Anthropic, Hume, and ElevenLabs APIs.
 - Playback support for TTS audio responses.
 
 Functions:
@@ -19,8 +19,8 @@ Functions:
 # Third-Party Library Imports
 import gradio as gr
 # Local Application Imports
-from src.integrations import generate_text_with_claude, text_to_speech_with_hume
 from src.config import logger
+from src.integrations import generate_text_with_claude, text_to_speech_with_hume, text_to_speech_with_elevenlabs
 from src.utils import truncate_text, validate_prompt_length
 
 
@@ -32,12 +32,13 @@ PROMPT_MAX_LENGTH: int = 500
 def process_prompt(prompt: str) -> str:
     """
     Process the user prompt and generate text using the Claude API.
+    Then convert the generated text to speech using both Hume and ElevenLabs TTS APIs.
 
     Args:
         prompt (str): The user's input prompt.
 
     Returns:
-        str: The generated text or an error message.
+        tuple: The generated text and audio data from both Hume and ElevenLabs.
     """
     logger.debug(f"Entering process_prompt with prompt: {prompt}")
     try:
@@ -49,18 +50,22 @@ def process_prompt(prompt: str) -> str:
         logger.debug(f"Generated text: {generated_text}")
 
         # Convert text to speech with Hume TTS API
-        generated_hume_audio = text_to_speech_with_hume(prompt, generated_text)
-        logger.debug(f"Generated audio data: {len(generated_hume_audio)} bytes")
+        hume_audio = text_to_speech_with_hume(prompt, generated_text)
+        logger.debug(f"Hume audio data: {len(hume_audio)} bytes")
+
+        # Convert text to speech with ElevenLabs TTS API
+        elevenlabs_audio = text_to_speech_with_elevenlabs(generated_text)
+        logger.debug(f"ElevenLabs audio data: {len(elevenlabs_audio)} bytes")
 
         logger.info("Successfully processed prompt.")
-        return generated_text, generated_hume_audio
+        return generated_text, hume_audio, elevenlabs_audio
 
     except ValueError as ve:
         logger.warning(f"Validation error: {ve}")
-        return str(ve), b""  # Return validation error directly to the UI with no audio
+        return str(ve), None, None  # Return validation error directly to the UI
     except Exception as e:
         logger.error(f"Unexpected error during processing: {e}")
-        return "An unexpected error occurred. Please try again.", b""
+        return "An unexpected error occurred. Please try again.", None, None
 
 
 def build_gradio_interface() -> gr.Blocks:
@@ -74,7 +79,8 @@ def build_gradio_interface() -> gr.Blocks:
         gr.Markdown("# TTS Arena")
         gr.Markdown(
             "Generate text from a prompt using **Claude by Anthropic**, "
-            "and listen to the generated text-to-speech using **Hume TTS API**."
+            "and listen to the generated text-to-speech using **Hume TTS API** "
+            "and **ElevenLabs TTS API** for comparison."
         )
 
         with gr.Row():
@@ -91,15 +97,19 @@ def build_gradio_interface() -> gr.Blocks:
             output_text = gr.Textbox(
                 label="Generated Text",
                 interactive=False,
-                lines=10,
+                lines=20,
+                max_lines=20,
+                scale=2,
             )
-            audio_output = gr.Audio(label="Generated Audio", type="filepath")  # Fix: type="filepath"
+            with gr.Column(scale=1):
+                hume_audio_output = gr.Audio(label="Hume TTS Audio", type="filepath")
+                elevenlabs_audio_output = gr.Audio(label="ElevenLabs TTS Audio", type="filepath")
 
         # Attach the validation, text generation, and TTS processing logic
         generate_button.click(
             fn=process_prompt,
             inputs=prompt_input,
-            outputs=[output_text, audio_output],
+            outputs=[output_text, hume_audio_output, elevenlabs_audio_output],
         )
 
     logger.debug("Gradio interface built successfully")
