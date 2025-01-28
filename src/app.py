@@ -27,7 +27,7 @@ from src.utils import truncate_text, validate_prompt_length
 
 # Constants
 PROMPT_MIN_LENGTH: int = 10
-PROMPT_MAX_LENGTH: int = 500
+PROMPT_MAX_LENGTH: int = 300
 
 
 def process_prompt(prompt: str) -> str:
