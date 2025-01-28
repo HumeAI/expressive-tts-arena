@@ -6,7 +6,7 @@ __pycache__/
 
 # Virtual environment
 venv/
-gradio-env/  # Add your virtual environment directory here if named differently
+gradio-env/
 
 # Distribution / Packaging
 build/
