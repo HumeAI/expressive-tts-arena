@@ -1,1 +1,37 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+gradio-env/  # Add your virtual environment directory here if named differently
+
+# Distribution / Packaging
+build/
+dist/
+*.egg-info/
+
+# Environment variables
 .env
+
+# Logs
+*.log
+
+# IDE settings (e.g., VSCode, PyCharm)
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+
+# Jupyter Notebook checkpoints (if applicable)
+.ipynb_checkpoints/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Python cache
+*.cache
