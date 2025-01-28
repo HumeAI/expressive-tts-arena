@@ -33,7 +33,11 @@ from src.utils import truncate_text, validate_env_var
 
 @dataclass(frozen=True)
 class AnthropicConfig:
-    """Immutable configuration for interacting with the Anthropic API."""
+    """
+    Immutable configuration for interacting with the Anthropic API.
+    Includes client initialization for encapsulation.
+    """
+    api_key: str = validate_env_var("ANTHROPIC_API_KEY")
     model: ModelParam = "claude-3-5-sonnet-latest" # Valid predefined model
     max_tokens: int = 300 # Max tokens for API response
     system_prompt: str = """You are a highly creative and articulate assistant specialized in generating vivid, engaging, and well-written content.
@@ -54,6 +58,22 @@ When writing, tailor your tone and style to match the user's request. For exampl
 
 Always keep your responses concise, unless explicitly instructed to elaborate."""
 
+    def __post_init__(self):
+        # Ensure the API key is set
+        if not self.api_key:
+            raise ValueError("Anthropic API key is not set.")
+
+    @property
+    def client(self) -> Anthropic:
+        """
+        Lazy initialization of the Anthropic client.
+
+        Returns:
+            Anthropic: Configured client instance.
+        """
+        return Anthropic(api_key=self.api_key)
+        
+
 class AnthropicError(Exception):
     """Custom exception for errors related to the Anthropic API."""
     def __init__(self, message: str, original_exception: Exception = None):
@@ -62,8 +82,6 @@ class AnthropicError(Exception):
 
 
 # Initialize the Anthropic client
-api_key: str = validate_env_var("ANTHROPIC_API_KEY")
-client: Anthropic = Anthropic(api_key=api_key)
 anthropic_config = AnthropicConfig()
 
 
@@ -95,7 +113,7 @@ def generate_text_with_claude(prompt: str) -> str:
     logger.debug(f"Preparing API request with prompt: {prompt[:50]}{'...' if len(prompt) > 50 else ''}")
 
     try:
-        response: Message = client.messages.create(
+        response: Message = anthropic_config.client.messages.create(
             model=anthropic_config.model,
             max_tokens=anthropic_config.max_tokens,
             system=anthropic_config.system_prompt,
