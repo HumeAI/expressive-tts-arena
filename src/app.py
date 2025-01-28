@@ -15,7 +15,8 @@ Functions:
 - process_prompt: Handles user input, calls the Anthropic and Hume APIs, and returns generated text and audio.
 - build_gradio_interface: Constructs the Gradio Blocks-based interface.
 """
-
+# Standard Library Imports
+from concurrent.futures import ThreadPoolExecutor
 # Third-Party Library Imports
 import gradio as gr
 # Local Application Imports
@@ -50,10 +51,16 @@ def process_prompt(prompt: str) -> str:
         generated_text = generate_text_with_claude(prompt)
         logger.info(f"Generated text (length={len(generated_text)} characters).")
 
-        hume_audio = text_to_speech_with_hume(prompt, generated_text)
-        elevenlabs_audio = text_to_speech_with_elevenlabs(generated_text)
+        # Run TTS requests in parallel
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            hume_future = executor.submit(text_to_speech_with_hume, prompt, generated_text)
+            elevenlabs_future = executor.submit(text_to_speech_with_elevenlabs, generated_text)
 
-        logger.info("Successfully processed prompt.")
+            # Process TTS results
+            hume_audio = hume_future.result()
+            elevenlabs_audio = elevenlabs_future.result()
+
+        logger.info(f"TTS audio generated successfully: Hume={len(hume_audio)} bytes, ElevenLabs={len(elevenlabs_audio)} bytes")
         return generated_text, hume_audio, elevenlabs_audio
 
     except ValueError as ve:
@@ -84,14 +91,15 @@ def build_gradio_interface() -> gr.Blocks:
             sample_prompt_dropdown = gr.Dropdown(
                 choices=list(SAMPLE_PROMPTS.keys()),
                 label="Choose a Sample Prompt (or enter your own below)",
+                value=None,
                 interactive=True
             )
 
         with gr.Row():
             # Custom prompt input
             prompt_input = gr.Textbox(
-                label="Enter your custom prompt",
-                placeholder="Or type your own custom prompt here...",
+                label="Enter your prompt",
+                placeholder="Or type your own prompt here...",
                 lines=2,
             )
 
@@ -103,7 +111,7 @@ def build_gradio_interface() -> gr.Blocks:
             output_text = gr.Textbox(
                 label="Generated Text",
                 interactive=False,
-                lines=16,
+                lines=12,
                 max_lines=24,
                 scale=2,
             )
