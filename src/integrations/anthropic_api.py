@@ -27,8 +27,8 @@ from anthropic import Anthropic
 from anthropic.types import Message, ModelParam, TextBlock
 from tenacity import retry, stop_after_attempt, wait_fixed
 # Local Application Imports
-from config import logger
-from utils import truncate_text, validate_env_var
+from src.config import logger
+from src.utils import truncate_text, validate_env_var
 
 
 @dataclass(frozen=True)

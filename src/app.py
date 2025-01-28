@@ -18,9 +18,9 @@ Functions:
 # Third-Party Library Imports
 import gradio as gr
 # Local Application Imports
-from anthropic_api import generate_text_with_claude
-from config import logger
-from utils import truncate_text, validate_prompt_length
+from src.integrations import generate_text_with_claude
+from src.config import logger
+from src.utils import truncate_text, validate_prompt_length
 
 
 # Constants

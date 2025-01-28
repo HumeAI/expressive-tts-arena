@@ -17,7 +17,7 @@ Functions:
 # Standard Library Imports
 import os
 # Local Application Imports
-from config import logger
+from src.config import logger
 
 
 def truncate_text(text: str, max_length: int = 50) -> str:
