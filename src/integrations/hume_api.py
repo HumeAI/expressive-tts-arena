@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from typing import Optional
 # Third-Party Library Imports
 import requests
-from tenacity import retry, stop_after_attempt, wait_fixed
+from tenacity import retry, stop_after_attempt, wait_fixed, before_log, after_log
 # Local Application Imports
 from src.config import logger
 from src.utils import validate_env_var, truncate_text
