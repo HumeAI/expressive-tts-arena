@@ -21,6 +21,7 @@ import gradio as gr
 # Local Application Imports
 from src.config import logger
 from src.integrations import generate_text_with_claude, text_to_speech_with_hume, text_to_speech_with_elevenlabs
+from src.sample_prompts import SAMPLE_PROMPTS
 from src.utils import truncate_text, validate_prompt_length
 
 
@@ -84,26 +85,43 @@ def build_gradio_interface() -> gr.Blocks:
         )
 
         with gr.Row():
+            # Dropdown for predefined prompts
+            sample_prompt_dropdown = gr.Dropdown(
+                choices=list(SAMPLE_PROMPTS.keys()),
+                label="Choose a Sample Prompt (or enter your own below)",
+                interactive=True
+            )
+
+        with gr.Row():
+            # Custom prompt input
             prompt_input = gr.Textbox(
-                label="Enter your prompt",
-                placeholder="Prompt Claude to generate a poem or short story...",
+                label="Enter your custom prompt",
+                placeholder="Or type your own custom prompt here...",
                 lines=2,
             )
 
         with gr.Row():
             generate_button = gr.Button("Generate")
 
+        # Display the generated text and audio side by side
         with gr.Row():
             output_text = gr.Textbox(
                 label="Generated Text",
                 interactive=False,
-                lines=20,
-                max_lines=20,
+                lines=16,
+                max_lines=24,
                 scale=2,
             )
             with gr.Column(scale=1):
                 hume_audio_output = gr.Audio(label="Hume TTS Audio", type="filepath")
                 elevenlabs_audio_output = gr.Audio(label="ElevenLabs TTS Audio", type="filepath")
+
+        # Auto-fill the text input when a sample is selected
+        sample_prompt_dropdown.change(
+            fn=lambda choice: SAMPLE_PROMPTS[choice] if choice else "",
+            inputs=[sample_prompt_dropdown],
+            outputs=[prompt_input],
+        )
 
         # Attach the validation, text generation, and TTS processing logic
         generate_button.click(
