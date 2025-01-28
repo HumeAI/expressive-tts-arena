@@ -119,10 +119,7 @@ def generate_text_with_claude(prompt: str) -> str:
         >>> generate_text_with_claude("")
         "The prompt exceeds the maximum allowed length of 500 characters. Your prompt contains 512 characters."
     """
-    # Log model, max tokens, and system prompt for debugging
-    logger.debug(f"Using model: {anthropic_config.model}, max tokens: {anthropic_config.max_tokens}")
-    logger.debug(f"System prompt: {truncate_text(anthropic_config.system_prompt)}")
-    logger.debug(f"Preparing API request with prompt: {prompt[:50]}{'...' if len(prompt) > 50 else ''}")
+    logger.debug(f"Generating text with Claude. Prompt length: {len(prompt)} characters.")
 
     try:
         response: Message = anthropic_config.client.messages.create(

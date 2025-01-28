@@ -40,16 +40,14 @@ def truncate_text(text: str, max_length: int = 50) -> str:
         ''
     """
     if max_length <= 0:
-        logger.warning(f"Invalid max_length: {max_length}. Returning empty string.")
+        logger.warning(f"Invalid max_length={max_length}. Returning empty string.")
         return ""
 
     is_truncated = len(text) > max_length
-    truncated_text = text[:max_length]
     if is_truncated:
-        truncated_text += "..."
+        logger.debug(f"Truncated text to {max_length} characters.")
     
-    logger.debug(f"Truncating text to max_length={max_length}. Result: {truncated_text}")
-    return truncated_text
+    return text[:max_length] + ("..." if is_truncated else "")
 
 
 def validate_env_var(var_name: str) -> str:
@@ -76,7 +74,6 @@ def validate_env_var(var_name: str) -> str:
           ...
         ValueError: MISSING_VAR is not set. Please ensure it is defined in your environment variables.
     """
-    logger.debug(f"Validating environment variable: {var_name}")
     value = os.environ.get(var_name, "")
     if not value:
         raise ValueError(f"{var_name} is not set. Please ensure it is defined in your environment variables.")

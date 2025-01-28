@@ -51,4 +51,5 @@ def log_env_variable(var_name: str, value: str) -> None:
     """
     logger.debug(f"Environment variable '{var_name}' validated with value: {value}")
 
-log_env_variable("DEBUG", str(DEBUG))
+if DEBUG:
+    logger.debug(f"DEBUG mode enabled.")

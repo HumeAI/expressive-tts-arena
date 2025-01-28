@@ -41,22 +41,17 @@ def process_prompt(prompt: str) -> str:
     Returns:
         tuple: The generated text and audio data from both Hume and ElevenLabs.
     """
-    logger.debug(f"Entering process_prompt with prompt: {prompt}")
+    logger.info(f"Processing prompt: {truncate_text(prompt, max_length=100)}")
     try:
         # Validate prompt length before processing
         validate_prompt_length(prompt, PROMPT_MAX_LENGTH, PROMPT_MIN_LENGTH)
 
         # Generate text with Claude API
         generated_text = generate_text_with_claude(prompt)
-        logger.debug(f"Generated text: {generated_text}")
+        logger.info(f"Generated text (length={len(generated_text)} characters).")
 
-        # Convert text to speech with Hume TTS API
         hume_audio = text_to_speech_with_hume(prompt, generated_text)
-        logger.debug(f"Hume audio data: {len(hume_audio)} bytes")
-
-        # Convert text to speech with ElevenLabs TTS API
         elevenlabs_audio = text_to_speech_with_elevenlabs(generated_text)
-        logger.debug(f"ElevenLabs audio data: {len(elevenlabs_audio)} bytes")
 
         logger.info("Successfully processed prompt.")
         return generated_text, hume_audio, elevenlabs_audio

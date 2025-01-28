@@ -90,10 +90,7 @@ def text_to_speech_with_elevenlabs(text: str) -> bytes:
     Raises:
         ElevenLabsException: If there is an error communicating with the ElevenLabs API or processing the response.
     """
-    logger.debug(f"Generated text for TTS: {truncate_text(text)}")
-    logger.debug(f"Using Voice ID: {elevenlabs_config.voice_id}")
-    logger.debug(f"Using Model ID: {elevenlabs_config.model_id}")
-    logger.debug(f"Using Output Format: {elevenlabs_config.output_format}")
+    logger.debug(f"Generating speech with ElevenLabs. Text length: {len(text)} characters.")
 
     try:
         # Generate audio using the ElevenLabs SDK
@@ -106,7 +103,7 @@ def text_to_speech_with_elevenlabs(text: str) -> bytes:
 
        # Ensure the response is an iterator
         if not hasattr(audio_iterator, "__iter__") or not hasattr(audio_iterator, "__next__"):
-            logger.error(f"Invalid audio iterator response: {audio_iterator}")
+            logger.error("Invalid audio iterator response.")
             raise ElevenLabsException("Invalid audio iterator received from ElevenLabs API.")
 
         # Combine chunks into a single bytes object
@@ -117,14 +114,11 @@ def text_to_speech_with_elevenlabs(text: str) -> bytes:
             logger.error("No audio data received from ElevenLabs API.")
             raise ElevenLabsException("Empty audio data received from ElevenLabs API.")
 
-        logger.debug(f"Received binary audio data: {len(audio)} bytes")
+        logger.info(f"Received ElevenLabs audio ({len(audio)} bytes).")
         return audio
 
     except Exception as e:
-        logger.exception(
-            f"Error generating text-to-speech with ElevenLabs: {e}. "
-            f"Text: {truncate_text(text)}, Voice ID: {elevenlabs_config.voice_id}"
-        )
+        logger.exception(f"Error generating speech: {e}")
         raise ElevenLabsException(
             message=f"Failed to generate audio with ElevenLabs: {e}",
             original_exception=e,

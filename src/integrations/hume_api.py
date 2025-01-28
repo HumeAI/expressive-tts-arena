@@ -78,8 +78,7 @@ def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
     Raises:
         HumeException: If there is an error communicating with the Hume TTS API.
     """
-    logger.debug(f"Preparing TTS request for prompt: {truncate_text(prompt)}")
-    logger.debug(f"Generated text for TTS: {truncate_text(text)}")
+    logger.debug(f"Processing TTS with Hume. Prompt length: {len(prompt)} characters. Text length: {len(text)} characters.")
 
     request_body = {
         "text": text,
@@ -95,21 +94,18 @@ def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
             json=request_body,
         )
 
-        # Log the status and content type for debugging
-        logger.debug(f"Hume TTS API Response Status: {response.status_code}")
-
+        # Validate response
         if response.status_code != 200:
             logger.error(f"Hume TTS API Error: {response.status_code} - {response.text[:200]}... (truncated)")
             raise HumeException(f"Hume TTS API responded with status {response.status_code}: {response.text}")
 
-        # If Content-Type is audio, return the binary audio data
+        # Process audio response
         if response.headers.get("Content-Type", "").startswith("audio/"):
             audio_data = response.content  # Raw binary audio data
-            logger.debug(f"Received binary audio data: {len(audio_data)} bytes")
+            logger.info(f"Received audio data from Hume ({len(response.content)} bytes).")
             return audio_data
 
         # Unexpected content type
-        logger.error(f"Unexpected Content-Type: {response.headers.get('Content-Type', 'Unknown')}")
         raise HumeException(f"Unexpected Content-Type: {response.headers.get('Content-Type', 'Unknown')}")
 
     except requests.exceptions.RequestException as e:
@@ -119,7 +115,7 @@ def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
             original_exception=e,
         )
     except Exception as e:
-        logger.exception(f"Unexpected error: {e}")
+        logger.exception("Request to Hume TTS API failed.")
         raise HumeException(
             message=f"Unexpected error while processing the Hume TTS response: {e}",
             original_exception=e,
