@@ -35,10 +35,14 @@ from src.utils import validate_env_var, truncate_text
 class ElevenLabsConfig:
     """Immutable configuration for interacting with the ElevenLabs TTS API."""
     api_key: str = validate_env_var("ELEVENLABS_API_KEY")
-    # voice_id: str = "pNInz6obpgDQGcFmaJgB" # Adam (popular ElevenLabs pre-made voice)
-    top_voices: list[str] = None  # Predefined top default voices
     model_id: str = "eleven_multilingual_v2" # ElevenLab's most emotionally expressive model
     output_format: str = "mp3_44100_128" # Output format of the generated audio.
+    top_voices: list[str] = (
+        "pNInz6obpgDQGcFmaJgB",  # Adam
+        "ErXwobaYiN019PkySvjV",  # Antoni
+        "21m00Tcm4TlvDq8ikWAM",  # Rachel
+        "XrExE9yKIg1WjnnlVkGX",  # Matilda
+    )
 
     def __post_init__(self):
         # Validate that required attributes are set
@@ -49,21 +53,8 @@ class ElevenLabsConfig:
         if not self.output_format:
             raise ValueError("ElevenLabs Output Format is not set.")
         if not self.top_voices:
-            # Predefined top default voice IDs
-            object.__setattr__(self, "top_voices", [
-                "pNInz6obpgDQGcFmaJgB",  # Adam
-                "ErXwobaYiN019PkySvjV",  # Antoni
-                "21m00Tcm4TlvDq8ikWAM",  # Rachel
-                "txTPZhQpfI89VbqtG6v7",  # Matilda
-            ])
+            raise ValueError("ElevenLabs Top Voices are not set.")
     
-    @property
-    def random_voice_id(self) -> str:
-        """
-        Randomly selects a voice ID from the top default voices, ensuring different voices across calls.
-        """
-        return random.choice(self.top_voices)
-
     @property
     def client(self) -> ElevenLabs:
         """
@@ -73,6 +64,13 @@ class ElevenLabsConfig:
             ElevenLabs: Configured client instance.
         """
         return ElevenLabs(api_key=self.api_key)
+
+    @property
+    def random_voice_id(self) -> str:
+        """
+        Randomly selects a voice ID from the top default voices, ensuring different voices across calls.
+        """
+        return random.choice(self.top_voices)
 
 
 class ElevenLabsException(Exception):
