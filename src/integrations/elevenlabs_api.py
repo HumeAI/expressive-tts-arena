@@ -46,6 +46,8 @@ class ElevenLabsConfig:
             raise ValueError("ElevenLabs Voice ID is not set.")
         if not self.model_id:
             raise ValueError("ElevenLabs Model ID is not set.")
+        if not self.output_format:
+            raise ValueError("ElevenLabs Output Format is not set.")
 
     @property
     def client(self) -> ElevenLabs:
