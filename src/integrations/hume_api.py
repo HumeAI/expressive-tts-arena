@@ -19,8 +19,8 @@ Functions:
 """
 
 # Standard Library Imports
-import logging
 from dataclasses import dataclass
+import logging
 from typing import Optional
 # Third-Party Library Imports
 import requests

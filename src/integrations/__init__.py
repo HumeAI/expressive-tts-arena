@@ -1,2 +1,3 @@
 from .anthropic_api import generate_text_with_claude
 from .hume_api import text_to_speech_with_hume
+from .elevenlabs_api import text_to_speech_with_elevenlabs
