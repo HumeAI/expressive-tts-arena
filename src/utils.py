@@ -9,8 +9,8 @@ Key Features:
 - Provides helper functions for text validation and truncation.
 
 Functions:
-- validate_env_var: Ensures the presence of a specific environment variable and retrieves its value.
 - truncate_text: Truncates a string to a specified length with ellipses.
+- validate_env_var: Ensures the presence of a specific environment variable and retrieves its value.
 - validate_prompt_length: Ensures that a prompt does not exceed the specified maximum length.
 """
 
