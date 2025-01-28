@@ -42,14 +42,14 @@ def process_prompt(prompt: str) -> str:
     Returns:
         tuple: The generated text and audio data from both Hume and ElevenLabs.
     """
-    logger.info(f"Processing prompt: {truncate_text(prompt, max_length=100)}")
+    logger.info(f'Processing prompt: {truncate_text(prompt, max_length=100)}')
     try:
         # Validate prompt length before processing
         validate_prompt_length(prompt, PROMPT_MAX_LENGTH, PROMPT_MIN_LENGTH)
 
         # Generate text with Claude API
         generated_text = generate_text_with_claude(prompt)
-        logger.info(f"Generated text (length={len(generated_text)} characters).")
+        logger.info(f'Generated text (length={len(generated_text)} characters).')
 
         # Run TTS requests in parallel
         with ThreadPoolExecutor(max_workers=2) as executor:
@@ -60,15 +60,15 @@ def process_prompt(prompt: str) -> str:
             hume_audio = hume_future.result()
             elevenlabs_audio = elevenlabs_future.result()
 
-        logger.info(f"TTS audio generated successfully: Hume={len(hume_audio)} bytes, ElevenLabs={len(elevenlabs_audio)} bytes")
+        logger.info(f'TTS audio generated successfully: Hume={len(hume_audio)} bytes, ElevenLabs={len(elevenlabs_audio)} bytes')
         return generated_text, hume_audio, elevenlabs_audio
 
     except ValueError as ve:
-        logger.warning(f"Validation error: {ve}")
+        logger.warning(f'Validation error: {ve}')
         return str(ve), None, None  # Return validation error directly to the UI
     except Exception as e:
-        logger.error(f"Unexpected error during processing: {e}")
-        return "An unexpected error occurred. Please try again.", None, None
+        logger.error(f'Unexpected error during processing: {e}')
+        return 'An unexpected error occurred. Please try again.', None, None
 
 
 def build_gradio_interface() -> gr.Blocks:
@@ -81,16 +81,16 @@ def build_gradio_interface() -> gr.Blocks:
     with gr.Blocks() as demo:
         gr.Markdown("# TTS Arena")
         gr.Markdown(
-            "Generate text from a prompt using **Claude by Anthropic**, "
-            "and listen to the generated text-to-speech using **Hume TTS API** "
-            "and **ElevenLabs TTS API** for comparison."
+            'Generate text from a prompt using **Claude by Anthropic**, '
+            'and listen to the generated text-to-speech using **Hume TTS API** '
+            'and **ElevenLabs TTS API** for comparison.'
         )
 
         with gr.Row():
             # Dropdown for predefined prompts
             sample_prompt_dropdown = gr.Dropdown(
                 choices=list(SAMPLE_PROMPTS.keys()),
-                label="Choose a Sample Prompt (or enter your own below)",
+                label='Choose a Sample Prompt (or enter your own below)',
                 value=None,
                 interactive=True
             )
@@ -98,26 +98,26 @@ def build_gradio_interface() -> gr.Blocks:
         with gr.Row():
             # Custom prompt input
             prompt_input = gr.Textbox(
-                label="Enter your prompt",
-                placeholder="Or type your own prompt here...",
+                label='Enter your prompt',
+                placeholder='Or type your own prompt here...',
                 lines=2,
             )
 
         with gr.Row():
-            generate_button = gr.Button("Generate")
+            generate_button = gr.Button('Generate')
 
         # Display the generated text and audio side by side
         with gr.Row():
             output_text = gr.Textbox(
-                label="Generated Text",
+                label='Generated Text',
                 interactive=False,
                 lines=12,
                 max_lines=24,
                 scale=2,
             )
             with gr.Column(scale=1):
-                hume_audio_output = gr.Audio(label="Hume TTS Audio", type="filepath")
-                elevenlabs_audio_output = gr.Audio(label="ElevenLabs TTS Audio", type="filepath")
+                hume_audio_output = gr.Audio(label='Hume TTS Audio', type='filepath')
+                elevenlabs_audio_output = gr.Audio(label='ElevenLabs TTS Audio', type='filepath')
 
         # Auto-fill the text input when a sample is selected
         sample_prompt_dropdown.change(
@@ -133,11 +133,11 @@ def build_gradio_interface() -> gr.Blocks:
             outputs=[output_text, hume_audio_output, elevenlabs_audio_output],
         )
 
-    logger.debug("Gradio interface built successfully")
+    logger.debug('Gradio interface built successfully')
     return demo
 
 
-if __name__ == "__main__":
-    logger.info("Launching TTS Arena Gradio app...")
+if __name__ == '__main__':
+    logger.info('Launching TTS Arena Gradio app...')
     demo = build_gradio_interface()
     demo.launch()

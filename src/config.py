@@ -25,10 +25,10 @@ load_dotenv()
 
 
 # Enable debugging mode based on an environment variable
-debug_raw = os.getenv("DEBUG", "false").lower()
-if debug_raw not in {"true", "false"}:
-    print(f"Warning: Invalid DEBUG value '{debug_raw}'. Defaulting to 'false'.")
-DEBUG = debug_raw == "true"
+debug_raw = os.getenv('DEBUG', 'false').lower()
+if debug_raw not in {'true', 'false'}:
+    print(f'Warning: Invalid DEBUG value "{debug_raw}". Defaulting to "false".')
+DEBUG = debug_raw == 'true'
 
 
 # Configure the logger
@@ -36,8 +36,8 @@ logging.basicConfig(
     level=logging.DEBUG if DEBUG else logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
-logger: logging.Logger = logging.getLogger("tts_arena")
-logger.info(f"Debug mode is {'enabled' if DEBUG else 'disabled'}.")
+logger: logging.Logger = logging.getLogger('tts_arena')
+logger.info(f'Debug mode is {"enabled" if DEBUG else "disabled"}.')
 
 
 # Log environment variables
@@ -49,7 +49,7 @@ def log_env_variable(var_name: str, value: str) -> None:
         var_name (str): The name of the environment variable.
         value (str): The value of the environment variable.
     """
-    logger.debug(f"Environment variable '{var_name}' validated with value: {value}")
+    logger.debug(f'Environment variable "{var_name}" validated with value: {value}')
 
 if DEBUG:
-    logger.debug(f"DEBUG mode enabled.")
+    logger.debug(f'DEBUG mode enabled.')

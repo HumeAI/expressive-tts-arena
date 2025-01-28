@@ -21,7 +21,8 @@ Functions:
 # Standard Library Imports
 from dataclasses import dataclass
 import logging
-from typing import Optional
+import random
+from typing import List, Optional
 # Third-Party Library Imports
 import requests
 from tenacity import retry, stop_after_attempt, wait_fixed, before_log, after_log
@@ -32,19 +33,37 @@ from src.utils import validate_env_var, truncate_text
 
 @dataclass(frozen=True)
 class HumeConfig:
-    """Immutable configuration for interacting with the TTS API."""
-    tts_endpoint_url: str = "https://api.hume.ai/v0/tts"
-    api_key: str = validate_env_var("HUME_API_KEY")
-    voice: str = "KORA"
+    """Immutable configuration for interacting with the Hume TTS API."""
+    tts_endpoint_url: str = 'https://api.hume.ai/v0/tts'
+    api_key: str = validate_env_var('HUME_API_KEY')
+    voices: List[str] = ('ITO', 'KORA', 'DACHER')  # List of available Hume voices
     audio_format: str = 'wav'
-    headers: dict = None
+    headers: dict = None  # Headers for the API requests
 
     def __post_init__(self):
-        # Dynamically set headers after initialization
-        object.__setattr__(self, "headers", { 
-            'X-Hume-Api-Key': f"{self.api_key}",
+        # Validate required attributes
+        if not self.api_key:
+            raise ValueError('Hume API key is not set.')
+        if not self.voices:
+            raise ValueError('Hume voices list is empty. Please provide at least one voice.')
+        if not self.audio_format:
+            raise ValueError('Hume audio format is not set.')
+
+        # Set headers dynamically after validation
+        object.__setattr__(self, 'headers', {
+            'X-Hume-Api-Key': f'{self.api_key}',
             'Content-Type': 'application/json',
         })
+
+    @property
+    def random_voice(self) -> str:
+        """
+        Randomly selects a voice from the available voices.
+
+        Returns:
+            str: A randomly chosen voice name.
+        """
+        return random.choice(self.voices)
 
 
 class HumeException(Exception):
@@ -78,11 +97,11 @@ def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
     Raises:
         HumeException: If there is an error communicating with the Hume TTS API.
     """
-    logger.debug(f"Processing TTS with Hume. Prompt length: {len(prompt)} characters. Text length: {len(text)} characters.")
+    logger.debug(f'Processing TTS with Hume. Prompt length: {len(prompt)} characters. Text length: {len(text)} characters.')
 
     request_body = {
-        "text": text,
-        "voice": {"name": hume_config.voice},
+        'text': text,
+        'voice': {'name': hume_config.random_voice},
         # "voice_description": prompt, # <-- breaking request!?
         # "format": hume_config.audio_format, # <-- breaking request!?
     }
@@ -96,26 +115,26 @@ def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
 
         # Validate response
         if response.status_code != 200:
-            logger.error(f"Hume TTS API Error: {response.status_code} - {response.text[:200]}... (truncated)")
-            raise HumeException(f"Hume TTS API responded with status {response.status_code}: {response.text}")
+            logger.error(f'Hume TTS API Error: {response.status_code} - {response.text[:200]}... (truncated)')
+            raise HumeException(f'Hume TTS API responded with status {response.status_code}: {response.text}')
 
         # Process audio response
-        if response.headers.get("Content-Type", "").startswith("audio/"):
+        if response.headers.get('Content-Type', '').startswith('audio/'):
             audio_data = response.content  # Raw binary audio data
-            logger.info(f"Received audio data from Hume ({len(response.content)} bytes).")
+            logger.info(f'Received audio data from Hume ({len(response.content)} bytes).')
             return audio_data
 
         # Unexpected content type
-        raise HumeException(f"Unexpected Content-Type: {response.headers.get('Content-Type', 'Unknown')}")
+        raise HumeException(f'Unexpected Content-Type: {response.headers.get("Content-Type", "Unknown")}')
 
     except requests.exceptions.RequestException as e:
-        logger.exception("Request to Hume TTS API failed.")
+        logger.exception('Request to Hume TTS API failed.')
         raise HumeException(
-            message=f"Failed to communicate with Hume TTS API: {e}",
+            message=f'Failed to communicate with Hume TTS API: {e}',
             original_exception=e,
         )
     except Exception as e:
-        logger.exception("Request to Hume TTS API failed.")
+        logger.exception('Request to Hume TTS API failed.')
         raise HumeException(
             message=f"Unexpected error while processing the Hume TTS response: {e}",
             original_exception=e,

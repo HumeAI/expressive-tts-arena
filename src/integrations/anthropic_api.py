@@ -38,8 +38,8 @@ class AnthropicConfig:
     Immutable configuration for interacting with the Anthropic API.
     Includes client initialization for encapsulation.
     """
-    api_key: str = validate_env_var("ANTHROPIC_API_KEY")
-    model: ModelParam = "claude-3-5-sonnet-latest" # Valid predefined model
+    api_key: str = validate_env_var('ANTHROPIC_API_KEY')
+    model: ModelParam = 'claude-3-5-sonnet-latest' # Valid predefined model
     max_tokens: int = 300 # Max tokens for API response
     system_prompt: str = """You are a highly creative and articulate assistant specialized in generating vivid, engaging, and well-written content.
 
@@ -62,13 +62,13 @@ Always keep your responses concise, unless explicitly instructed to elaborate.""
     def __post_init__(self):
         # Validate that required attributes are set
         if not self.api_key:
-            raise ValueError("Anthropic API key is not set.")
+            raise ValueError('Anthropic API key is not set.')
         if not self.model:
-            raise ValueError("Anthropic Model is not set.")
+            raise ValueError('Anthropic Model is not set.')
         if not self.max_tokens:
-            raise ValueError("Anthropic Max Tokens is not set.")
+            raise ValueError('Anthropic Max Tokens is not set.')
         if not self.system_prompt:
-            raise ValueError("Anthropic System Prompt is not set.")
+            raise ValueError('Anthropic System Prompt is not set.')
 
     @property
     def client(self) -> Anthropic:
@@ -119,44 +119,44 @@ def generate_text_with_claude(prompt: str) -> str:
         >>> generate_text_with_claude("")
         "The prompt exceeds the maximum allowed length of 500 characters. Your prompt contains 512 characters."
     """
-    logger.debug(f"Generating text with Claude. Prompt length: {len(prompt)} characters.")
+    logger.debug(f'Generating text with Claude. Prompt length: {len(prompt)} characters.')
 
     try:
         response: Message = anthropic_config.client.messages.create(
             model=anthropic_config.model,
             max_tokens=anthropic_config.max_tokens,
             system=anthropic_config.system_prompt,
-            messages=[{"role": "user", "content": prompt}],
+            messages=[{'role': 'user', 'content': prompt}],
         )
-        logger.debug(f"API response received: {truncate_text(str(response))}")
+        logger.debug(f'API response received: {truncate_text(str(response))}')
 
         # Validate response content
-        if not hasattr(response, "content"):
+        if not hasattr(response, 'content'):
             logger.error("Response is missing 'content'. Response: %s", response)
-            raise AnthropicError("Invalid API response: Missing 'content'.")
+            raise AnthropicError('Invalid API response: Missing "content".')
 
         # Process response content
         blocks: Union[List[TextBlock], TextBlock, None] = response.content
 
         if isinstance(blocks, list):
-            result = "\n\n".join(block.text for block in blocks if isinstance(block, TextBlock))
-            logger.debug(f"Processed response from list: {truncate_text(result)}")
+            result = '\n\n'.join(block.text for block in blocks if isinstance(block, TextBlock))
+            logger.debug(f'Processed response from list: {truncate_text(result)}')
             return result
         if isinstance(blocks, TextBlock):
-            logger.debug(f"Processed response from single TextBlock: {truncate_text(blocks.text)}")
+            logger.debug(f'Processed response from single TextBlock: {truncate_text(blocks.text)}')
             return blocks.text
 
-        logger.warning(f"Unexpected response type: {type(blocks)}")
-        return str(blocks or "No content generated.")
+        logger.warning(f'Unexpected response type: {type(blocks)}')
+        return str(blocks or 'No content generated.')
         
     except Exception as e:
-        logger.exception(f"Error generating text with Claude: {e}")
+        logger.exception(f'Error generating text with Claude: {e}')
         raise AnthropicError(
             message=(
-                f"Error generating text with Claude: {e}. "
-                f"HTTP Status: {getattr(response, 'status', 'N/A')}. "
-                f"Prompt (truncated): {truncate_text(prompt)}. "
-                f"Model: {anthropic_config.model}, Max tokens: {anthropic_config.max_tokens}"
+                f'Error generating text with Claude: {e}. '
+                f'HTTP Status: {getattr(response, "status", "N/A")}. '
+                f'Prompt (truncated): {truncate_text(prompt)}. '
+                f'Model: {anthropic_config.model}, Max tokens: {anthropic_config.max_tokens}'
             ),
             original_exception=e,
         )

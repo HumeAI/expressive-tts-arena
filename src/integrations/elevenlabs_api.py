@@ -34,26 +34,26 @@ from src.utils import validate_env_var, truncate_text
 @dataclass(frozen=True)
 class ElevenLabsConfig:
     """Immutable configuration for interacting with the ElevenLabs TTS API."""
-    api_key: str = validate_env_var("ELEVENLABS_API_KEY")
-    model_id: str = "eleven_multilingual_v2" # ElevenLab's most emotionally expressive model
-    output_format: str = "mp3_44100_128" # Output format of the generated audio.
+    api_key: str = validate_env_var('ELEVENLABS_API_KEY')
+    model_id: str = 'eleven_multilingual_v2' # ElevenLab's most emotionally expressive model
+    output_format: str = 'mp3_44100_128' # Output format of the generated audio.
     top_voices: list[str] = (
-        "pNInz6obpgDQGcFmaJgB",  # Adam
-        "ErXwobaYiN019PkySvjV",  # Antoni
-        "21m00Tcm4TlvDq8ikWAM",  # Rachel
-        "XrExE9yKIg1WjnnlVkGX",  # Matilda
+        'pNInz6obpgDQGcFmaJgB',  # Adam
+        'ErXwobaYiN019PkySvjV',  # Antoni
+        '21m00Tcm4TlvDq8ikWAM',  # Rachel
+        'XrExE9yKIg1WjnnlVkGX',  # Matilda
     )
 
     def __post_init__(self):
         # Validate that required attributes are set
         if not self.api_key:
-            raise ValueError("ElevenLabs API key is not set.")
+            raise ValueError('ElevenLabs API key is not set.')
         if not self.model_id:
-            raise ValueError("ElevenLabs Model ID is not set.")
+            raise ValueError('ElevenLabs Model ID is not set.')
         if not self.output_format:
-            raise ValueError("ElevenLabs Output Format is not set.")
+            raise ValueError('ElevenLabs Output Format is not set.')
         if not self.top_voices:
-            raise ValueError("ElevenLabs Top Voices are not set.")
+            raise ValueError('ElevenLabs Top Voices are not set.')
     
     @property
     def client(self) -> ElevenLabs:
@@ -103,7 +103,7 @@ def text_to_speech_with_elevenlabs(text: str) -> bytes:
     Raises:
         ElevenLabsException: If there is an error communicating with the ElevenLabs API or processing the response.
     """
-    logger.debug(f"Generating speech with ElevenLabs. Text length: {len(text)} characters.")
+    logger.debug(f'Generating speech with ElevenLabs. Text length: {len(text)} characters.')
 
     try:
         # Generate audio using the ElevenLabs SDK
@@ -115,24 +115,24 @@ def text_to_speech_with_elevenlabs(text: str) -> bytes:
         )
 
        # Ensure the response is an iterator
-        if not hasattr(audio_iterator, "__iter__") or not hasattr(audio_iterator, "__next__"):
-            logger.error("Invalid audio iterator response.")
-            raise ElevenLabsException("Invalid audio iterator received from ElevenLabs API.")
+        if not hasattr(audio_iterator, '__iter__') or not hasattr(audio_iterator, '__next__'):
+            logger.error('Invalid audio iterator response.')
+            raise ElevenLabsException('Invalid audio iterator received from ElevenLabs API.')
 
         # Combine chunks into a single bytes object
-        audio = b"".join(chunk for chunk in audio_iterator)
+        audio = b''.join(chunk for chunk in audio_iterator)
 
         # Validate audio
         if not audio:
-            logger.error("No audio data received from ElevenLabs API.")
-            raise ElevenLabsException("Empty audio data received from ElevenLabs API.")
+            logger.error('No audio data received from ElevenLabs API.')
+            raise ElevenLabsException('Empty audio data received from ElevenLabs API.')
 
-        logger.info(f"Received ElevenLabs audio ({len(audio)} bytes).")
+        logger.info(f'Received ElevenLabs audio ({len(audio)} bytes).')
         return audio
 
     except Exception as e:
-        logger.exception(f"Error generating speech: {e}")
+        logger.exception(f'Error generating speech: {e}')
         raise ElevenLabsException(
-            message=f"Failed to generate audio with ElevenLabs: {e}",
+            message=f'Failed to generate audio with ElevenLabs: {e}',
             original_exception=e,
         )
