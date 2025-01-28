@@ -91,7 +91,12 @@ class AnthropicError(Exception):
 anthropic_config = AnthropicConfig()
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_fixed(2),
+    before=before_log(logger, logging.DEBUG),
+    after=after_log(logger, logging.DEBUG),
+)
 def generate_text_with_claude(prompt: str) -> str:
     """
     Generates text using Claude via the Anthropic SDK.

@@ -58,7 +58,12 @@ class HumeException(Exception):
 hume_config = HumeConfig()
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_fixed(2),
+    before=before_log(logger, logging.DEBUG),
+    after=after_log(logger, logging.DEBUG),
+)
 def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
     """
     Converts text to speech using the Hume TTS API and processes raw binary audio data.
