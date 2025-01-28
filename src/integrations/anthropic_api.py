@@ -21,7 +21,8 @@ Functions:
 
 # Standard Library Imports
 from dataclasses import dataclass
-from typing import Union, List
+import logging
+from typing import List, Optional, Union
 # Third-Party Library Imports
 from anthropic import Anthropic
 from anthropic.types import Message, ModelParam, TextBlock
@@ -82,7 +83,7 @@ Always keep your responses concise, unless explicitly instructed to elaborate.""
 
 class AnthropicError(Exception):
     """Custom exception for errors related to the Anthropic API."""
-    def __init__(self, message: str, original_exception: Exception = None):
+    def __init__(self, message: str, original_exception: Optional[Exception] = None):
         super().__init__(message)
         self.original_exception = original_exception
 
