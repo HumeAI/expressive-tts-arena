@@ -59,9 +59,15 @@ When writing, tailor your tone and style to match the user's request. For exampl
 Always keep your responses concise, unless explicitly instructed to elaborate."""
 
     def __post_init__(self):
-        # Ensure the API key is set
+        # Validate that required attributes are set
         if not self.api_key:
             raise ValueError("Anthropic API key is not set.")
+        if not self.model:
+            raise ValueError("Anthropic Model is not set.")
+        if not self.max_tokens:
+            raise ValueError("Anthropic Max Tokens is not set.")
+        if not self.system_prompt:
+            raise ValueError("Anthropic System Prompt is not set.")
 
     @property
     def client(self) -> Anthropic:
@@ -72,7 +78,7 @@ Always keep your responses concise, unless explicitly instructed to elaborate.""
             Anthropic: Configured client instance.
         """
         return Anthropic(api_key=self.api_key)
-        
+
 
 class AnthropicError(Exception):
     """Custom exception for errors related to the Anthropic API."""
