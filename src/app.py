@@ -106,8 +106,8 @@ def run_process_prompt(prompt: str):
         gr.update(value=None), # Clear Option 1 audio
         gr.update(value=None), # Clear Option 2 audio
         None, # Clear option mapping
-        gr.update(interactive=False, value=VOTE_FOR_OPTION_ONE, variant="secondary"), # Reset vote button 1
-        gr.update(interactive=False, value=VOTE_FOR_OPTION_TWO, variant="secondary"), # Reset vote button 2
+        gr.update(interactive=False, value=VOTE_FOR_OPTION_ONE, variant='secondary'), # Reset vote button 1
+        gr.update(interactive=False, value=VOTE_FOR_OPTION_TWO, variant='secondary'), # Reset vote button 2
         None, # Reset Option 2 audio state
     )
 
@@ -166,14 +166,16 @@ def build_gradio_interface() -> gr.Blocks:
         gr.Blocks: The Gradio UI layout.
     """
     with gr.Blocks() as demo:
-        # Title and instructions
+        # Title
         gr.Markdown('# Expressive TTS Arena')
-        gr.Markdown(
-            'Generate text using **Claude by Anthropic**, then compare text-to-speech outputs '
-            'from **Hume AI** and **ElevenLabs**. Listen to both samples and vote for your favorite!'
-        )
 
-        with gr.Column(variant="compact"):
+        with gr.Column(variant='compact'):
+            # Instructions
+            gr.Markdown(
+                'Generate text using **Claude by Anthropic**, then compare text-to-speech outputs '
+                'from **Hume AI** and **ElevenLabs**. Listen to both samples and vote for your favorite!'
+            )
+
             # Sample prompt select
             with gr.Row():
                 sample_prompt_dropdown = gr.Dropdown(
@@ -194,9 +196,9 @@ def build_gradio_interface() -> gr.Blocks:
                 )
 
         # Generate Button
-        generate_button = gr.Button('Generate', variant="primary")
+        generate_button = gr.Button('Generate', variant='primary')
 
-        with gr.Column(variant="compact"):
+        with gr.Column(variant='compact'):
             # Output text
             output_text = gr.Textbox(
                 label='Generated Text',
@@ -223,7 +225,7 @@ def build_gradio_interface() -> gr.Blocks:
 
         # Event handlers
         sample_prompt_dropdown.change(
-            fn=lambda choice: SAMPLE_PROMPTS.get(choice, ""),
+            fn=lambda choice: SAMPLE_PROMPTS.get(choice, ''),
             inputs=[sample_prompt_dropdown],
             outputs=[prompt_input],
         )
