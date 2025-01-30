@@ -8,6 +8,12 @@ This module defines global constants used throughout the project.
 PROMPT_MIN_LENGTH: int = 10
 PROMPT_MAX_LENGTH: int = 300
 
+# Vote button constants
+OPTION_ONE: str = "Option 1"
+OPTION_TWO: str = "Option 2"
+VOTE_FOR_OPTION_ONE: str = "Vote for option 1"
+VOTE_FOR_OPTION_TWO: str = "Vote for option 2"
+
 # A collection of pre-defined prompts categorized by theme, used to provide users with inspiration for generating creative text.
 SAMPLE_PROMPTS = {
     '🚀 Dramatic Monologue (Stranded Astronaut)': 
