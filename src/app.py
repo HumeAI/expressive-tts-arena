@@ -12,6 +12,7 @@ Users can compare the outputs in an interactive UI.
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 import random
+from typing import Union
 # Third-Party Library Imports
 import gradio as gr
 # Local Application Imports
@@ -19,11 +20,13 @@ from src.config import logger
 from src.constants import (
     OPTION_ONE, 
     OPTION_TWO,
-    VOTE_FOR_OPTION_ONE,
-    VOTE_FOR_OPTION_TWO,
     PROMPT_MAX_LENGTH, 
     PROMPT_MIN_LENGTH, 
-    SAMPLE_PROMPTS
+    SAMPLE_PROMPTS,
+    TROPHY_EMOJI,
+    UNKNOWN_PROVIDER,
+    VOTE_FOR_OPTION_ONE,
+    VOTE_FOR_OPTION_TWO
 )
 from src.integrations import (
     generate_text_with_claude, 
@@ -34,18 +37,21 @@ from src.theme import CustomTheme
 from src.utils import truncate_text, validate_prompt_length
 
 
-def generate_text(prompt: str):
+def generate_text(prompt: str) -> Union[str, gr.update]:
     """
-    Generates text from Claude API.
+    Generates text using the Claude API.
 
     Args:
         prompt (str): User-provided text prompt.
+
+    Returns:
+        Union[str, gr.update]: The generated text wrapped in `gr.update` for Gradio UI,
+        or an error message as a string if validation fails.
     """
     logger.info(f'Generating text with prompt: {truncate_text(prompt, max_length=100)}')
     try:
         # Validate prompt length
         validate_prompt_length(prompt, PROMPT_MAX_LENGTH, PROMPT_MIN_LENGTH)
-
 
         # Generate text
         generated_text = generate_text_with_claude(prompt)
@@ -57,15 +63,29 @@ def generate_text(prompt: str):
         logger.warning(f'Validation error: {ve}')
         return str(ve)
 
-def text_to_speech(prompt: str, generated_text: str):
+def text_to_speech(prompt: str, generated_text: str) -> tuple[gr.update, gr.update, dict, str | None]:
+    """
+    Converts generated text to speech using Hume AI and ElevenLabs APIs.
+
+    Args:
+        prompt (str): The original user-provided prompt.
+        generated_text (str): The generated text that will be converted to speech.
+
+    Returns:
+        tuple[gr.update, gr.update, dict, Union[str, None]]:
+            - `gr.update(value=option_1_audio, autoplay=True)`: Updates the first audio player.
+            - `gr.update(value=option_2_audio)`: Updates the second audio player.
+            - `options_map`: A dictionary mapping OPTION_ONE and OPTION_TWO to their providers.
+            - `option_2_audio`: The second audio file path or `None` if an error occurs.
+    """
     try:
         # Generate TTS output in parallel
         with ThreadPoolExecutor(max_workers=2) as executor:
-            hume_audio, elevenlabs_audio = executor.map(
-                lambda func: func(),
-                [partial(text_to_speech_with_hume, prompt, generated_text),
-                partial(text_to_speech_with_elevenlabs, generated_text)]
-            )
+            future_hume = executor.submit(text_to_speech_with_hume, prompt, generated_text)
+            future_elevenlabs = executor.submit(text_to_speech_with_elevenlabs, generated_text)
+            
+            hume_audio = future_hume.result()
+            elevenlabs_audio = future_elevenlabs.result()
 
         logger.info(
             f'TTS generated: Hume={len(hume_audio)} bytes, ElevenLabs={len(elevenlabs_audio)} bytes'
@@ -95,45 +115,55 @@ def text_to_speech(prompt: str, generated_text: str):
         return None, None, {}
 
 
-def vote(option_mapping: dict, selected_button: str):
+def vote(
+    vote_submitted: bool, 
+    option_mapping: dict, 
+    selected_button: str
+) -> tuple[bool, gr.update, gr.update, gr.update]:
     """
-    Updates both vote buttons to reflect the user's choice.
+    Handles user voting and updates the UI to reflect the selected choice.
 
     Args:
-        option_mapping (dict): Maps "Option 1" and "Option 2" to their TTS providers.
-        selected_button (str): The label of the button that was clicked.
+        vote_submitted (bool): Indicates if a vote has already been submitted.
+        option_mapping (dict): Maps "Option 1" and "Option 2" to their respective TTS providers.
+        selected_button (str): The button that was clicked by the user.
 
     Returns:
-        tuple[gr.update, gr.update]: Updated properties for both vote buttons.
+        tuple[bool, gr.update, gr.update, gr.update]:
+            - `True`: Indicates the vote has been submitted.
+            - `gr.update`: Updates the selected vote button.
+            - `gr.update`: Updates the unselected vote button.
+            - `gr.update(interactive=True)`: Enables the "Generate" button after voting.
     """
-    if not option_mapping:
-        return gr.update(), gr.update()  # No updates if mapping is missing
+    if not option_mapping or vote_submitted:
+        return True, gr.update(), gr.update(), gr.update()  # No updates if mapping is missing
 
     # Determine selected option
     is_option_1 = selected_button == VOTE_FOR_OPTION_ONE
     selected_option, other_option = (OPTION_ONE, OPTION_TWO) if is_option_1 else (OPTION_TWO, OPTION_ONE)
 
     # Get provider names
-    selected_provider = option_mapping.get(selected_option, "Unknown")
-    other_provider = option_mapping.get(other_option, "Unknown")
+    selected_provider = option_mapping.get(selected_option, UNKNOWN_PROVIDER)
+    other_provider = option_mapping.get(other_option, UNKNOWN_PROVIDER)
 
     # Return updated button states
     return (
-        gr.update(value=f'{selected_provider} ✔', interactive=False, variant='primary') if is_option_1 else gr.update(value=other_provider, interactive=False, variant='secondary'),
-        gr.update(value=other_provider, interactive=False, variant='secondary') if is_option_1 else gr.update(value=f'{selected_provider} ✔', interactive=False, variant='primary'),
+        True,
+        gr.update(value=f'{selected_provider} {TROPHY_EMOJI}', variant='primary') if is_option_1 else gr.update(value=other_provider, variant='secondary'),
+        gr.update(value=other_provider, variant='secondary') if is_option_1 else gr.update(value=f'{selected_provider} {TROPHY_EMOJI}', variant='primary'),
         gr.update(interactive=True, variant='primary')
     )
 
 
 def build_gradio_interface() -> gr.Blocks:
     """
-    Constructs the Gradio user interface.
+    Builds and configures the Gradio user interface.
 
     Returns:
-        gr.Blocks: The Gradio UI layout.
+        gr.Blocks: The fully constructed Gradio UI layout.
     """
     custom_theme = CustomTheme()
-    with gr.Blocks(title='Expressive TTS Arena', theme=custom_theme) as demo:
+    with gr.Blocks(title='Expressive TTS Arena', theme=custom_theme, fill_width=True) as demo:
         # Title
         gr.Markdown('# Expressive TTS Arena')
 
@@ -154,8 +184,8 @@ def build_gradio_interface() -> gr.Blocks:
 
             # Prompt input
             prompt_input = gr.Textbox(
-                label='Enter your prompt',
-                placeholder='Or type your own...',
+                show_label=False,
+                placeholder='Enter your prompt...',
                 lines=2,
                 max_lines=2,
                 show_copy_button=True,
@@ -177,8 +207,16 @@ def build_gradio_interface() -> gr.Blocks:
 
             # Audio players 
             with gr.Row():
-                option1_audio_player = gr.Audio(label=OPTION_ONE, type='filepath', interactive=False)
-                option2_audio_player = gr.Audio(label=OPTION_TWO, type='filepath', interactive=False)
+                option1_audio_player = gr.Audio(
+                    label=OPTION_ONE, 
+                    type='filepath', 
+                    interactive=False
+                )
+                option2_audio_player = gr.Audio(
+                    label=OPTION_TWO, 
+                    type='filepath', 
+                    interactive=False
+                )
 
             # Vote buttons
             with gr.Row():
@@ -186,9 +224,10 @@ def build_gradio_interface() -> gr.Blocks:
                 vote_button_2 = gr.Button(VOTE_FOR_OPTION_TWO, interactive=False)
 
         # UI state components
-        option_mapping_state = gr.State()
-        option2_audio_state = gr.State()
-        generated_text_state = gr.State()
+        option_mapping_state = gr.State() # Track option map (option 1 and option 2 are randomized)
+        option2_audio_state = gr.State() # Track generated audio for option 2 for playing automatically after option 1 audio finishes
+        generated_text_state = gr.State() # Track the text which was generated from the user's prompt
+        vote_submitted_state = gr.State(False) # Track whether the user has voted on an option
 
         # Event handlers
         sample_prompt_dropdown.change(
@@ -198,35 +237,69 @@ def build_gradio_interface() -> gr.Blocks:
         )
 
         generate_button.click(
+            # Reset UI
             fn=lambda _: (
                 gr.update(interactive=False), 
                 gr.update(interactive=False, value=VOTE_FOR_OPTION_ONE, variant='secondary'),
                 gr.update(interactive=False, value=VOTE_FOR_OPTION_TWO, variant='secondary'),
                 None,
                 None,
+                False
             ),
             inputs=[],
-            outputs=[generate_button, vote_button_1, vote_button_2, option_mapping_state, option2_audio_state]
+            outputs=[
+                generate_button, 
+                vote_button_1, 
+                vote_button_2, 
+                option_mapping_state, 
+                option2_audio_state, 
+                vote_submitted_state
+            ]
         ).then(
+            # Generate text from user prompt
             fn=generate_text,
             inputs=[prompt_input],
             outputs=[generated_text]
         ).then(
+            # Synthesize text to speech and trigger playback of generated audio
             fn=text_to_speech,
             inputs=[prompt_input, generated_text],
-            outputs=[option1_audio_player, option2_audio_player, option_mapping_state, option2_audio_state]
+            outputs=[
+                option1_audio_player, 
+                option2_audio_player, 
+                option_mapping_state, 
+                option2_audio_state
+            ]
         )
 
         vote_button_1.click(
             fn=vote,
-            inputs=[option_mapping_state, vote_button_1],
-            outputs=[vote_button_1, vote_button_2, generate_button]
+            inputs=[
+                vote_submitted_state, 
+                option_mapping_state, 
+                vote_button_1
+            ],
+            outputs=[
+                vote_submitted_state, 
+                vote_button_1, 
+                vote_button_2, 
+                generate_button
+            ]
         )
 
         vote_button_2.click(
             fn=vote,
-            inputs=[option_mapping_state, vote_button_2],
-            outputs=[vote_button_1, vote_button_2, generate_button]
+            inputs=[
+                vote_submitted_state, 
+                option_mapping_state, 
+                vote_button_2
+            ],
+            outputs=[
+                vote_submitted_state, 
+                vote_button_1, 
+                vote_button_2, 
+                generate_button
+            ]
         )
 
         # Auto-play second audio after first finishes

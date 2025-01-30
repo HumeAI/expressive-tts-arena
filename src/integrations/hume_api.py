@@ -36,7 +36,7 @@ class HumeConfig:
     """Immutable configuration for interacting with the Hume TTS API."""
     tts_endpoint_url: str = 'https://api.hume.ai/v0/tts'
     api_key: str = validate_env_var('HUME_API_KEY')
-    voices: List[str] = ('ITO', 'KORA', 'DACHER')  # List of available Hume voices
+    voices: List[str] = ('ITO', 'KORA', 'STELLA')  # List of available Hume voices
     audio_format: str = 'wav'
     headers: dict = None  # Headers for the API requests
 

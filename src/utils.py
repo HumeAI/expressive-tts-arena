@@ -96,24 +96,26 @@ def validate_prompt_length(prompt: str, max_length: int, min_length: int) -> Non
         >>> validate_prompt_length("Hello world", max_length=500, min_length=5)
         # Passes validation
 
-        >>> validate_prompt_length("", max_length=500, min_length=1)
-        # Raises ValueError: "Prompt must be at least 1 character(s) long."
+        >>> validate_prompt_length("", max_length=300, min_length=10)
+        # Raises ValueError: "Prompt must be at least 10 characters long."
     """
-    logger.debug(f'Prompt length being validated: {len(prompt)} characters')
-
-    # Check if prompt is empty or too short
     stripped_prompt = prompt.strip()
-    if len(stripped_prompt) < min_length:
+    prompt_length = len(stripped_prompt)
+    
+    logger.debug(f'Prompt length being validated: {prompt_length} characters')
+
+    # Check if prompt is too short
+    if prompt_length < min_length:
         raise ValueError(
             f'Prompt must be at least {min_length} character(s) long. '
-            f'Received only {len(stripped_prompt)}.'
+            f'Received only {prompt_length}.'
         )
 
-    # Check if prompt is too long
-    if len(stripped_prompt) > max_length:
+    # Check if prompt exceeds max length
+    if prompt_length > max_length:
         raise ValueError(
             f'The prompt exceeds the maximum allowed length of {max_length} characters. '
-            f'Your prompt contains {len(stripped_prompt)} characters.'
+            f'Your prompt contains {prompt_length} characters.'
         )
 
     logger.debug(f'Prompt length validation passed for prompt: {truncate_text(stripped_prompt)}')
