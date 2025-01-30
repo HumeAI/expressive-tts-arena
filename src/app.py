@@ -34,27 +34,31 @@ from src.theme import CustomTheme
 from src.utils import truncate_text, validate_prompt_length
 
 
-def process_prompt(prompt: str):
+def generate_text(prompt: str):
     """
-    Generates text from Claude API and converts it to speech using Hume and ElevenLabs.
+    Generates text from Claude API.
 
     Args:
         prompt (str): User-provided text prompt.
-
-    Returns:
-        tuple: Generated text, two audio file paths (Hume & ElevenLabs), and 
-               a dictionary mapping audio options to providers.
     """
-    logger.info(f'Processing prompt: {truncate_text(prompt, max_length=100)}')
-
+    logger.info(f'Generating text with prompt: {truncate_text(prompt, max_length=100)}')
     try:
         # Validate prompt length
         validate_prompt_length(prompt, PROMPT_MAX_LENGTH, PROMPT_MIN_LENGTH)
+
 
         # Generate text
         generated_text = generate_text_with_claude(prompt)
         logger.info(f'Generated text ({len(generated_text)} characters).')
 
+        return gr.update(value=generated_text)
+    
+    except ValueError as ve:
+        logger.warning(f'Validation error: {ve}')
+        return str(ve)
+
+def text_to_speech(prompt: str, generated_text: str):
+    try:
         # Generate TTS output in parallel
         with ThreadPoolExecutor(max_workers=2) as executor:
             hume_audio, elevenlabs_audio = executor.map(
@@ -71,61 +75,24 @@ def process_prompt(prompt: str):
         options = [(hume_audio, 'Hume AI'), (elevenlabs_audio, 'ElevenLabs')]
         random.shuffle(options)
 
-        return (
-            generated_text,
-            options[0][0], # Option 1 audio
-            options[1][0], # Option 2 audio
-            {OPTION_ONE: options[0][1], OPTION_TWO: options[1][1]}, # Option mapping
-        )
+        option_1_audio = options[0][0]
+        option_2_audio = options[1][0]
 
-    except ValueError as ve:
-        logger.warning(f'Validation error: {ve}')
-        return str(ve), None, None, {}
+        option_1_provider = options[0][1]
+        option_2_provider = options[1][1]
+
+        options_map = { OPTION_ONE: option_1_provider, OPTION_TWO: option_2_provider }
+
+        return (
+            gr.update(value=option_1_audio, autoplay=True), # Set option 1 audio
+            gr.update(value=option_2_audio), # Option 2 audio
+            options_map, # Set option mapping state
+            option_2_audio # Set option 2 audio state
+        )
 
     except Exception as e:
         logger.error(f'Unexpected error: {e}')
-        return 'An error occurred. Please try again.', None, None, {}
-
-
-def run_process_prompt(prompt: str):
-    """
-    Manages UI state while processing a prompt.
-
-    Args:
-        prompt (str): User input prompt.
-
-    Yields:
-        tuple: UI state updates in three stages:
-               1. Disables UI and clears previous outputs.
-               2. Displays generated content.
-               3. Re-enables UI after processing.
-    """
-    # Disable UI, clear previous outputs
-    yield (
-        gr.update(interactive=False, variant='secondary'), # Disable Generate Button
-        gr.update(value="Generating..."), # Clear generated text
-        gr.update(value=None), # Clear Option 1 audio
-        gr.update(value=None), # Clear Option 2 audio
-        None, # Clear option mapping
-        gr.update(interactive=False, value=VOTE_FOR_OPTION_ONE, variant='secondary'), # Reset vote button 1
-        gr.update(interactive=False, value=VOTE_FOR_OPTION_TWO, variant='secondary'), # Reset vote button 2
-        None, # Reset Option 2 audio state
-    )
-
-    # Process the prompt
-    generated_text, option1_audio, option2_audio, option_mapping = process_prompt(prompt)
-
-    # Display generated text and audio
-    yield (
-        gr.update(interactive=True), # Re-enable Generate Button
-        gr.update(value=generated_text), # Show generated text
-        gr.update(value=option1_audio, autoplay=True), # Set Option 1 audio
-        gr.update(value=option2_audio), # Set Option 2 audio
-        option_mapping, # Store option mapping
-        gr.update(), # Keep Vote button 1 disabled
-        gr.update(), # Keep Vote button 2 disabled
-        option2_audio, # Store Option 2 audio
-    )
+        return None, None, {}
 
 
 def vote(option_mapping: dict, selected_button: str):
@@ -155,7 +122,7 @@ def vote(option_mapping: dict, selected_button: str):
     return (
         gr.update(value=f'{selected_provider} ✔', interactive=False, variant='primary') if is_option_1 else gr.update(value=other_provider, interactive=False, variant='secondary'),
         gr.update(value=other_provider, interactive=False, variant='secondary') if is_option_1 else gr.update(value=f'{selected_provider} ✔', interactive=False, variant='primary'),
-        gr.update(variant='primary')
+        gr.update(interactive=True, variant='primary')
     )
 
 
@@ -167,7 +134,7 @@ def build_gradio_interface() -> gr.Blocks:
         gr.Blocks: The Gradio UI layout.
     """
     custom_theme = CustomTheme()
-    with gr.Blocks(title="Expressive TTS Arena", theme=custom_theme) as demo:
+    with gr.Blocks(title='Expressive TTS Arena', theme=custom_theme) as demo:
         # Title
         gr.Markdown('# Expressive TTS Arena')
 
@@ -179,30 +146,28 @@ def build_gradio_interface() -> gr.Blocks:
             )
 
             # Sample prompt select
-            with gr.Row():
-                sample_prompt_dropdown = gr.Dropdown(
-                    choices=list(SAMPLE_PROMPTS.keys()),
-                    label='Choose a sample prompt (or enter your own)',
-                    value=None,
-                    interactive=True,
-                )
+            sample_prompt_dropdown = gr.Dropdown(
+                choices=list(SAMPLE_PROMPTS.keys()),
+                label='Choose a sample prompt (or enter your own)',
+                value=None,
+                interactive=True,
+            )
 
             # Prompt input
-            with gr.Row():
-                prompt_input = gr.Textbox(
-                    label='Enter your prompt',
-                    placeholder='Or type your own...',
-                    lines=2,
-                    max_lines=2,
-                    show_copy_button=True,
-                )
+            prompt_input = gr.Textbox(
+                label='Enter your prompt',
+                placeholder='Or type your own...',
+                lines=2,
+                max_lines=2,
+                show_copy_button=True,
+            )
 
         # Generate Button
         generate_button = gr.Button('Generate', variant='primary')
 
         with gr.Column(variant='compact'):
-            # Output text
-            output_text = gr.Textbox(
+            # Generated text
+            generated_text = gr.Textbox(
                 label='Generated Text',
                 interactive=False,
                 autoscroll=False,
@@ -211,19 +176,20 @@ def build_gradio_interface() -> gr.Blocks:
                 show_copy_button=True,
             )
 
-            # Output audio
+            # Audio players 
             with gr.Row():
-                with gr.Column():
-                    option1_audio_player = gr.Audio(label=OPTION_ONE, type='filepath', interactive=False)
-                    vote_button_1 = gr.Button(VOTE_FOR_OPTION_ONE, interactive=False)
+                option1_audio_player = gr.Audio(label=OPTION_ONE, type='filepath', interactive=False)
+                option2_audio_player = gr.Audio(label=OPTION_TWO, type='filepath', interactive=False)
 
-                with gr.Column():
-                    option2_audio_player = gr.Audio(label=OPTION_TWO, type='filepath', interactive=False)
-                    vote_button_2 = gr.Button(VOTE_FOR_OPTION_TWO, interactive=False)
+            # Vote buttons
+            with gr.Row():
+                vote_button_1 = gr.Button(VOTE_FOR_OPTION_ONE, interactive=False)
+                vote_button_2 = gr.Button(VOTE_FOR_OPTION_TWO, interactive=False)
 
         # UI state components
         option_mapping_state = gr.State()
         option2_audio_state = gr.State()
+        generated_text_state = gr.State()
 
         # Event handlers
         sample_prompt_dropdown.change(
@@ -233,18 +199,27 @@ def build_gradio_interface() -> gr.Blocks:
         )
 
         generate_button.click(
-            fn=run_process_prompt,
+            fn=lambda _: (
+                gr.update(interactive=False), 
+                gr.update(interactive=False, value=VOTE_FOR_OPTION_ONE, variant='secondary'),
+                gr.update(interactive=False, value=VOTE_FOR_OPTION_TWO, variant='secondary'),
+                None,
+                None,
+            ),
+            inputs=[],
+            outputs=[generate_button, vote_button_1, vote_button_2, option_mapping_state, option2_audio_state]
+        ).then(
+            fn=generate_text,
             inputs=[prompt_input],
-            outputs=[
-                generate_button,
-                output_text,
-                option1_audio_player,
-                option2_audio_player,
-                option_mapping_state,
-                vote_button_1,
-                vote_button_2,
-                option2_audio_state,
-            ],
+            outputs=[generated_text]
+        ).then(
+            fn=text_to_speech,
+            inputs=[prompt_input, generated_text],
+            outputs=[option1_audio_player, option2_audio_player, option_mapping_state, option2_audio_state]
+        ).then(
+            fn=lambda _: gr.update(interactive=True, variation='primary'), 
+            inputs=[],
+            outputs=[generate_button]
         )
 
         vote_button_1.click(
