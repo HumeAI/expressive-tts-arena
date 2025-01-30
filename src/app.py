@@ -186,11 +186,11 @@ def build_gradio_interface() -> gr.Blocks:
 
         # Auto-play second audio after first finishes
         option1_audio_player.stop(
-            fn=lambda _: gr.update(value=None), # Reset first audio before playing second
+            fn=lambda _: gr.update(value=None), # Reset audio so Gradio autoplays it when set
             inputs=[],
             outputs=[option2_audio_player],
         ).then(
-            fn=lambda audio: gr.update(value=audio, autoplay=True),
+            fn=lambda audio: gr.update(value=audio, autoplay=True), # Set audio for playback
             inputs=[option2_audio_state],
             outputs=[option2_audio_player],
         )
