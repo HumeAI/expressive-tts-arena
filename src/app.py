@@ -178,7 +178,12 @@ def build_gradio_interface() -> gr.Blocks:
         gr.Blocks: The fully constructed Gradio UI layout.
     """
     custom_theme = CustomTheme()
-    with gr.Blocks(title='Expressive TTS Arena', theme=custom_theme, fill_width=True) as demo:
+    with gr.Blocks(
+        title='Expressive TTS Arena', 
+        theme=custom_theme, 
+        fill_width=True,
+        css='footer{display:none !important}'
+    ) as demo:
         # Title
         gr.Markdown('# Expressive TTS Arena')
 
@@ -215,8 +220,8 @@ def build_gradio_interface() -> gr.Blocks:
                 label='Generated Text',
                 interactive=False,
                 autoscroll=False,
-                lines=5,
-                max_lines=5,
+                lines=6,
+                max_lines=6,
                 max_length=PROMPT_MAX_LENGTH,
                 show_copy_button=True,
             )
