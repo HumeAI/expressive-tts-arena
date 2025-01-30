@@ -1,13 +1,16 @@
 """
 app.py
 
-This file defines the Gradio user interface for interacting with the Anthropic API, Hume TTS API, and ElevenLabs TTS API.
-Users can input prompts, which are processed to generate text using the Claude model via the Anthropic API.
-The generated text is then converted to audio using both Hume and ElevenLabs TTS APIs, allowing playback in the Gradio UI.
+Gradio UI for interacting with the Anthropic API, Hume TTS API, and ElevenLabs TTS API.
+
+Users enter a prompt, which is processed using Claude by Anthropic to generate text.
+The text is then converted into speech using both Hume and ElevenLabs TTS APIs.
+Users can compare the outputs in an interactive UI.
 """
 
 # Standard Library Imports
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 import random
 # Third-Party Library Imports
 import gradio as gr
@@ -20,15 +23,14 @@ from src.utils import truncate_text, validate_prompt_length
 
 def process_prompt(prompt: str):
     """
-    Processes the user input by generating text using Claude API, then converting 
-    the generated text to speech using both Hume and ElevenLabs TTS APIs.
+    Generates text from Claude API and converts it to speech using Hume and ElevenLabs.
 
     Args:
-        prompt (str): The user's input prompt.
+        prompt (str): User-provided text prompt.
 
     Returns:
-        tuple: Generated text, two audio paths (Hume & ElevenLabs), and a mapping 
-               of audio options to their respective TTS providers.
+        tuple: Generated text, two audio file paths (Hume & ElevenLabs), and 
+               a dictionary mapping audio options to providers.
     """
     logger.info(f'Processing prompt: {truncate_text(prompt, max_length=100)}')
 
@@ -38,80 +40,75 @@ def process_prompt(prompt: str):
 
         # Generate text
         generated_text = generate_text_with_claude(prompt)
-        logger.info(f'Generated text successfully (length={len(generated_text)} characters).')
+        logger.info(f'Generated text ({len(generated_text)} characters).')
 
-        # Run TTS generation in parallel
+        # Generate TTS output in parallel
         with ThreadPoolExecutor(max_workers=2) as executor:
-            hume_future = executor.submit(text_to_speech_with_hume, prompt, generated_text)
-            elevenlabs_future = executor.submit(text_to_speech_with_elevenlabs, generated_text)
-
-            # Retrieve results
-            hume_audio = hume_future.result()
-            elevenlabs_audio = elevenlabs_future.result()
+            hume_audio, elevenlabs_audio = executor.map(
+                lambda func: func(),
+                [partial(text_to_speech_with_hume, prompt, generated_text),
+                partial(text_to_speech_with_elevenlabs, generated_text)]
+            )
 
         logger.info(
-            f'TTS audio generated: Hume={len(hume_audio)} bytes, '
+            f'TTS generated: Hume={len(hume_audio)} bytes, '
             f'ElevenLabs={len(elevenlabs_audio)} bytes'
         )
 
-        # Randomly assign audio options
-        audio_options = [
-            (hume_audio, 'Hume TTS'),
-            (elevenlabs_audio, 'ElevenLabs TTS'),
-        ]
-        random.shuffle(audio_options)
+        # Randomize audio order
+        options = [(hume_audio, 'Hume TTS'), (elevenlabs_audio, 'ElevenLabs TTS')]
+        random.shuffle(options)
 
-        option1_audio, option1_provider = audio_options[0]
-        option2_audio, option2_provider = audio_options[1]
-
-        return generated_text, option1_audio, option2_audio, {
-            'Option 1': option1_provider,
-            'Option 2': option2_provider,
-        }
+        return (
+            generated_text,
+            options[0][0],  # Option 1 audio
+            options[1][0],  # Option 2 audio
+            {'Option 1': options[0][1], 'Option 2': options[1][1]},  # Mapping
+        )
 
     except ValueError as ve:
         logger.warning(f'Validation error: {ve}')
         return str(ve), None, None, {}
 
     except Exception as e:
-        logger.error(f'Unexpected error during processing: {e}')
-        return 'An unexpected error occurred. Please try again.', None, None, {}
+        logger.error(f'Unexpected error: {e}')
+        return 'An error occurred. Please try again.', None, None, {}
 
 
 def run_process_prompt(prompt: str):
     """
-    Handles the UI state transitions while processing a prompt.
+    Manages UI state while processing a prompt.
 
     Args:
-        prompt (str): The user's input prompt.
+        prompt (str): User input prompt.
 
     Yields:
-        tuple: Updates to the UI elements in three stages:
-               1. Disabling UI and clearing previous outputs.
-               2. Displaying generated content.
-               3. Re-enabling UI after generation completes.
+        tuple: UI state updates in three stages:
+               1. Disables UI and clears previous outputs.
+               2. Displays generated content.
+               3. Re-enables UI after processing.
     """
-    # Stage 1: Disable UI and clear previous outputs
+    # Disable UI, clear previous outputs
     yield (
-        gr.update(interactive=False),                   # Disable Generate Button
-        gr.update(value=None),                          # Clear generated text
-        gr.update(value=None),                          # Clear Option 1 audio
-        gr.update(value=None),                          # Clear Option 2 audio
-        gr.update(value=None),                          # Clear option mapping
-        None,                                           # Reset Option 2 audio state
+        gr.update(interactive=False),
+        gr.update(value=None),
+        gr.update(value=None),
+        gr.update(value=None),
+        gr.update(value=None),
+        None,
     )
 
     # Process the prompt
     generated_text, option1_audio, option2_audio, option_mapping = process_prompt(prompt)
 
-    # Stage 2: Display generated text and first audio (autoplay)
+    # Display generated text and audio
     yield (
-        gr.update(interactive=True),                    # Enable Generate Button
-        gr.update(value=generated_text),                # Show generated text
-        gr.update(value=option1_audio, autoplay=True),  # Set Option 1 audio
-        gr.update(value=option2_audio),                 # Set Option 2 audio
-        gr.update(value=option_mapping),                # Store option mapping
-        option2_audio,                                  # Store Option 2 audio
+        gr.update(interactive=True),
+        gr.update(value=generated_text),
+        gr.update(value=option1_audio, autoplay=True),
+        gr.update(value=option2_audio),
+        gr.update(value=option_mapping),
+        option2_audio,
     )
 
 
@@ -120,39 +117,37 @@ def build_gradio_interface() -> gr.Blocks:
     Constructs the Gradio user interface.
 
     Returns:
-        gr.Blocks: The Gradio Blocks-based UI.
+        gr.Blocks: The Gradio UI layout.
     """
     with gr.Blocks() as demo:
-        # UI title & instructions
+        # Title and instructions
         gr.Markdown('# TTS Arena')
         gr.Markdown(
-            'Generate text from a prompt using **Claude by Anthropic**, '
-            'and compare text-to-speech outputs from **Hume TTS API** and **ElevenLabs TTS API**.'
+            'Generate text using **Claude by Anthropic**, then compare text-to-speech outputs '
+            'from **Hume TTS API** and **ElevenLabs TTS API**.'
         )
 
-        # Prompt selection
+        # Input: Sample prompt selection & textbox
         with gr.Row():
             sample_prompt_dropdown = gr.Dropdown(
                 choices=list(SAMPLE_PROMPTS.keys()),
-                label='Choose a sample prompt (or enter your own below)',
+                label='Choose a sample prompt (or enter your own)',
                 value=None,
                 interactive=True,
             )
 
-        # Prompt input
         with gr.Row():
             prompt_input = gr.Textbox(
                 label='Enter your prompt',
-                placeholder='Or type your own prompt here...',
+                placeholder='Or type your own...',
                 lines=2,
-                max_lines=2
+                max_lines=2,
             )
 
-        # Generate button
-        with gr.Row():
-            generate_button = gr.Button('Generate')
+        # Generate Button
+        generate_button = gr.Button('Generate')
 
-        # Output section
+        # Output: Text & audio
         with gr.Column():
             output_text = gr.Textbox(
                 label='Generated Text',
@@ -163,7 +158,7 @@ def build_gradio_interface() -> gr.Blocks:
 
             with gr.Row():
                 option1_audio_player = gr.Audio(label='Option 1', type='filepath', interactive=False)
-                option2_audio_player = gr.Audio(label='Option 2', type='filepath',  interactive=False)
+                option2_audio_player = gr.Audio(label='Option 2', type='filepath', interactive=False)
 
         # UI state components
         option_mapping_state = gr.State()
@@ -189,13 +184,13 @@ def build_gradio_interface() -> gr.Blocks:
             ],
         )
 
-        # Auto-play second audio after first completes
+        # Auto-play second audio after first finishes
         option1_audio_player.stop(
-            fn=lambda _: gr.update(value=None),  # Reset first audio before playing second
-            inputs=[option1_audio_player],
+            fn=lambda _: gr.update(value=None), # Reset first audio before playing second
+            inputs=[],
             outputs=[option2_audio_player],
         ).then(
-            fn=lambda option2_audio: gr.update(value=option2_audio, autoplay=True),
+            fn=lambda audio: gr.update(value=audio, autoplay=True),
             inputs=[option2_audio_state],
             outputs=[option2_audio_player],
         )
