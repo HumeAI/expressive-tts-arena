@@ -30,6 +30,7 @@ from src.integrations import (
     text_to_speech_with_hume, 
     text_to_speech_with_elevenlabs
 )
+from src.theme import CustomTheme
 from src.utils import truncate_text, validate_prompt_length
 
 
@@ -102,7 +103,7 @@ def run_process_prompt(prompt: str):
     # Disable UI, clear previous outputs
     yield (
         gr.update(interactive=False, variant='secondary'), # Disable Generate Button
-        gr.update(value=None), # Clear generated text
+        gr.update(value="Generating..."), # Clear generated text
         gr.update(value=None), # Clear Option 1 audio
         gr.update(value=None), # Clear Option 2 audio
         None, # Clear option mapping
@@ -165,7 +166,8 @@ def build_gradio_interface() -> gr.Blocks:
     Returns:
         gr.Blocks: The Gradio UI layout.
     """
-    with gr.Blocks() as demo:
+    custom_theme = CustomTheme()
+    with gr.Blocks(title="Expressive TTS Arena", theme=custom_theme) as demo:
         # Title
         gr.Markdown('# Expressive TTS Arena')
 
