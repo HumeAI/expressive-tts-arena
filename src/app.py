@@ -109,14 +109,13 @@ def vote(option_mapping: dict, selected_button: str):
     if not option_mapping:
         return gr.update(), gr.update()  # No updates if mapping is missing
 
-    # Determine which option was clicked
+    # Determine selected option
     is_option_1 = selected_button == VOTE_FOR_OPTION_ONE
-    selected_option = OPTION_ONE if is_option_1 else OPTION_TWO
-    other_option = OPTION_TWO if is_option_1 else OPTION_ONE
+    selected_option, other_option = (OPTION_ONE, OPTION_TWO) if is_option_1 else (OPTION_TWO, OPTION_ONE)
 
     # Get provider names
-    selected_provider = option_mapping.get(selected_option, 'Unknown')
-    other_provider = option_mapping.get(other_option, 'Unknown')
+    selected_provider = option_mapping.get(selected_option, "Unknown")
+    other_provider = option_mapping.get(other_option, "Unknown")
 
     # Return updated button states
     return (
@@ -216,10 +215,6 @@ def build_gradio_interface() -> gr.Blocks:
             fn=text_to_speech,
             inputs=[prompt_input, generated_text],
             outputs=[option1_audio_player, option2_audio_player, option_mapping_state, option2_audio_state]
-        ).then(
-            fn=lambda _: gr.update(interactive=True, variation='primary'), 
-            inputs=[],
-            outputs=[generate_button]
         )
 
         vote_button_1.click(
