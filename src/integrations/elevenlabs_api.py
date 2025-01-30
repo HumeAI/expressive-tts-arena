@@ -11,8 +11,8 @@ Key Features:
 - Provides detailed logging for debugging and error tracking.
 
 Classes:
-- ElevenLabsException: Custom exception for TTS API-related errors.
 - ElevenLabsConfig: Immutable configuration for interacting with the TTS API.
+- ElevenLabsException: Custom exception for TTS API-related errors.
 
 Functions:
 - text_to_speech_with_elevenlabs: Converts text to speech using the ElevenLabs TTS API.

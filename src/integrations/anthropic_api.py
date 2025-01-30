@@ -12,8 +12,8 @@ Key Features:
 - Provides detailed logging for debugging and error tracking.
 
 Classes:
+- AnthropicConfig: Immutable configuration for interacting with the TTS API.
 - AnthropicError: Custom exception for Anthropic API-related errors.
-- SystemPrompt: Frozen dataclass for storing the system prompt, ensuring immutability.
 
 Functions:
 - generate_text_with_claude: Generates text using the Anthropic SDK with input validation and retry logic.
@@ -40,7 +40,7 @@ class AnthropicConfig:
     """
     api_key: str = validate_env_var('ANTHROPIC_API_KEY')
     model: ModelParam = 'claude-3-5-sonnet-latest' # Valid predefined model
-    max_tokens: int = 300 # Max tokens for API response
+    max_tokens: int = 256 # Max tokens for API response
     system_prompt: str = """You are a highly creative and articulate assistant specialized in generating vivid, engaging, and well-written content.
 
 Your task is to respond to user prompts by creating:

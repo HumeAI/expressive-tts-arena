@@ -11,8 +11,8 @@ Key Features:
 - Provides detailed logging for debugging and error tracking.
 
 Classes:
-- HumeException: Custom exception for TTS API-related errors.
 - HumeConfig: Immutable configuration for interacting with the TTS API.
+- HumeException: Custom exception for TTS API-related errors.
 
 Functions:
 - text_to_speech_with_hume: Converts text to speech using the Hume TTS API with input validation and retry logic.

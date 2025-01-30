@@ -1,10 +1,14 @@
 """
-sample_prompts.py
+constants.py
 
-This file contains predefined sample prompts to showcase the expressiveness of TTS models.
-These prompts are structured to highlight different aspects of emotional tone, pacing, and rhythm.
+This module defines global constants used throughout the project.
 """
 
+# Minimum and maximum prompt length constraints
+PROMPT_MIN_LENGTH: int = 10
+PROMPT_MAX_LENGTH: int = 300
+
+# A collection of pre-defined prompts categorized by theme, used to provide users with inspiration for generating creative text.
 SAMPLE_PROMPTS = {
     '🚀 Dramatic Monologue (Stranded Astronaut)': 
         'Write a short dramatic monologue from a lone astronaut stranded on Mars, '
