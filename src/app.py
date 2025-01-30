@@ -37,35 +37,46 @@ from src.theme import CustomTheme
 from src.utils import truncate_text, validate_prompt_length
 
 
-def generate_text(prompt: str) -> Union[str, gr.update]:
+def validate_and_generate_text(prompt: str) -> tuple[Union[str, gr.update], gr.update]:
     """
-    Generates text using the Claude API.
+    Validates the prompt before generating text.
+    - If valid, returns the generated text and keeps the button disabled.
+    - If invalid, returns an error message and re-enables the button.
 
     Args:
-        prompt (str): User-provided text prompt.
+        prompt (str): The user-provided text prompt.
 
     Returns:
-        Union[str, gr.update]: The generated text wrapped in `gr.update` for Gradio UI,
-        or an error message as a string if validation fails.
+        tuple[Union[str, gr.update], gr.update]:
+            - The generated text or an error message.
+            - The updated state of the "Generate" button.
     """
-    logger.info(f'Generating text with prompt: {truncate_text(prompt, max_length=100)}')
     try:
-        # Validate prompt length
-        validate_prompt_length(prompt, PROMPT_MAX_LENGTH, PROMPT_MIN_LENGTH)
-
-        # Generate text
-        generated_text = generate_text_with_claude(prompt)
-        logger.info(f'Generated text ({len(generated_text)} characters).')
-
-        return gr.update(value=generated_text)
-    
+        validate_prompt_length(prompt, PROMPT_MAX_LENGTH, PROMPT_MIN_LENGTH)  # Raises error if invalid
     except ValueError as ve:
         logger.warning(f'Validation error: {ve}')
-        return str(ve)
+        return str(ve), gr.update(interactive=True)  # Show error, re-enable button
+
+    try:
+        generated_text = generate_text_with_claude(prompt)
+        if not generated_text:
+            raise ValueError("Claude API returned an empty response.")
+
+        logger.info(f'Generated text ({len(generated_text)} characters).')
+        return gr.update(value=generated_text), gr.update(interactive=False)  # Keep button disabled
+
+    except Exception as e:
+        logger.error(f'Error while generating text with Claude API: {e}')
+        return "Error: Failed to generate text. Please try again.", gr.update(interactive=True)  # Re-enable button
+
+
 
 def text_to_speech(prompt: str, generated_text: str) -> tuple[gr.update, gr.update, dict, str | None]:
     """
     Converts generated text to speech using Hume AI and ElevenLabs APIs.
+    
+    If the generated text is invalid (empty or an error message), this function
+    does nothing and returns `None` values to prevent TTS from running.
 
     Args:
         prompt (str): The original user-provided prompt.
@@ -78,6 +89,10 @@ def text_to_speech(prompt: str, generated_text: str) -> tuple[gr.update, gr.upda
             - `options_map`: A dictionary mapping OPTION_ONE and OPTION_TWO to their providers.
             - `option_2_audio`: The second audio file path or `None` if an error occurs.
     """
+    if not generated_text or generated_text.startswith("Error:"):
+        logger.warning("Skipping TTS generation due to invalid text.")
+        return gr.update(value=None), gr.update(value=None), {}, None  # Return empty updates
+
     try:
         # Generate TTS output in parallel
         with ThreadPoolExecutor(max_workers=2) as executor:
@@ -111,8 +126,8 @@ def text_to_speech(prompt: str, generated_text: str) -> tuple[gr.update, gr.upda
         )
 
     except Exception as e:
-        logger.error(f'Unexpected error: {e}')
-        return None, None, {}
+        logger.error(f'Unexpected error during TTS generation: {e}')
+        return gr.update(), gr.update(), {}, None
 
 
 def vote(
@@ -202,6 +217,7 @@ def build_gradio_interface() -> gr.Blocks:
                 autoscroll=False,
                 lines=5,
                 max_lines=5,
+                max_length=PROMPT_MAX_LENGTH,
                 show_copy_button=True,
             )
 
@@ -256,14 +272,14 @@ def build_gradio_interface() -> gr.Blocks:
                 vote_submitted_state
             ]
         ).then(
-            # Generate text from user prompt
-            fn=generate_text,
+            # Validate and prompt and generate text
+            fn=validate_and_generate_text,
             inputs=[prompt_input],
-            outputs=[generated_text]
+            outputs=[generated_text, generate_button]  # Ensure button gets re-enabled on failure
         ).then(
-            # Synthesize text to speech and trigger playback of generated audio
+            # Validate generated text and synthesize text-to-speech
             fn=text_to_speech,
-            inputs=[prompt_input, generated_text],
+            inputs=[prompt_input, generated_text],  # Pass prompt & generated text
             outputs=[
                 option1_audio_player, 
                 option2_audio_player, 
