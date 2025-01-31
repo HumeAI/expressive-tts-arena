@@ -10,7 +10,6 @@ Users can compare the outputs in an interactive UI.
 
 # Standard Library Imports
 from concurrent.futures import ThreadPoolExecutor
-from functools import partial
 import random
 from typing import Union
 # Third-Party Library Imports
