@@ -102,8 +102,6 @@ def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
     request_body = {
         'text': text,
         'voice': {'name': hume_config.random_voice},
-        # "voice_description": prompt, # <-- breaking request!?
-        # "format": hume_config.audio_format, # <-- breaking request!?
     }
 
     try:
