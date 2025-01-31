@@ -29,6 +29,7 @@ from src.constants import (
 )
 from src.integrations import (
     AnthropicError,
+    ElevenLabsError,
     generate_text_with_claude, 
     text_to_speech_with_hume, 
     text_to_speech_with_elevenlabs
@@ -145,10 +146,14 @@ def text_to_speech(prompt: str, generated_text: str) -> tuple[gr.update, gr.upda
             options_map, # Set option mapping state
             option_2_audio # Set option 2 audio state
         )
+    
+    except ElevenLabsError as ee:
+        logger.error(f"ElevenLabsError while synthesizing speech: {str(ee)}")
+        return gr.update(value=None), gr.update(value=None), {}, None
 
     except Exception as e:
         logger.error(f'Unexpected error during TTS generation: {e}')
-        return gr.update(), gr.update(), {}, None
+        return gr.update(value=None), gr.update(value=None), {}, None
 
 
 def vote(
