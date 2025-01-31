@@ -1,5 +1,5 @@
 """
-custom_theme.py
+theme.py
 
 Defines a custom Gradio theme.
 
