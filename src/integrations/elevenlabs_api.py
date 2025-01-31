@@ -104,7 +104,7 @@ def text_to_speech_with_elevenlabs(text: str) -> bytes:
     Raises:
         ElevenLabsError: If there is an error communicating with the ElevenLabs API or processing the response.
     """
-    logger.debug(f'Generating speech with ElevenLabs. Text length: {len(text)} characters.')
+    logger.debug(f'Synthesizing speech from text with ElevenLabs. Text length: {len(text)} characters.')
 
     try:
         # Generate audio using the ElevenLabs SDK
@@ -132,8 +132,8 @@ def text_to_speech_with_elevenlabs(text: str) -> bytes:
         return audio
 
     except Exception as e:
-        logger.exception(f'Error generating speech: {e}')
+        logger.exception(f'Error synthesizing speech from text with Elevenlabs: {e}')
         raise ElevenLabsError(
-            message=f'Failed to generate audio with ElevenLabs: {e}',
+            message=f'Failed to synthesize speech from text with ElevenLabs: {e}',
             original_exception=e,
         )

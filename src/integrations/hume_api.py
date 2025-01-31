@@ -12,7 +12,7 @@ Key Features:
 
 Classes:
 - HumeConfig: Immutable configuration for interacting with the TTS API.
-- HumeException: Custom exception for TTS API-related errors.
+- HumeError: Custom exception for TTS API-related errors.
 
 Functions:
 - text_to_speech_with_hume: Converts text to speech using the Hume TTS API with input validation and retry logic.
@@ -66,7 +66,7 @@ class HumeConfig:
         return random.choice(self.voices)
 
 
-class HumeException(Exception):
+class HumeError(Exception):
     """Custom exception for errors related to the Hume TTS API."""
     def __init__(self, message: str, original_exception: Optional[Exception] = None):
         super().__init__(message)
@@ -78,10 +78,11 @@ hume_config = HumeConfig()
 
 
 @retry(
-    stop=stop_after_attempt(3),
+    stop=stop_after_attempt(1),
     wait=wait_fixed(2),
     before=before_log(logger, logging.DEBUG),
     after=after_log(logger, logging.DEBUG),
+    reraise=True
 )
 def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
     """
@@ -95,7 +96,7 @@ def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
         bytes: The raw binary audio data for playback.
 
     Raises:
-        HumeException: If there is an error communicating with the Hume TTS API.
+        HumeError: If there is an error communicating with the Hume TTS API.
     """
     logger.debug(f'Processing TTS with Hume. Prompt length: {len(prompt)} characters. Text length: {len(text)} characters.')
 
@@ -114,7 +115,7 @@ def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
         # Validate response
         if response.status_code != 200:
             logger.error(f'Hume TTS API Error: {response.status_code} - {response.text[:200]}... (truncated)')
-            raise HumeException(f'Hume TTS API responded with status {response.status_code}: {response.text}')
+            raise HumeError(f'Hume TTS API responded with status {response.status_code}: {response.text[:200]}')
 
         # Process audio response
         if response.headers.get('Content-Type', '').startswith('audio/'):
@@ -123,17 +124,11 @@ def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
             return audio_data
 
         # Unexpected content type
-        raise HumeException(f'Unexpected Content-Type: {response.headers.get("Content-Type", "Unknown")}')
+        raise HumeError(f'Unexpected Content-Type: {response.headers.get("Content-Type", "Unknown")}')
 
-    except requests.exceptions.RequestException as e:
-        logger.exception('Request to Hume TTS API failed.')
-        raise HumeException(
-            message=f'Failed to communicate with Hume TTS API: {e}',
-            original_exception=e,
-        )
     except Exception as e:
-        logger.exception('Request to Hume TTS API failed.')
-        raise HumeException(
-            message=f"Unexpected error while processing the Hume TTS response: {e}",
+        logger.exception(f'Error synthesizing speech from text with Hume: {e}')
+        raise HumeError(
+            message=f'Failed to synthesize speech from text with Hume: {e}',
             original_exception=e,
         )

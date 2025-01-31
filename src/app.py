@@ -30,9 +30,10 @@ from src.constants import (
 from src.integrations import (
     AnthropicError,
     ElevenLabsError,
-    generate_text_with_claude, 
-    text_to_speech_with_hume, 
-    text_to_speech_with_elevenlabs
+    generate_text_with_claude,
+    HumeError,
+    text_to_speech_with_elevenlabs,
+    text_to_speech_with_hume
 )
 from src.theme import CustomTheme
 from src.utils import truncate_text, validate_prompt_length
@@ -148,7 +149,11 @@ def text_to_speech(prompt: str, generated_text: str) -> tuple[gr.update, gr.upda
         )
     
     except ElevenLabsError as ee:
-        logger.error(f"ElevenLabsError while synthesizing speech: {str(ee)}")
+        logger.error(f"ElevenLabsError while synthesizing speech from text: {str(ee)}")
+        return gr.update(value=None), gr.update(value=None), {}, None
+
+    except HumeError as he:
+        logger.error(f"HumeError while synthesizing speech from text: {str(he)}")
         return gr.update(value=None), gr.update(value=None), {}, None
 
     except Exception as e:
