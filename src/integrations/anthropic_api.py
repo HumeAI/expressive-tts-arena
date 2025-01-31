@@ -97,10 +97,11 @@ anthropic_config = AnthropicConfig()
     wait=wait_fixed(2),
     before=before_log(logger, logging.DEBUG),
     after=after_log(logger, logging.DEBUG),
+    reraise=True
 )
 def generate_text_with_claude(prompt: str) -> str:
     """
-    Generates text using Claude via the Anthropic SDK.
+    Generates text using Claude (Anthropic LLM) via the Anthropic SDK.
 
     Args:
         prompt (str): The input prompt for Claude.
@@ -109,18 +110,11 @@ def generate_text_with_claude(prompt: str) -> str:
         str: The generated text.
 
     Raises:
-        ValueError: If the prompt exceeds the maximum allowed length.
         AnthropicError: If there is an error communicating with the Anthropic API.
-    
-    Example:
-        >>> generate_text_with_claude("Write a haiku about nature.")
-        "Gentle waves crashing, / Whispering secrets softly, / Infinite blue skies."
-
-        >>> generate_text_with_claude("")
-        "The prompt exceeds the maximum allowed length of 500 characters. Your prompt contains 512 characters."
     """
     logger.debug(f'Generating text with Claude. Prompt length: {len(prompt)} characters.')
 
+    response = None
     try:
         response: Message = anthropic_config.client.messages.create(
             model=anthropic_config.model,
@@ -137,7 +131,6 @@ def generate_text_with_claude(prompt: str) -> str:
 
         # Process response content
         blocks: Union[List[TextBlock], TextBlock, None] = response.content
-
         if isinstance(blocks, list):
             result = '\n\n'.join(block.text for block in blocks if isinstance(block, TextBlock))
             logger.debug(f'Processed response from list: {truncate_text(result)}')
@@ -148,12 +141,12 @@ def generate_text_with_claude(prompt: str) -> str:
 
         logger.warning(f'Unexpected response type: {type(blocks)}')
         return str(blocks or 'No content generated.')
-        
+
     except Exception as e:
-        logger.exception(f'Error generating text with Claude: {e}')
+        logger.exception(f'Error generating text with Anthropic: {e}')
         raise AnthropicError(
             message=(
-                f'Error generating text with Claude: {e}. '
+                f'Error generating text with Anthropic: {e}. '
                 f'HTTP Status: {getattr(response, "status", "N/A")}. '
                 f'Prompt (truncated): {truncate_text(prompt)}. '
                 f'Model: {anthropic_config.model}, Max tokens: {anthropic_config.max_tokens}'

@@ -28,6 +28,7 @@ from src.constants import (
     VOTE_FOR_OPTION_TWO
 )
 from src.integrations import (
+    AnthropicError,
     generate_text_with_claude, 
     text_to_speech_with_hume, 
     text_to_speech_with_elevenlabs
@@ -50,23 +51,44 @@ def validate_and_generate_text(prompt: str) -> tuple[Union[str, gr.update], gr.u
             - The generated text or an error message.
             - The updated state of the "Generate" button.
     """
+    # Local prompt validation
     try:
-        validate_prompt_length(prompt, PROMPT_MAX_LENGTH, PROMPT_MIN_LENGTH)  # Raises error if invalid
+        validate_prompt_length(prompt, PROMPT_MAX_LENGTH, PROMPT_MIN_LENGTH)
     except ValueError as ve:
         logger.warning(f'Validation error: {ve}')
-        return str(ve), gr.update(interactive=True)  # Show error, re-enable button
+        # Show validation error to user, re-enable the "Generate" button
+        return str(ve), gr.update(interactive=True)
 
+    # Call the Anthropic API to generate text
     try:
         generated_text = generate_text_with_claude(prompt)
-        if not generated_text:
-            raise ValueError("Claude API returned an empty response.")
+
+        # Optionally handle empty or unusual responses
+        if not generated_text.strip():
+            logger.warning("Anthropic API returned an empty response.")
+            return "Error: Anthropic API returned an empty response.", gr.update(interactive=True)
 
         logger.info(f'Generated text ({len(generated_text)} characters).')
-        return gr.update(value=generated_text), gr.update(interactive=False)  # Keep button disabled
+        return gr.update(value=generated_text), gr.update(interactive=False)
 
+    # Handle Anthropic-specific errors
+    except AnthropicError as ae:
+        # You can log the internal error details
+        logger.error(f'AnthropicError while generating text: {str(ae)}')
+        # Return an error message about Anthropic API failing to generate text, re-enable the "Generate" button
+        return (
+            "Error: There was an issue communicating with the Anthropic API. Please try again later.",
+            gr.update(interactive=True),
+        )
+
+    # Catch any other unexpected exceptions
     except Exception as e:
-        logger.error(f'Error while generating text with Claude API: {e}')
-        return "Error: Failed to generate text. Please try again.", gr.update(interactive=True)  # Re-enable button
+        logger.error(f'Unexpected error while generating text: {e}')
+        # Return a generic catch-all error message, re-enable the "Generate" button
+        return (
+            "Error: Failed to generate text. Please try again.",
+            gr.update(interactive=True),
+        )
 
 
 
