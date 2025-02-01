@@ -11,11 +11,11 @@ Key Features:
 - Provides detailed logging for debugging and error tracking.
 
 Classes:
-- HumeConfig: Immutable configuration for interacting with Hume's text-to-speech API.
+- HumeConfig: Immutable configuration for interacting with Hume's TTS API.
 - HumeError: Custom exception for Hume API-related errors.
 
 Functions:
-- text_to_speech_with_hume: Synthesizes speech from text using Hume's text-to-speech API.
+- text_to_speech_with_hume: Synthesizes speech from text using Hume's TTS API.
 """
 
 # Standard Library Imports
@@ -38,9 +38,9 @@ class HumeConfig:
     """Immutable configuration for interacting with the Hume TTS API."""
     tts_endpoint_url: str = 'https://api.hume.ai/v0/tts'
     api_key: str = validate_env_var('HUME_API_KEY')
-    voices: List[str] = ('ITO', 'KORA', 'STELLA')  # List of available Hume voices
+    voices: List[str] = ('ITO', 'KORA', 'STELLA')
     audio_format: str = 'wav'
-    headers: dict = None  # Headers for the API requests
+    headers: dict = None
 
     def __post_init__(self):
         # Validate required attributes
@@ -110,6 +110,7 @@ def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
     }
 
     try:
+        # Synthesize speech using the Hume TTS API
         response = requests.post(
             url=hume_config.tts_endpoint_url,
             headers=hume_config.headers,

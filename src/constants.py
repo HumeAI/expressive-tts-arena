@@ -9,13 +9,14 @@ PROMPT_MIN_LENGTH: int = 10
 PROMPT_MAX_LENGTH: int = 400
 OPTION_ONE: str = "Option 1"
 OPTION_TWO: str = "Option 2"
-TROPHY_EMOJI = "🏆"
-UNKNOWN_PROVIDER = "Unknown"
+TROPHY_EMOJI: str = "🏆"
+UNKNOWN_PROVIDER: str = "Unknown"
 VOTE_FOR_OPTION_ONE: str = "Vote for option 1"
 VOTE_FOR_OPTION_TWO: str = "Vote for option 2"
 
-# A collection of pre-defined prompts categorized by theme, used to provide users with inspiration for generating creative text.
-SAMPLE_PROMPTS = {
+# A collection of pre-defined prompts categorized by theme, used to provide users with 
+# inspiration for generating creative text for expressive TTS.
+SAMPLE_PROMPTS: dict = {
     '🚀 Dramatic Monologue (Stranded Astronaut)': 
         'Write a short dramatic monologue from a lone astronaut stranded on Mars, speaking to '
         'mission control for the last time. The tone should be reflective and filled with awe, conveying '

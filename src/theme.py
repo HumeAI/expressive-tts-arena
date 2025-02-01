@@ -1,7 +1,7 @@
 """
 theme.py
 
-Defines a custom Gradio theme.
+This module defines a custom Gradio theme.
 - For more information on Gradio themes see: https://www.gradio.app/docs/gradio/themes
 - For manual styling with css, see /src/assets/styles.css
 """

@@ -35,13 +35,10 @@ from src.utils import truncate_text, validate_env_var
 
 @dataclass(frozen=True)
 class AnthropicConfig:
-    """
-    Immutable configuration for interacting with the Anthropic API.
-    Includes client initialization for encapsulation.
-    """
+    """Immutable configuration for interacting with the Anthropic API."""
     api_key: str = validate_env_var('ANTHROPIC_API_KEY')
-    model: ModelParam = 'claude-3-5-sonnet-latest' # Valid predefined model
-    max_tokens: int = 256 # Max tokens for API response
+    model: ModelParam = 'claude-3-5-sonnet-latest'
+    max_tokens: int = 256
     system_prompt: str = f"""You are an imaginative and articulate assistant, skilled in generating creative, concise, and engaging content that is perfectly suited for expressive speech synthesis.
 
 Your task is to generate:
@@ -117,6 +114,7 @@ def generate_text_with_claude(prompt: str) -> str:
 
     response = None
     try:
+        # Generate text using the Anthropic SDK
         response: Message = anthropic_config.client.messages.create(
             model=anthropic_config.model,
             max_tokens=anthropic_config.max_tokens,
@@ -125,12 +123,12 @@ def generate_text_with_claude(prompt: str) -> str:
         )
         logger.debug(f'API response received: {truncate_text(str(response))}')
 
-        # Validate response content
+        # Validate response
         if not hasattr(response, 'content'):
             logger.error("Response is missing 'content'. Response: %s", response)
             raise AnthropicError('Invalid API response: Missing "content".')
 
-        # Process response content
+        # Process response
         blocks: Union[List[TextBlock], TextBlock, None] = response.content
         if isinstance(blocks, list):
             result = '\n\n'.join(block.text for block in blocks if isinstance(block, TextBlock))

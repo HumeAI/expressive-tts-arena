@@ -38,7 +38,7 @@ class ElevenLabsConfig:
     """Immutable configuration for interacting with the ElevenLabs TTS API."""
     api_key: str = validate_env_var('ELEVENLABS_API_KEY')
     model_id: str = 'eleven_multilingual_v2' # ElevenLab's most emotionally expressive model
-    output_format: str = 'mp3_44100_128' # Output format of the generated audio.
+    output_format: str = 'mp3_44100_128' # Output format of the generated audio
     top_voices: list[str] = (
         'pNInz6obpgDQGcFmaJgB',  # Adam
         'ErXwobaYiN019PkySvjV',  # Antoni
@@ -109,10 +109,10 @@ def text_to_speech_with_elevenlabs(text: str) -> bytes:
     logger.debug(f'Synthesizing speech from text with ElevenLabs. Text length: {len(text)} characters.')
 
     try:
-        # Generate audio using the ElevenLabs SDK
+        # Synthesize speech using the ElevenLabs SDK
         audio_iterator = elevenlabs_config.client.text_to_speech.convert(
             text=text,
-            voice_id=elevenlabs_config.random_voice_id,  # Randomly chosen voice ID
+            voice_id=elevenlabs_config.random_voice_id,
             model_id=elevenlabs_config.model_id,
             output_format=elevenlabs_config.output_format,
         )
