@@ -20,7 +20,7 @@ SAMPLE_PROMPTS = {
         'Write a short dramatic monologue from a lone astronaut stranded on Mars, speaking to '
         'mission control for the last time. The tone should be reflective and filled with awe, conveying '
         'resignation and finality. Describe the Martian landscape and their thoughts in a way that '
-        'would evoke emotion and depth in speech synthesis.',
+        'would evoke emotion and depth.',
     
     '📜 Poetic Sonnet (The Passage of Time)': 
         'Compose a concise sonnet about the passage of time, using vivid imagery and a flowing, '
@@ -30,16 +30,16 @@ SAMPLE_PROMPTS = {
     "🐱 Whimsical Children's Story (Talking Cat)": 
         'Tell a short, whimsical bedtime story about a mischievous talking cat who sneaks into a grand '
         'wizard’s library at night and accidentally casts a spell that brings the books to life. Keep the '
-        'tone playful and filled with wonder, ensuring the language flows smoothly for expressive TTS.',
+        'tone playful and filled with wonder, ensuring the language flows smoothly.',
     
     '🔥 Intense Speech (Freedom & Justice)': 
         'Write a powerful, impassioned speech from a rebel leader rallying their people against a '
         'tyrant. The speech should be urgent, filled with conviction, and call for freedom and justice, '
-        'making sure the emotional intensity is evident in the phrasing for speech synthesis.',
+        'making sure the emotional intensity is evident in the phrasing.',
     
     '👻 Mysterious Horror Scene (Haunted Lighthouse)': 
         'Describe a chilling ghostly encounter in an abandoned lighthouse on a foggy night. The '
         'protagonist, alone and cold, hears whispers from the shadows, telling them secrets they were '
         'never meant to know. Use language that builds suspense and tension, ensuring it sounds '
-        'haunting and engaging when spoken aloud.'
+        'haunting and engaging.'
 }

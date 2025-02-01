@@ -121,9 +121,10 @@ def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
 
         # Process audio response
         if response.headers.get('Content-Type', '').startswith('audio/'):
-            audio_data = response.content  # Raw binary audio data
-            logger.info(f'Received audio data from Hume ({len(response.content)} bytes).')
-            return audio_data
+            audio = response.content  # Raw binary audio data
+            logger.info(f'Received audio data from Hume ({len(audio)} bytes).')
+            
+            return audio
 
         # Unexpected content type
         raise HumeError(f'Unexpected Content-Type: {response.headers.get("Content-Type", "Unknown")}')

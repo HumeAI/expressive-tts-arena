@@ -49,51 +49,54 @@ class CustomTheme(Base):
         )
         self.name = 'custom_theme'
         super().set(
-            # Colors
-            input_background_fill_dark='#262626',  
-            error_background_fill='#EF4444',  
-            error_background_fill_dark='#171717',  
-            error_border_color='#B91C1C',  
-            error_border_color_dark='#EF4444',  
-            error_icon_color='#B91C1C',  
-            error_icon_color_dark='#EF4444',  
-            # Shadows
-            input_shadow_focus='0 0 0 *shadow_spread #7C3AED80, *shadow_inset',  
-            input_shadow_focus_dark='0 0 0 *shadow_spread #40404080, *shadow_inset',  
-            # Button borders
+            # --- Colors ---
+            error_background_fill='#EF4444',
+            # error_background_fill_dark='',
+            error_border_color='#B91C1C',
+            # error_border_color_dark='',
+            error_icon_color='#B91C1C',
+            # error_icon_color_dark='',
+            input_background_fill='#F9FAFB',
+            # input_background_fill_dark='',
+
+            # --- Shadows ---
+            input_shadow_focus='0 0 0 *shadow_spread #7C3AED80, *shadow_inset',
+            # input_shadow_focus_dark='',
+            
+            # --- Gradients ---
+            stat_background_fill='linear-gradient(to right, #7C3AED, #D8B4FE)',
+            # stat_background_fill_dark='',
+
+            # --- Button borders ---
             button_border_width='0px',
             input_border_width='1px',
-            input_background_fill='#F9FAFB',  
-            # Gradients
-            stat_background_fill='linear-gradient(to right, #7C3AED, #D8B4FE)',
-            stat_background_fill_dark='linear-gradient(to right, #7C3AED, #5B21B6)',
-            checkbox_label_background_fill='#F3F4F6',
-            checkbox_label_background_fill_dark='#1F2937',
-            checkbox_label_background_fill_hover='#E5E7EB',
-            checkbox_label_background_fill_hover_dark='#374151',
-            # Primary Button
-            button_primary_background_fill='#111111',  
-            button_primary_background_fill_dark='#171717',  
+
+            # --- Primary Button ---
+            button_primary_background_fill='#111111',
+            # button_primary_background_fill_dark='',
             button_primary_background_fill_hover='#3F3F3F',
-            button_primary_background_fill_hover_dark='#3F3F3F',  
-            button_primary_text_color='#FFFFFF',  
-            button_primary_text_color_dark='#FFFFFF',  
-            # Secondary Button
-            button_secondary_background_fill='#E5E7EB',  
-            button_secondary_background_fill_dark='#4B5563',  
-            button_secondary_background_fill_hover='#D1D5DB',  
-            button_secondary_background_fill_hover_dark='#374151',  
-            button_secondary_text_color='#111827',  
-            button_secondary_text_color_dark='#FFFFFF',  
-            # Cancel Button
-            button_cancel_background_fill='#EF4444',  
-            button_cancel_background_fill_dark='#B91C1C',  
-            button_cancel_background_fill_hover='#DC2626',  
-            button_cancel_background_fill_hover_dark='#991B1B',  
-            button_cancel_text_color='#FFFFFF',  
-            button_cancel_text_color_dark='#FFFFFF',  
-            button_cancel_text_color_hover='#FFFFFF',  
-            button_cancel_text_color_hover_dark='#FFFFFF',  
-            # Other
-            border_color_accent_subdued='#A78BFA',  
+            # button_primary_background_fill_hover_dark='',
+            button_primary_text_color='#FFFFFF',
+            # button_primary_text_color_dark='',
+
+            # --- Secondary Button ---
+            button_secondary_background_fill='#E5E7EB',
+            # button_secondary_background_fill_dark='#4B5563',
+            button_secondary_background_fill_hover='#D1D5DB',
+            # button_secondary_background_fill_hover_dark='#374151',
+            button_secondary_text_color='#111827',
+            # button_secondary_text_color_dark='#FFFFFF',
+
+            # --- Cancel Button ---
+            button_cancel_background_fill='#EF4444',
+            # button_cancel_background_fill_dark='#B91C1C',
+            button_cancel_background_fill_hover='#DC2626',
+            # button_cancel_background_fill_hover_dark='#991B1B',
+            button_cancel_text_color='#FFFFFF',
+            # button_cancel_text_color_dark='#FFFFFF',
+            button_cancel_text_color_hover='#FFFFFF',
+            # button_cancel_text_color_hover_dark='#FFFFFF',
+
+            # --- Other ---
+            border_color_accent_subdued='#A78BFA',
         )
