@@ -200,6 +200,7 @@ def build_input_section() -> Tuple[gr.Markdown, gr.Dropdown, gr.Textbox, gr.Butt
             placeholder='Enter your prompt...',
             lines=2,
             max_lines=2,
+            max_length=PROMPT_MAX_LENGTH,
             show_copy_button=True,
         )
     generate_button = gr.Button('Generate', variant='primary')
