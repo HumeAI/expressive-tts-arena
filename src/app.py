@@ -157,19 +157,23 @@ def vote(vote_submitted: bool, option_mapping: dict, selected_button: str) -> Tu
             else gr.update(value=f'{selected_provider} {TROPHY_EMOJI}', variant='primary'),
     )
 
-def reset_ui() -> Tuple[gr.update, gr.update, None, None, bool]:
+def reset_ui() -> Tuple[gr.update, gr.update, gr.update, gr.update, None, None, bool]:
     """
     Resets UI state before generating new text.
 
     Returns:
         A tuple of updates for:
-         - vote_button_1
-         - vote_button_2
-         - option_mapping_state
-         - option2_audio_state
-         - vote_submitted_state
+         - option1_audio_player (clear audio)
+         - option2_audio_player (clear audio)
+         - vote_button_1 (disable and reset button text)
+         - vote_button_2 (disable and reset button text)
+         - option_mapping_state (reset option map state)
+         - option2_audio_state (reset option 2 audio state)
+         - vote_submitted_state (reset submitted vote state)
     """
     return (
+        gr.update(value=None),
+        gr.update(value=None),
         gr.update(interactive=False, value=VOTE_FOR_OPTION_ONE, variant='secondary'),
         gr.update(interactive=False, value=VOTE_FOR_OPTION_TWO, variant='secondary'),
         None,
@@ -273,7 +277,15 @@ def build_gradio_interface() -> gr.Blocks:
         ).then(
             fn=reset_ui,
             inputs=[],
-            outputs=[vote_button_1, vote_button_2, option_mapping_state, option2_audio_state, vote_submitted_state],
+            outputs=[
+                option1_audio_player,
+                option2_audio_player,
+                vote_button_1, 
+                vote_button_2, 
+                option_mapping_state, 
+                option2_audio_state, 
+                vote_submitted_state,
+            ],
         ).then(
             fn=generate_text,
             inputs=[prompt_input],
@@ -281,7 +293,12 @@ def build_gradio_interface() -> gr.Blocks:
         ).then(
             fn=text_to_speech,
             inputs=[prompt_input, generated_text],
-            outputs=[option1_audio_player, option2_audio_player, option_mapping_state, option2_audio_state],
+            outputs=[
+                option1_audio_player, 
+                option2_audio_player, 
+                option_mapping_state, 
+                option2_audio_state
+            ],
         ).then(
             fn=lambda: gr.update(interactive=True), # Re-enable the button
             inputs=[],
@@ -300,7 +317,7 @@ def build_gradio_interface() -> gr.Blocks:
             outputs=[vote_submitted_state, vote_button_1, vote_button_2],
         )
 
-        # Auto-play second audio after first finishes
+        # Auto-play second audio after first finishes (workaround for playing audio back-to-back)
         option1_audio_player.stop(
             fn=lambda _: gr.update(value=None),
             inputs=[],
