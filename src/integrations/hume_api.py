@@ -1,8 +1,8 @@
 """
 hume_api.py
 
-This file defines the interaction with the Hume TTS API, focusing on converting text to audio.
-It includes functionality for input validation, API request handling, and processing API responses.
+This file defines the interaction with the Hume text-to-speech (TTS) API.
+It includes functionality for API request handling and processing API responses.
 
 Key Features:
 - Encapsulates all logic related to the Hume TTS API.
@@ -11,11 +11,11 @@ Key Features:
 - Provides detailed logging for debugging and error tracking.
 
 Classes:
-- HumeConfig: Immutable configuration for interacting with the TTS API.
+- HumeConfig: Immutable configuration for interacting with Hume's text-to-speech API.
 - HumeError: Custom exception for Hume API-related errors.
 
 Functions:
-- text_to_speech_with_hume: Converts text to speech using the Hume TTS API with input validation and retry logic.
+- text_to_speech_with_hume: Synthesizes speech from text using Hume's text-to-speech API.
 """
 
 # Standard Library Imports
@@ -104,7 +104,9 @@ def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
 
     request_body = {
         'text': text,
-        'voice': {'name': hume_config.random_voice},
+        'voice': {
+            'name': hume_config.random_voice
+        },
     }
 
     try:
@@ -119,14 +121,12 @@ def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
             logger.error(f'Hume TTS API Error: {response.status_code} - {response.text[:200]}... (truncated)')
             raise HumeError(f'Hume TTS API responded with status {response.status_code}: {response.text[:200]}')
 
-        # Process audio response
+        # Process response audio
         if response.headers.get('Content-Type', '').startswith('audio/'):
             audio = response.content  # Raw binary audio data
             logger.info(f'Received audio data from Hume ({len(audio)} bytes).')
-            
             return audio
 
-        # Unexpected content type
         raise HumeError(f'Unexpected Content-Type: {response.headers.get("Content-Type", "Unknown")}')
 
     except Exception as e:

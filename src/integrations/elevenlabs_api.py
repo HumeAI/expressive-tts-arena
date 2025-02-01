@@ -1,7 +1,7 @@
 """
 elevenlabs_api.py
 
-This file defines the interaction with the ElevenLabs TTS API using the ElevenLabs Python SDK.
+This file defines the interaction with the ElevenLabs text-to-speech (TTS) API using the ElevenLabs Python SDK.
 It includes functionality for API request handling and processing API responses.
 
 Key Features:
@@ -11,11 +11,11 @@ Key Features:
 - Provides detailed logging for debugging and error tracking.
 
 Classes:
-- ElevenLabsConfig: Immutable configuration for interacting with the TTS API.
+- ElevenLabsConfig: Immutable configuration for interacting with Elevenlabs' TTS API.
 - ElevenLabsError: Custom exception for ElevenLabs API-related errors.
 
 Functions:
-- text_to_speech_with_elevenlabs: Converts text to speech using the ElevenLabs TTS API.
+- text_to_speech_with_elevenlabs: synthesizes speech from text using ElevenLabs' TTS API.
 """
 
 # Standard Library Imports

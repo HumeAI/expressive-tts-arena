@@ -11,7 +11,7 @@ Key Features:
 - Provides detailed logging for debugging and error tracking.
 
 Classes:
-- AnthropicConfig: Immutable configuration for interacting with the TTS API.
+- AnthropicConfig: Immutable configuration for interacting with the Anthropic API.
 - AnthropicError: Custom exception for Anthropic API-related errors.
 
 Functions:
