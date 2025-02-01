@@ -139,7 +139,6 @@ def vote(vote_submitted: bool, option_mapping: dict, selected_button: str) -> Tu
          - True if the vote was accepted
          - Update for the selected vote button
          - Update for the unselected vote button
-         - Update for re-enabling the Generate button
     """
     if not option_mapping or vote_submitted:
         return gr.skip(), gr.skip(), gr.skip()
