@@ -1,9 +1,8 @@
 """
 anthropic_api.py
 
-This file defines the interaction with the Anthropic API, focusing on generating text
-using the Claude model. It includes functionality for input validation, API request handling,
-and processing API responses.
+This file defines the interaction with the Anthropic API, focusing on generating text using the Claude model. 
+It includes functionality for input validation, API request handling, and processing API responses.
 
 Key Features:
 - Encapsulates all logic related to the Anthropic API.
@@ -23,10 +22,12 @@ Functions:
 from dataclasses import dataclass
 import logging
 from typing import List, Optional, Union
+
 # Third-Party Library Imports
 from anthropic import Anthropic
 from anthropic.types import Message, ModelParam, TextBlock
 from tenacity import retry, stop_after_attempt, wait_fixed, before_log, after_log
+
 # Local Application Imports
 from src.config import logger
 from src.utils import truncate_text, validate_env_var

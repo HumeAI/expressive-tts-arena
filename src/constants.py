@@ -4,11 +4,9 @@ constants.py
 This module defines global constants used throughout the project.
 """
 
-# Minimum and maximum prompt length constraints
+# UI constants
 PROMPT_MIN_LENGTH: int = 10
 PROMPT_MAX_LENGTH: int = 300
-
-# Vote button constants
 OPTION_ONE: str = "Option 1"
 OPTION_TWO: str = "Option 2"
 TROPHY_EMOJI = "🏆"

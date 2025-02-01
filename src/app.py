@@ -4,16 +4,18 @@ app.py
 Gradio UI for interacting with the Anthropic API, Hume TTS API, and ElevenLabs TTS API.
 
 Users enter a prompt, which is processed using Claude by Anthropic to generate text.
-The text is then synthesized into speech using both Hume and ElevenLabs TTS APIs.
-Users can compare the outputs in an interactive UI.
+The text is then synthesized into speech using both Hume and ElevenLabs text-to-speech (TTS) APIs.
+Users can compare the outputs and vote for their favorite in an interactive UI.
 """
 
 # Standard Library Imports
 from concurrent.futures import ThreadPoolExecutor
 import random
 from typing import Union, Tuple
+
 # Third-Party Library Imports
 import gradio as gr
+
 # Local Application Imports
 from src.config import logger
 from src.constants import (

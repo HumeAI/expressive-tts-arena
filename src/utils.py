@@ -4,18 +4,15 @@ utils.py
 This file contains utility functions that are shared across the project.
 These functions provide reusable logic to simplify code in other modules.
 
-Key Features:
-- Validates that required environment variables are set, raising meaningful errors otherwise.
-- Provides helper functions for text validation and truncation.
-
 Functions:
-- truncate_text: Truncates a string to a specified length with ellipses.
+- truncate_text: Truncates a string to a specified length with ellipses. (used for logging)
 - validate_env_var: Ensures the presence of a specific environment variable and retrieves its value.
-- validate_prompt_length: Ensures that a prompt does not exceed the specified maximum length.
+- validate_prompt_length: Ensures that a prompt does not exceed the specified minimum or maximum length.
 """
 
 # Standard Library Imports
 import os
+
 # Local Application Imports
 from src.config import logger
 
@@ -104,18 +101,14 @@ def validate_prompt_length(prompt: str, max_length: int, min_length: int) -> Non
     
     logger.debug(f'Prompt length being validated: {prompt_length} characters')
 
-    # Check if prompt is too short
     if prompt_length < min_length:
         raise ValueError(
             f'Your prompt is too short. Please enter at least {min_length} characters. '
             f'(Current length: {prompt_length})'
         )
-
-    # Check if prompt exceeds max length
     if prompt_length > max_length:
         raise ValueError(
             f'Your prompt is too long. Please limit it to {max_length} characters. '
             f'(Current length: {prompt_length})'
         )
-
     logger.debug(f'Prompt length validation passed for prompt: {truncate_text(stripped_prompt)}')

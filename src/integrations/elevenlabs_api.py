@@ -12,7 +12,7 @@ Key Features:
 
 Classes:
 - ElevenLabsConfig: Immutable configuration for interacting with the TTS API.
-- ElevenLabsError: Custom exception for TTS API-related errors.
+- ElevenLabsError: Custom exception for ElevenLabs API-related errors.
 
 Functions:
 - text_to_speech_with_elevenlabs: Converts text to speech using the ElevenLabs TTS API.
@@ -23,9 +23,11 @@ from dataclasses import dataclass
 import logging
 import random
 from typing import Optional
+
 # Third-Party Library Imports
 from elevenlabs import ElevenLabs
 from tenacity import retry, stop_after_attempt, wait_fixed, before_log, after_log
+
 # Local Application Imports
 from src.config import logger
 from src.utils import validate_env_var, truncate_text

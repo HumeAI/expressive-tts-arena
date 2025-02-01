@@ -12,7 +12,7 @@ Key Features:
 
 Classes:
 - HumeConfig: Immutable configuration for interacting with the TTS API.
-- HumeError: Custom exception for TTS API-related errors.
+- HumeError: Custom exception for Hume API-related errors.
 
 Functions:
 - text_to_speech_with_hume: Converts text to speech using the Hume TTS API with input validation and retry logic.
@@ -23,9 +23,11 @@ from dataclasses import dataclass
 import logging
 import random
 from typing import List, Optional
+
 # Third-Party Library Imports
 import requests
 from tenacity import retry, stop_after_attempt, wait_fixed, before_log, after_log
+
 # Local Application Imports
 from src.config import logger
 from src.utils import validate_env_var, truncate_text
