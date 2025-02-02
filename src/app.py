@@ -104,8 +104,7 @@ def text_to_speech(prompt: str, text: str, generated_text_state: str) -> Tuple[g
         raise gr.Error('Please generate or enter text to synthesize.')
 
     # If not using generated text, then only compare Hume to Hume
-    # compare_hume_with_elevenlabs = (text == generated_text_state) and (random.random() < 0.5)
-    compare_hume_with_elevenlabs = False
+    compare_hume_with_elevenlabs = (text == generated_text_state) and (random.random() < 0.5)
     
     elevenlabs_voice = get_random_elevenlabs_voice_id()
     # Get two Hume voices preemptively in case we compare Hume with Hume
