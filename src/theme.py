@@ -72,19 +72,19 @@ class CustomTheme(Base):
             input_border_width='1px',
 
             # --- Primary Button ---
-            button_primary_background_fill='#111111',
+            button_primary_background_fill='#7E22CE',
             # button_primary_background_fill_dark='',
-            button_primary_background_fill_hover='#3F3F3F',
+            button_primary_background_fill_hover='#9333EA',
             # button_primary_background_fill_hover_dark='',
             button_primary_text_color='#FFFFFF',
             # button_primary_text_color_dark='',
 
             # --- Secondary Button ---
-            button_secondary_background_fill='#E5E7EB',
+            button_secondary_background_fill='#222222',
             # button_secondary_background_fill_dark='#4B5563',
-            button_secondary_background_fill_hover='#D1D5DB',
+            button_secondary_background_fill_hover='#3F3F3F',
             # button_secondary_background_fill_hover_dark='#374151',
-            button_secondary_text_color='#111827',
+            button_secondary_text_color='#FFFFFF',
             # button_secondary_text_color_dark='#FFFFFF',
 
             # --- Cancel Button ---
