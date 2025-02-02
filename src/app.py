@@ -80,9 +80,10 @@ def generate_text(prompt: str) -> Tuple[Union[str, gr.update], gr.update]:
 
 def text_to_speech(prompt: str, generated_text: str) -> Tuple[gr.update, gr.update, dict, Union[str, None]]:
     """
-    Synthesizes two text to speech outputs and loads the two audio players in the UI with the output audio.
-        - 50% of the time one Hume tts output and one Elevenlabs output will be synthesized.
-        = 50% of the time two Hume tts outputs will be synthesized.
+    Synthesizes two text to speech outputs, loads the two audio players with the
+    output audio, and updates related UI state components.
+        - 50% chance to synthesize one Hume and one Elevenlabs output.
+        - 50% chance to synthesize two Hume outputs.
 
     Args:
         prompt (str): The original prompt.
