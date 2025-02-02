@@ -22,7 +22,7 @@ Functions:
 from dataclasses import dataclass
 import logging
 import random
-from typing import List, Optional
+from typing import List, Literal, Optional, Tuple
 
 # Third-Party Library Imports
 import requests
@@ -33,12 +33,14 @@ from src.config import logger
 from src.utils import validate_env_var, truncate_text
 
 
+HumeVoiceName = Literal['ITO', 'KORA', 'STELLA', 'DACHER']
+
 @dataclass(frozen=True)
 class HumeConfig:
     """Immutable configuration for interacting with the Hume TTS API."""
-    tts_endpoint_url: str = 'https://api.hume.ai/v0/tts'
     api_key: str = validate_env_var('HUME_API_KEY')
-    voices: List[str] = ('ITO', 'KORA', 'STELLA')
+    tts_endpoint_url: str = 'https://api.hume.ai/v0/tts'
+    voice_names: List[HumeVoiceName] = ('ITO', 'KORA', 'STELLA', 'DACHER')
     audio_format: str = 'wav'
     headers: dict = None
 
@@ -46,8 +48,10 @@ class HumeConfig:
         # Validate required attributes
         if not self.api_key:
             raise ValueError('Hume API key is not set.')
-        if not self.voices:
-            raise ValueError('Hume voices list is empty. Please provide at least one voice.')
+        if not self.tts_endpoint_url:
+            raise ValueError('Hume TTS endpoint URL is not set.')
+        if not self.voice_names:
+            raise ValueError('Hume voice names list is not set.')
         if not self.audio_format:
             raise ValueError('Hume audio format is not set.')
 
@@ -56,16 +60,6 @@ class HumeConfig:
             'X-Hume-Api-Key': f'{self.api_key}',
             'Content-Type': 'application/json',
         })
-
-    @property
-    def random_voice(self) -> str:
-        """
-        Randomly selects a voice from the available voices.
-
-        Returns:
-            str: A randomly chosen voice name.
-        """
-        return random.choice(self.voices)
 
 
 class HumeError(Exception):
@@ -86,13 +80,14 @@ hume_config = HumeConfig()
     after=after_log(logger, logging.DEBUG),
     reraise=True
 )
-def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
+def text_to_speech_with_hume(prompt: str, text: str, voice_name: HumeVoiceName) -> bytes:
     """
-    Converts text to speech using the Hume TTS API and processes raw binary audio data.
+    Synthesizes text to speech using the Hume TTS API and processes raw binary audio data.
 
     Args:
         prompt (str): The original user prompt (for debugging).
         text (str): The generated text to be converted to speech.
+        voice_name (HumeVoiceName): Name of the voice Hume will use when synthesizing speech.
 
     Returns:
         bytes: The raw binary audio data for playback.
@@ -105,7 +100,7 @@ def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
     request_body = {
         'text': text,
         'voice': {
-            'name': hume_config.random_voice
+            'name': voice_name
         },
     }
 
@@ -136,3 +131,15 @@ def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
             message=f'Failed to synthesize speech from text with Hume: {e}',
             original_exception=e,
         )
+
+def get_random_hume_voice_names() -> Tuple[str, str]:
+    """ 
+    Get two random Hume voice names.
+
+    Voices:
+        - ITO
+        - KORA
+        - STELLA
+        - DACHER
+    """
+    return tuple(random.sample(hume_config.voice_names, 2))

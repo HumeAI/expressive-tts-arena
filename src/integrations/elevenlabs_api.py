@@ -22,7 +22,7 @@ Functions:
 from dataclasses import dataclass
 import logging
 import random
-from typing import Optional
+from typing import Literal, Optional
 
 # Third-Party Library Imports
 from elevenlabs import ElevenLabs
@@ -32,6 +32,12 @@ from tenacity import retry, stop_after_attempt, wait_fixed, before_log, after_lo
 from src.config import logger
 from src.utils import validate_env_var, truncate_text
 
+ElevenlabsVoiceId = Literal[
+    "pNInz6obpgDQGcFmaJgB",
+    "ErXwobaYiN019PkySvjV",
+    "21m00Tcm4TlvDq8ikWAM",
+    "XrExE9yKIg1WjnnlVkGX"
+]
 
 @dataclass(frozen=True)
 class ElevenLabsConfig:
@@ -39,7 +45,7 @@ class ElevenLabsConfig:
     api_key: str = validate_env_var('ELEVENLABS_API_KEY')
     model_id: str = 'eleven_multilingual_v2' # ElevenLab's most emotionally expressive model
     output_format: str = 'mp3_44100_128' # Output format of the generated audio
-    top_voices: list[str] = (
+    voice_ids: list[ElevenlabsVoiceId] = (
         'pNInz6obpgDQGcFmaJgB',  # Adam
         'ErXwobaYiN019PkySvjV',  # Antoni
         '21m00Tcm4TlvDq8ikWAM',  # Rachel
@@ -54,8 +60,8 @@ class ElevenLabsConfig:
             raise ValueError('ElevenLabs Model ID is not set.')
         if not self.output_format:
             raise ValueError('ElevenLabs Output Format is not set.')
-        if not self.top_voices:
-            raise ValueError('ElevenLabs Top Voices are not set.')
+        if not self.voice_ids:
+            raise ValueError('ElevenLabs Voice IDs are not set.')
     
     @property
     def client(self) -> ElevenLabs:
@@ -72,7 +78,7 @@ class ElevenLabsConfig:
         """
         Randomly selects a voice ID from the top default voices, ensuring different voices across calls.
         """
-        return random.choice(self.top_voices)
+        return random.choice(self.voice_ids)
 
 
 class ElevenLabsError(Exception):
@@ -93,12 +99,13 @@ elevenlabs_config = ElevenLabsConfig()
     after=after_log(logger, logging.DEBUG),
     reraise=True
 )
-def text_to_speech_with_elevenlabs(text: str) -> bytes:
+def text_to_speech_with_elevenlabs(text: str, voice_id: ElevenlabsVoiceId) -> bytes:
     """
-    Converts text to speech using the ElevenLabs TTS API.
+    Synthesizes text to speech using the ElevenLabs TTS API.
 
     Args:
-        text (str): The text to be converted to speech.
+        text (str): The text to be synthesized to speech.
+        voice_id (str): The voice ID for Elevenlabs to use when synthesizing speech.
 
     Returns:
         bytes: The raw binary audio data for playback.
@@ -112,7 +119,7 @@ def text_to_speech_with_elevenlabs(text: str) -> bytes:
         # Synthesize speech using the ElevenLabs SDK
         audio_iterator = elevenlabs_config.client.text_to_speech.convert(
             text=text,
-            voice_id=elevenlabs_config.random_voice_id,
+            voice_id=voice_id,
             model_id=elevenlabs_config.model_id,
             output_format=elevenlabs_config.output_format,
         )
@@ -139,3 +146,15 @@ def text_to_speech_with_elevenlabs(text: str) -> bytes:
             message=f'Failed to synthesize speech from text with ElevenLabs: {e}',
             original_exception=e,
         )
+
+def get_random_elevenlabs_voice_id() -> ElevenlabsVoiceId:
+    """ 
+    Get a random Elevenlabs voice ID.
+
+    Voices:
+        - pNInz6obpgDQGcFmaJgB (Adam)
+        - ErXwobaYiN019PkySvjV (Antoni)
+        - 21m00Tcm4TlvDq8ikWAM (Rachel)
+        - XrExE9yKIg1WjnnlVkGX (Matilda)
+    """
+    return elevenlabs_config.random_voice_id
