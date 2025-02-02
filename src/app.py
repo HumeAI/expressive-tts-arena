@@ -208,29 +208,27 @@ def reset_ui() -> Tuple[gr.update, gr.update, gr.update, gr.update, None, None, 
 
 def build_input_section() -> Tuple[gr.Markdown, gr.Dropdown, gr.Textbox, gr.Button]:
     """ Builds the input section including instructions, sample prompt dropdown, prompt input, and generate button """
-    with gr.Column(variant='panel'):
-        instructions = gr.Markdown("""
-            **Instructions**
-            1. **Enter or Generate Text:** Type directly in the Text box, or optionally enter a Prompt, click "Generate text", and edit if needed.
-            2. **Synthesize Speech:** Click "Synthesize speech" to generate two audio outputs.
-            3. **Listen & Compare:** Playback both options (A & B) to hear the differences.
-            4. **Vote for Your Favorite:** Click "Vote for option A" or "Vote for option B" to choose the best one.
-        """)
-        sample_prompt_dropdown = gr.Dropdown(
-            choices=list(SAMPLE_PROMPTS.keys()),
-            label='Choose a sample prompt (or enter your own)',
-            value=None,
-            interactive=True,
-        )
-        prompt_input = gr.Textbox(
-            label='Prompt',
-            placeholder='Enter your prompt...',
-            lines=2,
-            max_lines=2,
-            max_length=PROMPT_MAX_LENGTH,
-            show_copy_button=True,
-        )
-        generate_text_button = gr.Button('Generate text', variant='secondary')
+    instructions = gr.Markdown("""
+        1. **Enter or Generate Text:** Type directly in the Text box, or optionally enter a Prompt, click "Generate text", and edit if needed.
+        2. **Synthesize Speech:** Click "Synthesize speech" to generate two audio outputs.
+        3. **Listen & Compare:** Playback both options (A & B) to hear the differences.
+        4. **Vote for Your Favorite:** Click "Vote for option A" or "Vote for option B" to choose the best one.
+    """)
+    sample_prompt_dropdown = gr.Dropdown(
+        choices=list(SAMPLE_PROMPTS.keys()),
+        label='Choose a sample prompt (or enter your own)',
+        value=None,
+        interactive=True,
+    )
+    prompt_input = gr.Textbox(
+        label='Prompt',
+        placeholder='Enter your prompt...',
+        lines=2,
+        max_lines=2,
+        max_length=PROMPT_MAX_LENGTH,
+        show_copy_button=True,
+    )
+    generate_text_button = gr.Button('Generate text', variant='secondary')
     return (
         instructions, 
         sample_prompt_dropdown, 
@@ -241,24 +239,23 @@ def build_input_section() -> Tuple[gr.Markdown, gr.Dropdown, gr.Textbox, gr.Butt
 
 def build_output_section() -> Tuple[gr.Textbox, gr.Button, gr.Audio, gr.Audio, gr.Button, gr.Button]:
     """ Builds the output section including generated text, audio players, and vote buttons. """
-    with gr.Column(variant='panel'):
-        text_input = gr.Textbox(
-            label='Text',
-            placeholder='Enter text to synthesize speech...',
-            interactive=True,
-            autoscroll=False,
-            lines=5,
-            max_lines=5,
-            max_length=PROMPT_MAX_LENGTH,
-            show_copy_button=True,
-        )
-        synthesize_speech_button = gr.Button('Synthesize speech', variant='primary')
-        with gr.Row(equal_height=True):
-            option_a_audio_player = gr.Audio(label=OPTION_A, type='filepath', interactive=False)
-            option_b_audio_player = gr.Audio(label=OPTION_B, type='filepath', interactive=False)
-        with gr.Row(equal_height=True):
-            vote_button_a = gr.Button(VOTE_FOR_OPTION_A, interactive=False)
-            vote_button_b = gr.Button(VOTE_FOR_OPTION_B, interactive=False)
+    text_input = gr.Textbox(
+        label='Text',
+        placeholder='Enter text to synthesize speech...',
+        interactive=True,
+        autoscroll=False,
+        lines=4,
+        max_lines=12,
+        max_length=PROMPT_MAX_LENGTH,
+        show_copy_button=True,
+    )
+    synthesize_speech_button = gr.Button('Synthesize speech', variant='primary')
+    with gr.Row(equal_height=True):
+        option_a_audio_player = gr.Audio(label=OPTION_A, type='filepath', interactive=False)
+        option_b_audio_player = gr.Audio(label=OPTION_B, type='filepath', interactive=False)
+    with gr.Row(equal_height=True):
+        vote_button_a = gr.Button(VOTE_FOR_OPTION_A, interactive=False)
+        vote_button_b = gr.Button(VOTE_FOR_OPTION_B, interactive=False)
     return (
         text_input, 
         synthesize_speech_button, 
