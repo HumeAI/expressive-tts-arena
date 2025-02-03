@@ -41,6 +41,7 @@ from src.integrations import (
     text_to_speech_with_hume,
 )
 from src.theme import CustomTheme
+from src.types import OptionMap
 from src.utils import truncate_text, validate_prompt_length
 
 
@@ -124,10 +125,16 @@ def text_to_speech(prompt: str, text: str, generated_text_state: str) -> Tuple[g
             voice_b, audio_b = future_audio_b.result()
 
         logger.info(f'TTS generated: {provider_a}={len(audio_a)} bytes, {provider_b}={len(audio_b)} bytes')
-        options = [(audio_a, provider_a), (audio_b, provider_b)]
+        options = [
+            (audio_a, {"provider": provider_a, "voice": voice_a}),
+            (audio_b, {"provider": provider_b, "voice": voice_b})
+        ]
         random.shuffle(options)
         option_a_audio, option_b_audio = options[0][0], options[1][0]
-        options_map = { OPTION_A: options[0][1], OPTION_B: options[1][1] }
+        options_map: OptionMap = { 
+            OPTION_A: options[0][1],
+            OPTION_B: options[1][1]
+        }
 
         return (
             gr.update(value=option_a_audio, visible=True, autoplay=True),
@@ -146,37 +153,56 @@ def text_to_speech(prompt: str, text: str, generated_text_state: str) -> Tuple[g
         raise gr.Error('An unexpected error ocurred. Please try again later.')
 
 
-def vote(vote_submitted: bool, option_mapping: dict, selected_button: str) -> Tuple[bool, gr.update, gr.update]:
+def vote(vote_submitted: bool, option_map: OptionMap, selected_button: str) -> Tuple[bool, gr.update, gr.update, gr.update]:
     """
     Handles user voting.
 
     Args:
-        vote_submitted (bool): True if a vote was already submitted
-        option_mapping (dict): Maps option labels to provider names
-        selected_button (str): The button clicked
+        vote_submitted (bool): True if a vote was already submitted.
+        option_map (OptionMap): A dictionary mapping option labels to their details.
+            Expected structure:
+            {
+                'Option A': '{"provider": "Hume AI", "voice": "<voice_name>"}',
+                'Option B': '{"provider": "ElevenLabs", "voice": "<voice_name>"}'
+            }
+        selected_button (str): The button that was clicked.
 
     Returns:
         A tuple of:
-         - True if the vote was accepted
-         - Update for the selected vote button
-         - Update for the unselected vote button
+         - A boolean indicating if the vote was accepted.
+         - An update for the selected vote button (showing provider, voice, and trophy emoji).
+         - An update for the unselected vote button (showing provider and voice).
+         - An update for enabling vote interactions.
     """
-    if not option_mapping or vote_submitted:
-        return gr.skip(), gr.skip(), gr.skip()
+    if not option_map or vote_submitted:
+        return gr.skip(), gr.skip(), gr.skip(), gr.skip()
 
-    is_option_a = selected_button == VOTE_FOR_OPTION_A
-    selected_option, other_option = (OPTION_A, OPTION_B) if is_option_a else (OPTION_B, OPTION_A)
-    selected_provider = option_mapping.get(selected_option, UNKNOWN_PROVIDER)
-    other_provider = option_mapping.get(other_option, UNKNOWN_PROVIDER)
+    option_a_selected = selected_button == VOTE_FOR_OPTION_A
+    selected_option, other_option = (OPTION_A, OPTION_B) if option_a_selected else (OPTION_B, OPTION_A)
+
+    # Parse selected option details from options map
+    selected_details = option_map.get(selected_option, {})
+    selected_provider = selected_details.get('provider', UNKNOWN_PROVIDER)
+    selected_voice = selected_details.get('voice', '')
+
+    # Parse other option details from options map
+    other_details = option_map.get(other_option, {})
+    other_provider = other_details.get('provider', UNKNOWN_PROVIDER)
+    other_voice = other_details.get('voice', '')
+
+    # Build button labels, displaying the provider and voice name, appending the trophy emoji to the selected option.
+    selected_label = f"{selected_provider} | Voice: {selected_voice} {TROPHY_EMOJI}"
+    other_label = f"{other_provider} | Voice: {other_voice}"
 
     return (
         True,
-        gr.update(value=f'{selected_provider} {TROPHY_EMOJI}', variant='primary', interactive=False) if is_option_a 
-            else gr.update(value=other_provider, variant='secondary', interactive=False),
-        gr.update(value=other_provider, variant='secondary', interactive=False) if is_option_a 
-            else gr.update(value=f'{selected_provider} {TROPHY_EMOJI}', variant='primary', interactive=False),
+        gr.update(value=selected_label, variant='primary', interactive=False) if option_a_selected
+            else gr.update(value=other_label, variant='secondary', interactive=False),
+        gr.update(value=other_label, variant='secondary', interactive=False) if option_a_selected
+            else gr.update(value=selected_label, variant='primary', interactive=False),
         gr.update(interactive=True)
     )
+
 
 def reset_ui() -> Tuple[gr.update, gr.update, gr.update, gr.update, None, None, bool]:
     """
@@ -188,7 +214,7 @@ def reset_ui() -> Tuple[gr.update, gr.update, gr.update, gr.update, None, None, 
          - option_b_audio_player (clear audio)
          - vote_button_a (disable and reset button text)
          - vote_button_a (disable and reset button text)
-         - option_mapping_state (reset option map state)
+         - option_map_state (reset option map state)
          - option_b_audio_state (reset option B audio state)
          - vote_submitted_state (reset submitted vote state)
     """
@@ -297,8 +323,8 @@ def build_gradio_interface() -> gr.Blocks:
         # UI state components
         generated_text_state = gr.State('')     # Track generated text state
         option_b_audio_state = gr.State()       # Track generated audio for option B for playing automatically after option 1 audio finishes
-        option_mapping_state = gr.State()       # Track option map (option A and option B are randomized)
-        vote_submitted_state = gr.State(False)  # Track whether the user has voted on an option
+        option_map_state = gr.State()           # Track option map (option A and option B are randomized)
+        vote_submitted_state = gr.State(False)  # Track whether the user has voted for an option
 
         # --- Register event handlers ---
 
@@ -344,7 +370,7 @@ def build_gradio_interface() -> gr.Blocks:
                 option_b_audio_player,
                 vote_button_a, 
                 vote_button_b, 
-                option_mapping_state, 
+                option_map_state, 
                 option_b_audio_state, 
                 vote_submitted_state,
             ],
@@ -354,7 +380,7 @@ def build_gradio_interface() -> gr.Blocks:
             outputs=[
                 option_a_audio_player, 
                 option_b_audio_player, 
-                option_mapping_state, 
+                option_map_state, 
                 option_b_audio_state,
             ],
         ).then(
@@ -370,12 +396,12 @@ def build_gradio_interface() -> gr.Blocks:
         # Vote button click event handlers
         vote_button_a.click(
             fn=vote,
-            inputs=[vote_submitted_state, option_mapping_state, vote_button_a],
+            inputs=[vote_submitted_state, option_map_state, vote_button_a],
             outputs=[vote_submitted_state, vote_button_a, vote_button_b, synthesize_speech_button],
         )
         vote_button_b.click(
             fn=vote,
-            inputs=[vote_submitted_state, option_mapping_state, vote_button_b],
+            inputs=[vote_submitted_state, option_map_state, vote_button_b],
             outputs=[vote_submitted_state, vote_button_a, vote_button_b, synthesize_speech_button],
         )
 
