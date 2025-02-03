@@ -90,6 +90,7 @@ def text_to_speech_with_hume(prompt: str, text: str, voice_name: HumeVoiceName) 
         voice_name (HumeVoiceName): Name of the voice Hume will use when synthesizing speech.
 
     Returns:
+        voice_name: The name of the voice used for speech synthesis.
         bytes: The raw binary audio data for playback.
 
     Raises:
@@ -121,7 +122,7 @@ def text_to_speech_with_hume(prompt: str, text: str, voice_name: HumeVoiceName) 
         if response.headers.get('Content-Type', '').startswith('audio/'):
             audio = response.content  # Raw binary audio data
             logger.info(f'Received audio data from Hume ({len(audio)} bytes).')
-            return audio
+            return voice_name, audio
 
         raise HumeError(f'Unexpected Content-Type: {response.headers.get("Content-Type", "Unknown")}')
 
@@ -132,7 +133,7 @@ def text_to_speech_with_hume(prompt: str, text: str, voice_name: HumeVoiceName) 
             original_exception=e,
         )
 
-def get_random_hume_voice_names() -> Tuple[str, str]:
+def get_random_hume_voice_names() -> Tuple[HumeVoiceName, HumeVoiceName]:
     """ 
     Get two random Hume voice names.
 

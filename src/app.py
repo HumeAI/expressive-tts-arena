@@ -35,7 +35,6 @@ from src.integrations import (
     AnthropicError,
     ElevenLabsError,
     generate_text_with_claude,
-    get_random_elevenlabs_voice_id,
     get_random_hume_voice_names,
     HumeError,
     text_to_speech_with_elevenlabs,
@@ -106,9 +105,7 @@ def text_to_speech(prompt: str, text: str, generated_text_state: str) -> Tuple[g
     # If not using generated text, then only compare Hume to Hume
     compare_hume_with_elevenlabs = (text == generated_text_state) and (random.random() < 0.5)
     
-    elevenlabs_voice = get_random_elevenlabs_voice_id()
-    # Get two Hume voices preemptively in case we compare Hume with Hume
-    # to remove chance synthesizing speech twice with the same voice
+    # Pre-select two Hume voices pre-emptively in case we compare Hume to Hume to ensure we do not select the same voice twice.
     hume_voice_a, hume_voice_b = get_random_hume_voice_names()
 
     try:
@@ -118,12 +115,13 @@ def text_to_speech(prompt: str, text: str, generated_text_state: str) -> Tuple[g
 
             if compare_hume_with_elevenlabs:
                 provider_b = ELEVENLABS
-                future_audio_b = executor.submit(text_to_speech_with_elevenlabs, text, elevenlabs_voice)
+                future_audio_b = executor.submit(text_to_speech_with_elevenlabs, text)
             else:
                 provider_b = HUME_AI
                 future_audio_b = executor.submit(text_to_speech_with_hume, prompt, text, hume_voice_b)
             
-            audio_a, audio_b = future_audio_a.result(), future_audio_b.result()
+            voice_a, audio_a = future_audio_a.result()
+            voice_b, audio_b = future_audio_b.result()
 
         logger.info(f'TTS generated: {provider_a}={len(audio_a)} bytes, {provider_b}={len(audio_b)} bytes')
         options = [(audio_a, provider_a), (audio_b, provider_b)]
