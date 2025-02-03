@@ -3,7 +3,5 @@ repos:
     rev: 25.1.0
     hooks:
       - id: black
-        args: ["--line-length=88", "--fast", "--quiet", "src"]
+        args: ["--line-length=88", "--fast", "--quiet"]
         types: [python]
-        pass_filenames: false
-        stages: [pre-commit]

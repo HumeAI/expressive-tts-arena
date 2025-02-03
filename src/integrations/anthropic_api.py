@@ -150,7 +150,7 @@ def generate_text_with_claude(prompt: str) -> str:
         return str(blocks or "No content generated.")
 
     except Exception as e:
-        logger.exception(f"Error generating text with Anthropic: {e}")
+        logger.exception(f"Error generating text with the Anthropic API: {e}")
         raise AnthropicError(
             message=(
                 f"Error generating text with Anthropic: {e}. "
