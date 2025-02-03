@@ -37,14 +37,14 @@ def truncate_text(text: str, max_length: int = 50) -> str:
         ''
     """
     if max_length <= 0:
-        logger.warning(f'Invalid max_length={max_length}. Returning empty string.')
-        return ''
+        logger.warning(f"Invalid max_length={max_length}. Returning empty string.")
+        return ""
 
     is_truncated = len(text) > max_length
     if is_truncated:
-        logger.debug(f'Truncated text to {max_length} characters.')
-    
-    return text[:max_length] + ('...' if is_truncated else '')
+        logger.debug(f"Truncated text to {max_length} characters.")
+
+    return text[:max_length] + ("..." if is_truncated else "")
 
 
 def validate_env_var(var_name: str) -> str:
@@ -59,7 +59,7 @@ def validate_env_var(var_name: str) -> str:
 
     Raises:
         ValueError: If the environment variable is not set.
-    
+
     Examples:
         >>> import os
         >>> os.environ["EXAMPLE_VAR"] = "example_value"
@@ -71,9 +71,11 @@ def validate_env_var(var_name: str) -> str:
           ...
         ValueError: MISSING_VAR is not set. Please ensure it is defined in your environment variables.
     """
-    value = os.environ.get(var_name, '')
+    value = os.environ.get(var_name, "")
     if not value:
-        raise ValueError(f'{var_name} is not set. Please ensure it is defined in your environment variables.')
+        raise ValueError(
+            f"{var_name} is not set. Please ensure it is defined in your environment variables."
+        )
     return value
 
 
@@ -98,17 +100,19 @@ def validate_prompt_length(prompt: str, max_length: int, min_length: int) -> Non
     """
     stripped_prompt = prompt.strip()
     prompt_length = len(stripped_prompt)
-    
-    logger.debug(f'Prompt length being validated: {prompt_length} characters')
+
+    logger.debug(f"Prompt length being validated: {prompt_length} characters")
 
     if prompt_length < min_length:
         raise ValueError(
-            f'Your prompt is too short. Please enter at least {min_length} characters. '
-            f'(Current length: {prompt_length})'
+            f"Your prompt is too short. Please enter at least {min_length} characters. "
+            f"(Current length: {prompt_length})"
         )
     if prompt_length > max_length:
         raise ValueError(
-            f'Your prompt is too long. Please limit it to {max_length} characters. '
-            f'(Current length: {prompt_length})'
+            f"Your prompt is too long. Please limit it to {max_length} characters. "
+            f"(Current length: {prompt_length})"
         )
-    logger.debug(f'Prompt length validation passed for prompt: {truncate_text(stripped_prompt)}')
+    logger.debug(
+        f"Prompt length validation passed for prompt: {truncate_text(stripped_prompt)}"
+    )

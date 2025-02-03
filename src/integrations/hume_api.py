@@ -33,37 +33,44 @@ from src.config import logger
 from src.utils import validate_env_var, truncate_text
 
 
-HumeVoiceName = Literal['ITO', 'KORA', 'STELLA', 'DACHER']
+HumeVoiceName = Literal["ITO", "KORA", "STELLA", "DACHER"]
+
 
 @dataclass(frozen=True)
 class HumeConfig:
     """Immutable configuration for interacting with the Hume TTS API."""
-    api_key: str = validate_env_var('HUME_API_KEY')
-    tts_endpoint_url: str = 'https://api.hume.ai/v0/tts'
-    voice_names: List[HumeVoiceName] = ('ITO', 'KORA', 'STELLA', 'DACHER')
-    audio_format: str = 'wav'
+
+    api_key: str = validate_env_var("HUME_API_KEY")
+    tts_endpoint_url: str = "https://api.hume.ai/v0/tts"
+    voice_names: List[HumeVoiceName] = ("ITO", "KORA", "STELLA", "DACHER")
+    audio_format: str = "wav"
     headers: dict = None
 
     def __post_init__(self):
         # Validate required attributes
         if not self.api_key:
-            raise ValueError('Hume API key is not set.')
+            raise ValueError("Hume API key is not set.")
         if not self.tts_endpoint_url:
-            raise ValueError('Hume TTS endpoint URL is not set.')
+            raise ValueError("Hume TTS endpoint URL is not set.")
         if not self.voice_names:
-            raise ValueError('Hume voice names list is not set.')
+            raise ValueError("Hume voice names list is not set.")
         if not self.audio_format:
-            raise ValueError('Hume audio format is not set.')
+            raise ValueError("Hume audio format is not set.")
 
         # Set headers dynamically after validation
-        object.__setattr__(self, 'headers', {
-            'X-Hume-Api-Key': f'{self.api_key}',
-            'Content-Type': 'application/json',
-        })
+        object.__setattr__(
+            self,
+            "headers",
+            {
+                "X-Hume-Api-Key": f"{self.api_key}",
+                "Content-Type": "application/json",
+            },
+        )
 
 
 class HumeError(Exception):
     """Custom exception for errors related to the Hume TTS API."""
+
     def __init__(self, message: str, original_exception: Optional[Exception] = None):
         super().__init__(message)
         self.original_exception = original_exception
@@ -78,9 +85,11 @@ hume_config = HumeConfig()
     wait=wait_fixed(2),
     before=before_log(logger, logging.DEBUG),
     after=after_log(logger, logging.DEBUG),
-    reraise=True
+    reraise=True,
 )
-def text_to_speech_with_hume(prompt: str, text: str, voice_name: HumeVoiceName) -> bytes:
+def text_to_speech_with_hume(
+    prompt: str, text: str, voice_name: HumeVoiceName
+) -> bytes:
     """
     Synthesizes text to speech using the Hume TTS API and processes raw binary audio data.
 
@@ -96,13 +105,13 @@ def text_to_speech_with_hume(prompt: str, text: str, voice_name: HumeVoiceName) 
     Raises:
         HumeError: If there is an error communicating with the Hume TTS API.
     """
-    logger.debug(f'Processing TTS with Hume. Prompt length: {len(prompt)} characters. Text length: {len(text)} characters.')
+    logger.debug(
+        f"Processing TTS with Hume. Prompt length: {len(prompt)} characters. Text length: {len(text)} characters."
+    )
 
     request_body = {
-        'text': text,
-        'voice': {
-            'name': voice_name
-        },
+        "text": text,
+        "voice": {"name": voice_name},
     }
 
     try:
@@ -115,26 +124,33 @@ def text_to_speech_with_hume(prompt: str, text: str, voice_name: HumeVoiceName) 
 
         # Validate response
         if response.status_code != 200:
-            logger.error(f'Hume TTS API Error: {response.status_code} - {response.text[:200]}... (truncated)')
-            raise HumeError(f'Hume TTS API responded with status {response.status_code}: {response.text[:200]}')
+            logger.error(
+                f"Hume TTS API Error: {response.status_code} - {response.text[:200]}... (truncated)"
+            )
+            raise HumeError(
+                f"Hume TTS API responded with status {response.status_code}: {response.text[:200]}"
+            )
 
         # Process response audio
-        if response.headers.get('Content-Type', '').startswith('audio/'):
+        if response.headers.get("Content-Type", "").startswith("audio/"):
             audio = response.content  # Raw binary audio data
-            logger.info(f'Received audio data from Hume ({len(audio)} bytes).')
+            logger.info(f"Received audio data from Hume ({len(audio)} bytes).")
             return voice_name, audio
 
-        raise HumeError(f'Unexpected Content-Type: {response.headers.get("Content-Type", "Unknown")}')
+        raise HumeError(
+            f'Unexpected Content-Type: {response.headers.get("Content-Type", "Unknown")}'
+        )
 
     except Exception as e:
-        logger.exception(f'Error synthesizing speech from text with Hume: {e}')
+        logger.exception(f"Error synthesizing speech from text with Hume: {e}")
         raise HumeError(
-            message=f'Failed to synthesize speech from text with Hume: {e}',
+            message=f"Failed to synthesize speech from text with Hume: {e}",
             original_exception=e,
         )
 
+
 def get_random_hume_voice_names() -> Tuple[HumeVoiceName, HumeVoiceName]:
-    """ 
+    """
     Get two random Hume voice names.
 
     Voices:

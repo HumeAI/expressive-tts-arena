@@ -22,10 +22,10 @@ load_dotenv()
 
 
 # Enable debugging mode based on an environment variable
-debug_raw = os.getenv('DEBUG', 'false').lower()
-if debug_raw not in {'true', 'false'}:
+debug_raw = os.getenv("DEBUG", "false").lower()
+if debug_raw not in {"true", "false"}:
     print(f'Warning: Invalid DEBUG value "{debug_raw}". Defaulting to "false".')
-DEBUG = debug_raw == 'true'
+DEBUG = debug_raw == "true"
 
 
 # Configure the logger
@@ -33,8 +33,8 @@ logging.basicConfig(
     level=logging.DEBUG if DEBUG else logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
-logger: logging.Logger = logging.getLogger('tts_arena')
+logger: logging.Logger = logging.getLogger("tts_arena")
 logger.info(f'Debug mode is {"enabled" if DEBUG else "disabled"}.')
 
 if DEBUG:
-    logger.debug(f'DEBUG mode enabled.')
+    logger.debug(f"DEBUG mode enabled.")

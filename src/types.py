@@ -9,7 +9,7 @@ has a consistent structure including both the provider and the associated voice.
 from typing import TypedDict, Literal, Dict
 
 
-TTSProviderName = Literal['Hume AI', 'ElevenLabs', 'Unknown']
+TTSProviderName = Literal["Hume AI", "ElevenLabs", "Unknown"]
 """TTSProviderName represents the allowed provider names for TTS services."""
 
 
@@ -21,11 +21,12 @@ class OptionDetails(TypedDict):
         provider (TTSProviderName): The name of the provider (either 'Hume AI' or 'ElevenLabs').
         voice (str): The name of the voice associated with the option.
     """
+
     provider: TTSProviderName
     voice: str
 
 
-OptionKey = Literal['Option A', 'Option B']
+OptionKey = Literal["Option A", "Option B"]
 """OptionKey is restricted to the literal values 'Option A' or 'Option B'."""
 
 

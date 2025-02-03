@@ -2,6 +2,7 @@ aiofiles==23.2.1
 annotated-types==0.7.0
 anthropic==0.45.2
 anyio==4.8.0
+black==25.1.0
 certifi==2024.12.14
 charset-normalizer==3.4.1
 click==8.1.8
@@ -23,11 +24,14 @@ jiter==0.8.2
 markdown-it-py==3.0.0
 MarkupSafe==2.1.5
 mdurl==0.1.2
+mypy-extensions==1.0.0
 numpy==2.2.2
 orjson==3.10.15
 packaging==24.2
 pandas==2.2.3
+pathspec==0.12.1
 pillow==11.1.0
+platformdirs==4.3.6
 pydantic==2.10.6
 pydantic_core==2.27.2
 pydub==0.25.1
