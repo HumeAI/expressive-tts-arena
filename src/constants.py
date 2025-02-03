@@ -4,16 +4,18 @@ constants.py
 This module defines global constants used throughout the project.
 """
 
+from src.types import OptionKey, TTSProviderName
+
 # UI constants
-HUME_AI: str = 'Hume'
-ELEVENLABS: str = 'ElevenLabs'
-UNKNOWN_PROVIDER: str = 'Unknown'
+HUME_AI: TTSProviderName = 'Hume AI'
+ELEVENLABS: TTSProviderName = 'ElevenLabs'
+UNKNOWN_PROVIDER: TTSProviderName = 'Unknown'
 
 PROMPT_MIN_LENGTH: int = 10
 PROMPT_MAX_LENGTH: int = 400
 
-OPTION_A: str = 'Option A'
-OPTION_B: str = 'Option B'
+OPTION_A: OptionKey = 'Option A'
+OPTION_B: OptionKey = 'Option B'
 TROPHY_EMOJI: str = '🏆'
 VOTE_FOR_OPTION_A: str = 'Vote for option A'
 VOTE_FOR_OPTION_B: str = 'Vote for option B'
