@@ -6,16 +6,17 @@ It includes functionality for API request handling and processing API responses.
 
 Key Features:
 - Encapsulates all logic related to the ElevenLabs TTS API.
-- Implements retry logic for handling transient API errors.
+- Implements retry logic using Tenacity for handling transient API errors.
 - Handles received audio and processes it for playback on the web.
 - Provides detailed logging for debugging and error tracking.
+- Utilizes robust error handling (EAFP) to validate API responses.
 
 Classes:
-- ElevenLabsConfig: Immutable configuration for interacting with Elevenlabs' TTS API.
+- ElevenLabsConfig: Immutable configuration for interacting with ElevenLabs' TTS API.
 - ElevenLabsError: Custom exception for ElevenLabs API-related errors.
 
 Functions:
-- text_to_speech_with_elevenlabs: synthesizes speech from text using ElevenLabs' TTS API.
+- text_to_speech_with_elevenlabs: Synthesizes speech from text using ElevenLabs' TTS API.
 """
 
 # Standard Library Imports
