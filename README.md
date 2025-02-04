@@ -86,4 +86,4 @@ Expressive TTS Arena/
 4. **Vote for Your Favorite:** Click "Vote for option A" or "Vote for option B" to choose your favorite.
 
 ## License
-[Add your chosen license here]
+This project is licensed under the MIT License - see the [LICENSE.txt](LICENSE.txt) file for details.
