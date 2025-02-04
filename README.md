@@ -24,22 +24,46 @@ Expressive TTS Arena is an open-source web application that enables users to com
 - API keys for Hume AI, Anthropic, and ElevenLabs
 - For a complete list of dependencies, see requirements.
 
-### Installation
+## Project Structure
+```
+Expressive TTS Arena/
+├── src/
+│   ├── integrations/
+│   │   ├── __init__.py         # Makes integrations a package; exposes API clients
+│   │   ├── anthropic_api.py    # Anthropic API integration
+│   │   ├── elevenlabs_api.py   # ElevenLabs API integration
+│   │   └── hume_api.py         # Hume API integration
+│   ├── __init__.py             # Makes src a package; exposes key functionality
+│   ├── app.py                  # Entry file
+│   ├── config.py               # Global config and logger setup
+│   ├── constants.py            # Global constants
+│   ├── theme.py                # Custom Gradio Theme
+│   └── utils.py                # Utility functions
+├── .env.example
+├── .gitignore
+├── .pre-commit-config.yaml
+└── requirements.txt
+```
+
+## Installation
 
 1. Create and activate the virtual environment:
-
-    ```sh
-    python -m venv gradio-env
+    ```
+    sh python -m venv gradio-env
     source gradio-env/bin/activate  # On Windows, use: gradio-env\Scripts\activate
     ```
 
 2. Install dependencies:
-
     ```sh
     pip install -r requirements.txt
     ```
 
-3. Configure environment variables:
+3. Install pre-commit hook for automatic file formatting:
+    ```sh
+    pre-commit install
+    ```
+
+4. Configure environment variables:
     - Create a `.env` file based on `.env.example`
     - Add your API keys:
 
@@ -49,9 +73,8 @@ Expressive TTS Arena is an open-source web application that enables users to com
     ELEVENLABS_API_KEY=YOUR_ELEVENLABS_API_KEY
     ```
 
-4. Run the application:
-
-    ```sh
+5. Run the application:
+    ```sh 
     watchfiles "python -m src.app"`
     ```
 
