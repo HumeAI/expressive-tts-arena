@@ -35,7 +35,6 @@ from src.integrations import (
     AnthropicError,
     ElevenLabsError,
     generate_text_with_claude,
-    get_random_hume_voice_names,
     HumeError,
     text_to_speech_with_elevenlabs,
     text_to_speech_with_hume,
@@ -114,34 +113,29 @@ def text_to_speech(
         random.random() < 0.5
     )
 
-    # Pre-select two Hume voices pre-emptively in case we compare Hume to Hume to ensure we do not select the same voice twice.
-    hume_voice_a, hume_voice_b = get_random_hume_voice_names()
-
     try:
         with ThreadPoolExecutor(max_workers=2) as executor:
             provider_a = HUME_AI
-            future_audio_a = executor.submit(
-                text_to_speech_with_hume, prompt, text, hume_voice_a
-            )
+            future_audio_a = executor.submit(text_to_speech_with_hume, prompt, text)
 
             if compare_hume_with_elevenlabs:
                 provider_b = ELEVENLABS
-                future_audio_b = executor.submit(text_to_speech_with_elevenlabs, text)
+                future_audio_b = executor.submit(
+                    text_to_speech_with_elevenlabs, prompt, text
+                )
             else:
                 provider_b = HUME_AI
-                future_audio_b = executor.submit(
-                    text_to_speech_with_hume, prompt, text, hume_voice_b
-                )
+                future_audio_b = executor.submit(text_to_speech_with_hume, prompt, text)
 
-            voice_a, audio_a = future_audio_a.result()
-            voice_b, audio_b = future_audio_b.result()
+            audio_a = future_audio_a.result()
+            audio_b = future_audio_b.result()
 
         logger.info(
             f"TTS generated: {provider_a}={len(audio_a)} bytes, {provider_b}={len(audio_b)} bytes"
         )
         options = [
-            (audio_a, {"provider": provider_a, "voice": voice_a}),
-            (audio_b, {"provider": provider_b, "voice": voice_b}),
+            (audio_a, provider_a),
+            (audio_b, provider_b),
         ]
         random.shuffle(options)
         option_a_audio, option_b_audio = options[0][0], options[1][0]
@@ -179,16 +173,16 @@ def vote(
         option_map (OptionMap): A dictionary mapping option labels to their details.
             Expected structure:
             {
-                'Option A': '{"provider": "Hume AI", "voice": "<voice_name>"}',
-                'Option B': '{"provider": "ElevenLabs", "voice": "<voice_name>"}'
+                'Option A': 'Hume AI',
+                'Option B': 'ElevenLabs',
             }
         selected_button (str): The button that was clicked.
 
     Returns:
         A tuple of:
          - A boolean indicating if the vote was accepted.
-         - An update for the selected vote button (showing provider, voice, and trophy emoji).
-         - An update for the unselected vote button (showing provider and voice).
+         - An update for the selected vote button (showing provider and trophy emoji).
+         - An update for the unselected vote button (showing provider).
          - An update for enabling vote interactions.
     """
     if not option_map or vote_submitted:
@@ -198,20 +192,12 @@ def vote(
     selected_option, other_option = (
         (OPTION_A, OPTION_B) if option_a_selected else (OPTION_B, OPTION_A)
     )
-
-    # Parse selected option details from options map
-    selected_details = option_map.get(selected_option, {})
-    selected_provider = selected_details.get("provider", UNKNOWN_PROVIDER)
-    selected_voice = selected_details.get("voice", "")
-
-    # Parse other option details from options map
-    other_details = option_map.get(other_option, {})
-    other_provider = other_details.get("provider", UNKNOWN_PROVIDER)
-    other_voice = other_details.get("voice", "")
+    selected_provider = option_map.get(selected_option)
+    other_provider = option_map.get(other_option)
 
     # Build button labels, displaying the provider and voice name, appending the trophy emoji to the selected option.
-    selected_label = f"{selected_provider} | Voice: {selected_voice} {TROPHY_EMOJI}"
-    other_label = f"{other_provider} | Voice: {other_voice}"
+    selected_label = f"{selected_provider} {TROPHY_EMOJI}"
+    other_label = f"{other_provider}"
 
     return (
         True,
@@ -245,7 +231,7 @@ def reset_ui() -> Tuple[gr.update, gr.update, gr.update, gr.update, None, None, 
     """
     return (
         gr.update(value=None),
-        gr.update(value=None),
+        gr.update(value=None, autoplay=False),
         gr.update(value=VOTE_FOR_OPTION_A, variant="secondary"),
         gr.update(value=VOTE_FOR_OPTION_B, variant="secondary"),
         None,
@@ -398,9 +384,13 @@ def build_gradio_interface() -> gr.Blocks:
         # 3. Synthesize speech, load audio players, and display vote button
         # 4. Enable the "Synthesize speech" button and display vote buttons
         synthesize_speech_button.click(
-            fn=lambda: gr.update(interactive=False),
+            fn=lambda: (
+                gr.update(interactive=False),
+                gr.update(interactive=False),
+                gr.update(interactive=False),
+            ),
             inputs=[],
-            outputs=[synthesize_speech_button],
+            outputs=[synthesize_speech_button, vote_button_a, vote_button_b],
         ).then(
             fn=reset_ui,
             inputs=[],

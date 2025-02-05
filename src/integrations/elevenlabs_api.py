@@ -114,58 +114,44 @@ elevenlabs_config = ElevenLabsConfig()
     after=after_log(logger, logging.DEBUG),
     reraise=True,
 )
-def text_to_speech_with_elevenlabs(text: str) -> Tuple[ElevenlabsVoiceName, bytes]:
+def text_to_speech_with_elevenlabs(prompt: str, text: str) -> bytes:
     """
     Synthesizes text to speech using the ElevenLabs TTS API.
 
     Args:
+        prompt (str): The original user prompt used as the voice description.
         text (str): The text to be synthesized to speech.
 
     Returns:
-        Tuple[ElevenlabsVoiceName, bytes]: A tuple containing the voice name used for speech synthesis
-                                           and the raw binary audio data for playback.
+        bytes: The raw binary audio data for playback.
 
     Raises:
         ElevenLabsError: If there is an error communicating with the ElevenLabs API or processing the response.
     """
     logger.debug(
-        f"Synthesizing speech from text with ElevenLabs. Text length: {len(text)} characters."
+        f"Synthesizing speech with ElevenLabs. Text length: {len(text)} characters."
     )
-
-    # Get a random voice as an enum member.
-    voice = elevenlabs_config.random_voice
-    logger.debug(f"Selected voice: {voice.voice_name}")
 
     try:
         # Synthesize speech using the ElevenLabs SDK
-        audio_iterator = elevenlabs_config.client.text_to_speech.convert(
+        response = elevenlabs_config.client.text_to_voice.create_previews(
+            voice_description=prompt,
             text=text,
-            voice_id=voice.voice_id,
-            model_id=elevenlabs_config.model_id,
-            output_format=elevenlabs_config.output_format,
         )
 
-        # Attempt to combine chunks into a single bytes object.
-        # If audio_iterator is not iterable or invalid, an exception will be raised.
-        try:
-            audio = b"".join(chunk for chunk in audio_iterator)
-        except Exception as iter_error:
-            logger.error("Invalid audio iterator response.")
-            raise ElevenLabsError(
-                "Invalid audio iterator received from ElevenLabs API."
-            ) from iter_error
+        previews = response.previews
+        if not previews:
+            msg = "No previews returned by ElevenLabs API."
+            logger.error(msg)
+            raise ElevenLabsError(message=msg)
 
-        # Validate audio
-        if not audio:
-            logger.error("No audio data received from ElevenLabs API.")
-            raise ElevenLabsError("Empty audio data received from ElevenLabs API.")
-
-        logger.info(f"Received ElevenLabs audio ({len(audio)} bytes).")
-        return voice.voice_name, audio
+        base64_audio = previews[0].audio_base64
+        audio = base64.b64decode(base64_audio)
+        return audio
 
     except Exception as e:
-        logger.exception(f"Error synthesizing speech from text with Elevenlabs: {e}")
+        logger.exception(f"Error synthesizing speech with ElevenLabs: {e}")
         raise ElevenLabsError(
-            message=f"Failed to synthesize speech from text with ElevenLabs: {e}",
+            message=f"Failed to synthesize speech with ElevenLabs: {e}",
             original_exception=e,
-        )
+        ) from e
