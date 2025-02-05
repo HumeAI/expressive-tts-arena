@@ -24,21 +24,38 @@ VOTE_FOR_OPTION_B: str = "Vote for option B"
 # A collection of pre-defined prompts categorized by theme, used to provide users with
 # inspiration for generating creative text for expressive TTS.
 SAMPLE_PROMPTS: dict = {
-    "🚀 Dramatic Monologue (Stranded Astronaut)": "Write a short dramatic monologue from a lone astronaut stranded on Mars, speaking to "
-    "mission control for the last time. The tone should be reflective and filled with awe, conveying "
-    "resignation and finality. Describe the Martian landscape and their thoughts in a way that "
-    "would evoke emotion and depth.",
-    "📜 Poetic Sonnet (The Passage of Time)": "Compose a concise sonnet about the passage of time, using vivid imagery and a flowing, "
-    "melodic rhythm. The poem should evoke the contrast between fleeting moments and eternity, "
-    "capturing both beauty and melancholy, with natural pacing for speech delivery.",
-    "🐱 Whimsical Children's Story (Talking Cat)": "Tell a short, whimsical bedtime story about a mischievous talking cat who sneaks into a grand "
-    "wizard’s library at night and accidentally casts a spell that brings the books to life. Keep the "
-    "tone playful and filled with wonder, ensuring the language flows smoothly.",
-    "🔥 Intense Speech (Freedom & Justice)": "Write a powerful, impassioned speech from a rebel leader rallying their people against a "
-    "tyrant. The speech should be urgent, filled with conviction, and call for freedom and justice, "
-    "making sure the emotional intensity is evident in the phrasing.",
-    "👻 Mysterious Horror Scene (Haunted Lighthouse)": "Describe a chilling ghostly encounter in an abandoned lighthouse on a foggy night. The "
-    "protagonist, alone and cold, hears whispers from the shadows, telling them secrets they were "
-    "never meant to know. Use language that builds suspense and tension, ensuring it sounds "
-    "haunting and engaging.",
+    "🚀 Dramatic Monologue (Stranded Astronaut)": (
+        "Create a poignant final transmission from a lone astronaut on Mars to mission control. "
+        "Voice: low, measured pace, with subtle tremors of emotion. Content should move from "
+        "awe-struck description of the Martian sunset to peaceful acceptance. Include natural "
+        "pauses for emotional weight. Keep the tone intimate and contemplative, as if speaking "
+        "softly into a radio mic. End with dignified finality."
+    ),
+    "📜 Poetic Sonnet (The Passage of Time)": (
+        "Craft a sonnet about time's flow, suitable for measured, resonant delivery. "
+        "Voice: clear, rhythmic, with careful emphasis on key metaphors. Flow from quiet "
+        "reflection to profound realization. Include strategic pauses between quatrains. "
+        "Balance crisp consonants with flowing vowels for musical quality. Maintain consistent "
+        "meter for natural speech rhythm."
+    ),
+    "🐱 Whimsical Children's Story (Talking Cat)": (
+        "Tell a playful tale of a curious cat's magical library adventure. "
+        "Voice: bright, energetic, with clear character distinctions. Mix whispered "
+        "conspiracies with excited discoveries. Include dramatic pauses for suspense "
+        "and giggles. Use bouncy rhythm for action scenes, slower pace for wonder. "
+        "End with warm, gentle closure perfect for bedtime."
+    ),
+    "🔥 Intense Speech (Freedom & Justice)": (
+        "Deliver a rousing resistance speech that builds from quiet determination to powerful resolve. "
+        "Voice: start controlled and intense, rise to passionate crescendo. Include strategic "
+        "pauses for impact. Mix shorter, punchy phrases with flowing calls to action. "
+        "Use strong consonants and open vowels for projection. End with unshakeable conviction."
+    ),
+    "👻 Mysterious Horror Scene (Haunted Lighthouse)": (
+        "Narrate a spine-chilling lighthouse encounter that escalates from unease to revelation. "
+        "Voice: hushed, tense, with subtle dynamic range. Mix whispers with clearer tones. "
+        "Include extended pauses for tension. Use sibilants and soft consonants for "
+        "atmospheric effect. Build rhythm with the lighthouse's beam pattern. End with haunting "
+        "revelation."
+    ),
 }
