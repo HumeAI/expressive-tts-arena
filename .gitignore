@@ -36,3 +36,6 @@ Thumbs.db
 
 # Python cache
 *.cache
+
+# Temp files
+src/static/audio/
