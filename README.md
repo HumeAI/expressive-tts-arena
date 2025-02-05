@@ -48,9 +48,17 @@ Expressive TTS Arena/
 ## Installation
 
 1. Create and activate the virtual environment:
+    
+    Mac/Linux
+    ```sh
+    python -m venv gradio-env
+    source gradio-env/bin/activate
     ```
-    sh python -m venv gradio-env
-    source gradio-env/bin/activate  # On Windows, use: gradio-env\Scripts\activate
+
+    Windows
+    ```sh
+    python -m venv gradio-env
+    gradio-env\Scripts\activate
     ```
 
 2. Install dependencies:
@@ -75,7 +83,7 @@ Expressive TTS Arena/
 
 5. Run the application:
     ```sh 
-    watchfiles "python -m src.app"`
+    watchfiles "python -m src.app"
     ```
 
 ## User Flow
