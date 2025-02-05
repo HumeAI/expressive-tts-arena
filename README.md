@@ -20,6 +20,7 @@ Expressive TTS Arena is an open-source web application that enables users to com
 ## Prerequisites
 
 - Python >=3.11.11
+- pip >=25.0
 - Virtual environment capability
 - API keys for Hume AI, Anthropic, and ElevenLabs
 - For a complete list of dependencies, see requirements.
@@ -66,7 +67,7 @@ Expressive TTS Arena/
     pip install -r requirements.txt
     ```
 
-3. Install pre-commit hook for automatic file formatting:
+3. (Optional) If contributing, install pre-commit hook for automatic file formatting:
     ```sh
     pre-commit install
     ```

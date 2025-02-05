@@ -4,7 +4,9 @@ constants.py
 This module defines global constants used throughout the project.
 """
 
+# Third-Party Library Imports
 from src.types import OptionKey, TTSProviderName
+
 
 # UI constants
 HUME_AI: TTSProviderName = "Hume AI"
