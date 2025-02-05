@@ -13,8 +13,8 @@ HUME_AI: TTSProviderName = "Hume AI"
 ELEVENLABS: TTSProviderName = "ElevenLabs"
 UNKNOWN_PROVIDER: TTSProviderName = "Unknown"
 
-PROMPT_MIN_LENGTH: int = 10
-PROMPT_MAX_LENGTH: int = 400
+PROMPT_MIN_LENGTH: int = 20
+PROMPT_MAX_LENGTH: int = 800
 
 OPTION_A: OptionKey = "Option A"
 OPTION_B: OptionKey = "Option B"
