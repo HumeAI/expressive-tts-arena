@@ -1,9 +1,9 @@
-<div align="center">   
-    <img src="https://storage.googleapis.com/hume-public-logos/hume/hume-banner.png">   
-    <h1>Hume AI | Expressive TTS Arena</h1>   
+<div align="center">
+    <img src="https://storage.googleapis.com/hume-public-logos/hume/hume-banner.png">
+    <h1>Hume AI | Expressive TTS Arena</h1>
     <p>
-        <strong>An interactive platform for comparing and evaluating the expressiveness of different text-to-speech engines</strong>   
-    </p> 
+        <strong>An interactive platform for comparing and evaluating the expressiveness of different text-to-speech engines</strong>
+    </p>
 </div>
 
 ## Overview
@@ -48,7 +48,7 @@ Expressive TTS Arena/
 ## Installation
 
 1. Create and activate the virtual environment:
-    
+
     Mac/Linux
     ```sh
     python -m venv gradio-env
@@ -82,9 +82,11 @@ Expressive TTS Arena/
     ```
 
 5. Run the application:
-    ```sh 
+    ```sh
     watchfiles "python -m src.app"
     ```
+
+6. Test the application by navigating to the the localhost URL in your browser (e.g. localhost:7860 or http://127.0.0.1:7860)
 
 ## User Flow
 
