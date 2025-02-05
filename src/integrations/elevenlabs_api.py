@@ -20,6 +20,7 @@ Functions:
 """
 
 # Standard Library Imports
+import base64
 from dataclasses import dataclass
 from enum import Enum
 import logging
@@ -35,44 +36,16 @@ from src.config import logger
 from src.utils import validate_env_var
 
 
-ElevenlabsVoiceName = Literal["Adam", "Antoni", "Rachel", "Matilda"]
-
-
-class ElevenLabsVoice(Enum):
-    ADAM = ("Adam", "pNInz6obpgDQGcFmaJgB")
-    ANTONI = ("Antoni", "ErXwobaYiN019PkySvjV")
-    RACHEL = ("Rachel", "21m00Tcm4TlvDq8ikWAM")
-    MATILDA = ("Matilda", "XrExE9yKIg1WjnnlVkGX")
-
-    @property
-    def voice_name(self) -> ElevenlabsVoiceName:
-        """Returns the display name of the voice."""
-        return self.value[0]
-
-    @property
-    def voice_id(self) -> str:
-        """Returns the ElevenLabs voice ID."""
-        return self.value[1]
-
-
 @dataclass(frozen=True)
 class ElevenLabsConfig:
     """Immutable configuration for interacting with the ElevenLabs TTS API."""
 
     api_key: str = validate_env_var("ELEVENLABS_API_KEY")
-    model_id: str = (
-        "eleven_multilingual_v2"  # ElevenLab's most emotionally expressive model
-    )
-    output_format: str = "mp3_44100_128"  # Output format of the generated audio
 
     def __post_init__(self):
         # Validate that required attributes are set
         if not self.api_key:
             raise ValueError("ElevenLabs API key is not set.")
-        if not self.model_id:
-            raise ValueError("ElevenLabs Model ID is not set.")
-        if not self.output_format:
-            raise ValueError("ElevenLabs Output Format is not set.")
 
     @property
     def client(self) -> ElevenLabs:
@@ -83,16 +56,6 @@ class ElevenLabsConfig:
             ElevenLabs: Configured client instance.
         """
         return ElevenLabs(api_key=self.api_key)
-
-    @property
-    def random_voice(self) -> ElevenLabsVoice:
-        """
-        Selects a random ElevenLabs voice.
-
-        Returns:
-            ElevenLabsVoice: A randomly selected voice enum member.
-        """
-        return random.choice(list(ElevenLabsVoice))
 
 
 class ElevenLabsError(Exception):
@@ -132,6 +95,8 @@ def text_to_speech_with_elevenlabs(prompt: str, text: str) -> bytes:
         f"Synthesizing speech with ElevenLabs. Text length: {len(text)} characters."
     )
 
+    request_body = {"text": text, "voice_description": prompt}
+
     try:
         # Synthesize speech using the ElevenLabs SDK
         response = elevenlabs_config.client.text_to_voice.create_previews(
@@ -145,7 +110,8 @@ def text_to_speech_with_elevenlabs(prompt: str, text: str) -> bytes:
             logger.error(msg)
             raise ElevenLabsError(message=msg)
 
-        base64_audio = previews[0].audio_base64
+        preview = random.choice(previews)
+        base64_audio = preview.audio_base_64
         audio = base64.b64decode(base64_audio)
         return audio
 

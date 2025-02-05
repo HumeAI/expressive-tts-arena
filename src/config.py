@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 
 
 # Load environment variables
-load_dotenv()
+load_dotenv(override=True)
 
 
 # Enable debugging mode based on an environment variable

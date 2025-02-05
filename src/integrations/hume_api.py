@@ -39,14 +39,14 @@ class HumeConfig:
     """Immutable configuration for interacting with the Hume TTS API."""
 
     api_key: str = validate_env_var("HUME_API_KEY")
-    tts_endpoint_url: str = "https://test-api.hume.ai/v0/tts/octave"
+    url: str = "https://test-api.hume.ai/v0/tts/octave"
     headers: dict = None
 
     def __post_init__(self):
         # Validate required attributes
         if not self.api_key:
             raise ValueError("Hume API key is not set.")
-        if not self.tts_endpoint_url:
+        if not self.url:
             raise ValueError("Hume TTS endpoint URL is not set.")
 
         # Set headers dynamically after validation
@@ -102,29 +102,25 @@ def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
     try:
         # Synthesize speech using the Hume TTS API
         response = requests.post(
-            url=hume_config.tts_endpoint_url,
+            url=hume_config.url,
             headers=hume_config.headers,
             json=request_body,
         )
         response.raise_for_status()
-    except requests.RequestException as re:
-        logger.exception(f"Error communicating with Hume TTS API: {re}")
-        raise HumeError(f"Error communicating with Hume TTS API: {re}") from re
-
-    try:
-        # Parse JSON response
         response_data = response.json()
-    except ValueError as ve:
-        logger.exception("Invalid JSON response from Hume TTS API")
-        raise HumeError("Invalid JSON response from Hume TTS API") from ve
+    except requests.RequestException as re:
+        request_error_msg = f"Error communicating with Hume TTS API: {re}"
+        logger.exception(request_error_msg)
+        raise HumeError(request_error_msg) from re
 
     try:
         # Safely extract the generation result from the response JSON
         generations = response_data.get("generations", [])
-        if not generations or "audio" not in generations[0]:
+        if not generations:
             logger.error("Missing 'audio' data in the response.")
             raise HumeError("Missing audio data in response from Hume TTS API")
-        base64_audio = generations[0]["audio"]
+        generation = generations[0]
+        base64_audio = generation.get("audio")
         # Decode base64 encoded audio
         audio = base64.b64decode(base64_audio)
     except (KeyError, TypeError, base64.binascii.Error) as ae:
