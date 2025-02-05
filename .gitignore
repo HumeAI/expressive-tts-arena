@@ -38,4 +38,4 @@ Thumbs.db
 *.cache
 
 # Temp files
-src/static/audio/
+static/audio/*

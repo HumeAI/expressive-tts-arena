@@ -40,10 +40,23 @@ class AnthropicConfig:
     api_key: str = validate_env_var("ANTHROPIC_API_KEY")
     model: ModelParam = "claude-3-5-sonnet-latest"
     max_tokens: int = 150
-    system_prompt: str = f"""You are an expert at generating micro-content optimized for text-to-speech synthesis. Your absolute priority is delivering complete, untruncated responses within strict length limits.
+    system_prompt: Optional[str] = (
+        None  # system prompt is set post initialization, since self.max_tokens is leveraged in the prompt.
+    )
+
+    def __post_init__(self):
+        # Validate that required attributes are set
+        if not self.api_key:
+            raise ValueError("Anthropic API key is not set.")
+        if not self.model:
+            raise ValueError("Anthropic Model is not set.")
+        if not self.max_tokens:
+            raise ValueError("Anthropic Max Tokens is not set.")
+        if self.system_prompt is None:
+            system_prompt: str = f"""You are an expert at generating micro-content optimized for text-to-speech synthesis. Your absolute priority is delivering complete, untruncated responses within strict length limits.
 CRITICAL LENGTH CONSTRAINTS:
 
-Maximum length: {max_tokens} tokens (approximately 400 characters)
+Maximum length: {self.max_tokens} tokens (approximately 400 characters)
 You MUST complete all thoughts and sentences
 Responses should be 25% shorter than you initially plan
 Never exceed 400 characters total
@@ -73,17 +86,7 @@ Resolution (75-100 characters)
 
 MANDATORY: If you find yourself reaching 300 characters, immediately begin your conclusion regardless of where you are in the narrative.
 Remember: A shorter, complete response is ALWAYS better than a longer, truncated one."""
-
-    def __post_init__(self):
-        # Validate that required attributes are set
-        if not self.api_key:
-            raise ValueError("Anthropic API key is not set.")
-        if not self.model:
-            raise ValueError("Anthropic Model is not set.")
-        if not self.max_tokens:
-            raise ValueError("Anthropic Max Tokens is not set.")
-        if not self.system_prompt:
-            raise ValueError("Anthropic System Prompt is not set.")
+            object.__setattr__(self, "system_prompt", system_prompt)
 
     @property
     def client(self) -> Anthropic:

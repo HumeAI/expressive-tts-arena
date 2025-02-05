@@ -20,20 +20,18 @@ Functions:
 """
 
 # Standard Library Imports
-import base64
 from dataclasses import dataclass
-from enum import Enum
 import logging
 import random
-from typing import Literal, Optional, Tuple
+from typing import Optional
 
 # Third-Party Library Imports
-from elevenlabs import ElevenLabs
+from elevenlabs import ElevenLabs, TextToVoiceCreatePreviewsRequestOutputFormat
 from tenacity import retry, stop_after_attempt, wait_fixed, before_log, after_log
 
 # Local Application Imports
 from src.config import logger
-from src.utils import validate_env_var
+from src.utils import save_base64_audio_to_file, validate_env_var
 
 
 @dataclass(frozen=True)
@@ -41,6 +39,7 @@ class ElevenLabsConfig:
     """Immutable configuration for interacting with the ElevenLabs TTS API."""
 
     api_key: str = validate_env_var("ELEVENLABS_API_KEY")
+    output_format: TextToVoiceCreatePreviewsRequestOutputFormat = "mp3_44100_128"
 
     def __post_init__(self):
         # Validate that required attributes are set
@@ -79,14 +78,14 @@ elevenlabs_config = ElevenLabsConfig()
 )
 def text_to_speech_with_elevenlabs(prompt: str, text: str) -> bytes:
     """
-    Synthesizes text to speech using the ElevenLabs TTS API.
+    Synthesizes text to speech using the ElevenLabs TTS API, processes audio data, and writes audio to a file.
 
     Args:
         prompt (str): The original user prompt used as the voice description.
         text (str): The text to be synthesized to speech.
 
     Returns:
-        bytes: The raw binary audio data for playback.
+        str: The relative path for the file the synthesized audio was written to.
 
     Raises:
         ElevenLabsError: If there is an error communicating with the ElevenLabs API or processing the response.
@@ -102,6 +101,7 @@ def text_to_speech_with_elevenlabs(prompt: str, text: str) -> bytes:
         response = elevenlabs_config.client.text_to_voice.create_previews(
             voice_description=prompt,
             text=text,
+            output_format=elevenlabs_config.output_format,
         )
 
         previews = response.previews
@@ -110,10 +110,14 @@ def text_to_speech_with_elevenlabs(prompt: str, text: str) -> bytes:
             logger.error(msg)
             raise ElevenLabsError(message=msg)
 
+        # Extract the base64 encoded audio and generated voice ID from the preview
         preview = random.choice(previews)
+        generated_voice_id = preview.generated_voice_id
         base64_audio = preview.audio_base_64
-        audio = base64.b64decode(base64_audio)
-        return audio
+        filename = f"{generated_voice_id}.mp3"
+
+        # Write audio to file and return the relative path
+        return save_base64_audio_to_file(base64_audio, filename)
 
     except Exception as e:
         logger.exception(f"Error synthesizing speech with ElevenLabs: {e}")

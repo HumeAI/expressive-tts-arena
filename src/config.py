@@ -35,6 +35,11 @@ logging.basicConfig(
 )
 logger: logging.Logger = logging.getLogger("tts_arena")
 logger.info(f'Debug mode is {"enabled" if DEBUG else "disabled"}.')
-
 if DEBUG:
     logger.debug(f"DEBUG mode enabled.")
+
+
+# Define the directory for audio files relative to the project root
+AUDIO_DIR = os.path.join(os.getcwd(), "static", "audio")
+os.makedirs(AUDIO_DIR, exist_ok=True)
+logger.info(f"Audio directory set to {AUDIO_DIR}")

@@ -11,10 +11,11 @@ Functions:
 """
 
 # Standard Library Imports
+import base64
 import os
 
 # Local Application Imports
-from src.config import logger
+from src.config import AUDIO_DIR, logger
 
 
 def truncate_text(text: str, max_length: int = 50) -> str:
@@ -116,3 +117,44 @@ def validate_prompt_length(prompt: str, max_length: int, min_length: int) -> Non
     logger.debug(
         f"Prompt length validation passed for prompt: {truncate_text(stripped_prompt)}"
     )
+
+
+def save_base64_audio_to_file(base64_audio: str, filename: str) -> str:
+    """
+    Decode a base64-encoded audio string and write the resulting binary data to a file
+    within the preconfigured AUDIO_DIR directory. This function verifies the file was created,
+    logs the absolute and relative file paths, and returns a path relative to the current
+    working directory (which is what Gradio requires to serve static files).
+
+    Args:
+        base64_audio (str): The base64-encoded string representing the audio data.
+        filename (str): The name of the file (including extension, e.g.,
+                        'b4a335da-9786-483a-b0a5-37e6e4ad5fd1.mp3') where the decoded
+                        audio will be saved.
+
+    Returns:
+        str: The relative file path to the saved audio file.
+
+    Raises:
+        Exception: Propagates any exceptions raised during the decoding or file I/O operations.
+    """
+    # Decode the base64-encoded audio into binary data.
+    audio_bytes = base64.b64decode(base64_audio)
+
+    # Construct the full absolute file path within the AUDIO_DIR directory.
+    file_path = os.path.join(AUDIO_DIR, filename)
+
+    # Write the binary audio data to the file.
+    with open(file_path, "wb") as audio_file:
+        audio_file.write(audio_bytes)
+
+    # Verify that the file was created.
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"Audio file was not created at {file_path}")
+
+    # Compute a relative path for Gradio to serve (relative to the project root).
+    relative_path = os.path.relpath(file_path, os.getcwd())
+    logger.debug(f"Audio file absolute path: {file_path}")
+    logger.debug(f"Audio file relative path: {relative_path}")
+
+    return relative_path

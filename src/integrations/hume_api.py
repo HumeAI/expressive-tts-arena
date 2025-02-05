@@ -19,11 +19,11 @@ Functions:
 """
 
 # Standard Library Imports
-import base64
 from dataclasses import dataclass
 import logging
+import os
 import random
-from typing import List, Literal, Optional, Tuple
+from typing import Literal, Optional
 
 # Third-Party Library Imports
 import requests
@@ -31,7 +31,11 @@ from tenacity import retry, stop_after_attempt, wait_fixed, before_log, after_lo
 
 # Local Application Imports
 from src.config import logger
-from src.utils import validate_env_var, truncate_text
+from src.utils import save_base64_audio_to_file, validate_env_var
+
+
+HumeSupportedFileFormat = Literal["mp3", "pcm", "wav"]
+""" Support audio file formats for the Hume TTS API"""
 
 
 @dataclass(frozen=True)
@@ -41,6 +45,7 @@ class HumeConfig:
     api_key: str = validate_env_var("HUME_API_KEY")
     url: str = "https://test-api.hume.ai/v0/tts/octave"
     headers: dict = None
+    file_format: HumeSupportedFileFormat = "mp3"
 
     def __post_init__(self):
         # Validate required attributes
@@ -48,6 +53,8 @@ class HumeConfig:
             raise ValueError("Hume API key is not set.")
         if not self.url:
             raise ValueError("Hume TTS endpoint URL is not set.")
+        if not self.file_format:
+            raise ValueError("Hume TTS file format is not set.")
 
         # Set headers dynamically after validation
         object.__setattr__(
@@ -81,14 +88,14 @@ hume_config = HumeConfig()
 )
 def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
     """
-    Synthesizes text to speech using the Hume TTS API and processes raw binary audio data.
+    Synthesizes text to speech using the Hume TTS API, processes audio data, and writes audio to a file.
 
     Args:
         prompt (str): The original user prompt to use as the description for generating the voice.
         text (str): The generated text to be converted to speech.
 
     Returns:
-        bytes: The raw binary audio data for playback.
+        str: The relative path for the file the synthesized audio was written to.
 
     Raises:
         HumeError: If there is an error communicating with the Hume TTS API or parsing the response.
@@ -108,24 +115,25 @@ def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
         )
         response.raise_for_status()
         response_data = response.json()
-    except requests.RequestException as re:
-        request_error_msg = f"Error communicating with Hume TTS API: {re}"
-        logger.exception(request_error_msg)
-        raise HumeError(request_error_msg) from re
 
-    try:
-        # Safely extract the generation result from the response JSON
-        generations = response_data.get("generations", [])
+        generations = response_data.get("generations")
         if not generations:
-            logger.error("Missing 'audio' data in the response.")
-            raise HumeError("Missing audio data in response from Hume TTS API")
-        generation = generations[0]
-        base64_audio = generation.get("audio")
-        # Decode base64 encoded audio
-        audio = base64.b64decode(base64_audio)
-    except (KeyError, TypeError, base64.binascii.Error) as ae:
-        logger.exception(f"Error processing audio data: {ae}")
-        raise HumeError(f"Error processing audio data from Hume TTS API: {ae}") from ae
+            msg = "No generations returned by Hume API."
+            logger.error(msg)
+            raise HumeError(msg)
 
-    logger.info(f"Received audio data from Hume ({len(audio)} bytes).")
-    return audio
+        # Extract the base64 encoded audio and generation ID from the generation
+        generation = generations[0]
+        generation_id = generation.get("generation_id")
+        base64_audio = generation.get("audio")
+        filename = f"{generation_id}.mp3"
+
+        # Write audio to file and return the relative path
+        return save_base64_audio_to_file(base64_audio, filename)
+
+    except Exception as e:
+        logger.exception(f"Error synthesizing speech with Hume: {e}")
+        raise HumeError(
+            message=f"Failed to synthesize speech with Hume: {e}",
+            original_exception=e,
+        ) from e

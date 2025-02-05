@@ -11,13 +11,14 @@ Users can compare the outputs and vote for their favorite in an interactive UI.
 # Standard Library Imports
 from concurrent.futures import ThreadPoolExecutor
 import random
+import time
 from typing import Union, Tuple
 
 # Third-Party Library Imports
 import gradio as gr
 
 # Local Application Imports
-from src.config import logger
+from src.config import AUDIO_DIR, logger
 from src.constants import (
     ELEVENLABS,
     HUME_AI,
@@ -27,7 +28,6 @@ from src.constants import (
     PROMPT_MIN_LENGTH,
     SAMPLE_PROMPTS,
     TROPHY_EMOJI,
-    UNKNOWN_PROVIDER,
     VOTE_FOR_OPTION_A,
     VOTE_FOR_OPTION_B,
 )
@@ -41,7 +41,7 @@ from src.integrations import (
 )
 from src.theme import CustomTheme
 from src.types import OptionMap
-from src.utils import truncate_text, validate_prompt_length
+from src.utils import validate_prompt_length
 
 
 def generate_text(
@@ -130,13 +130,7 @@ def text_to_speech(
             audio_a = future_audio_a.result()
             audio_b = future_audio_b.result()
 
-        logger.info(
-            f"TTS generated: {provider_a}={len(audio_a)} bytes, {provider_b}={len(audio_b)} bytes"
-        )
-        options = [
-            (audio_a, provider_a),
-            (audio_b, provider_b),
-        ]
+        options = [(audio_a, provider_a), (audio_b, provider_b)]
         random.shuffle(options)
         option_a_audio, option_b_audio = options[0][0], options[1][0]
         options_map: OptionMap = {OPTION_A: options[0][1], OPTION_B: options[1][1]}
@@ -444,16 +438,11 @@ def build_gradio_interface() -> gr.Blocks:
             ],
         )
 
-        # Auto-play second audio after first finishes (Workaround to play audio back-to-back)
-        # Audio player A stop event handler chain:
-        # 1. Clear the audio player A
-        # 2. Load audio player A with audio and set auto play to True
+        # Reload audio player B with audio and set autoplay to True (workaround to play audio back-to-back)
         option_a_audio_player.stop(
-            fn=lambda _: gr.update(value=None),
-            inputs=[],
-            outputs=[option_b_audio_player],
-        ).then(
-            fn=lambda audio: gr.update(value=audio, autoplay=True),
+            fn=lambda current_audio_path: gr.update(
+                value=f"{current_audio_path}?t={int(time.time())}", autoplay=True
+            ),
             inputs=[option_b_audio_state],
             outputs=[option_b_audio_player],
         )
@@ -476,4 +465,4 @@ def build_gradio_interface() -> gr.Blocks:
 if __name__ == "__main__":
     logger.info("Launching TTS Arena Gradio app...")
     demo = build_gradio_interface()
-    demo.launch()
+    demo.launch(allowed_paths=[AUDIO_DIR])

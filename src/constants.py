@@ -11,7 +11,6 @@ from src.types import OptionKey, TTSProviderName
 # UI constants
 HUME_AI: TTSProviderName = "Hume AI"
 ELEVENLABS: TTSProviderName = "ElevenLabs"
-UNKNOWN_PROVIDER: TTSProviderName = "Unknown"
 
 PROMPT_MIN_LENGTH: int = 20
 PROMPT_MAX_LENGTH: int = 800
