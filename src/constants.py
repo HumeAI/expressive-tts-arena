@@ -4,6 +4,9 @@ constants.py
 This module defines global constants used throughout the project.
 """
 
+# Standard Library Imports
+from typing import List
+
 # Third-Party Library Imports
 from src.types import OptionKey, TTSProviderName
 
@@ -11,6 +14,7 @@ from src.types import OptionKey, TTSProviderName
 # UI constants
 HUME_AI: TTSProviderName = "Hume AI"
 ELEVENLABS: TTSProviderName = "ElevenLabs"
+TTS_PROVIDERS: List[TTSProviderName]
 
 PROMPT_MIN_LENGTH: int = 20
 PROMPT_MAX_LENGTH: int = 800

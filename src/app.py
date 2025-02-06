@@ -28,6 +28,7 @@ from src.constants import (
     PROMPT_MIN_LENGTH,
     SAMPLE_PROMPTS,
     TROPHY_EMOJI,
+    TTS_PROVIDERS,
     VOTE_FOR_OPTION_A,
     VOTE_FOR_OPTION_B,
 )
@@ -108,24 +109,28 @@ def text_to_speech(
         logger.warning("Skipping text-to-speech due to empty text.")
         raise gr.Error("Please generate or enter text to synthesize.")
 
+    # Hume AI always included in comparison
+    provider_a = HUME_AI
     # If not using generated text, then only compare Hume to Hume
-    compare_hume_with_elevenlabs = (text == generated_text_state) and (
-        random.random() < 0.5
+    provider_b = (
+        HUME_AI if text != generated_text_state else random.choice(TTS_PROVIDERS)
     )
 
     try:
         with ThreadPoolExecutor(max_workers=2) as executor:
-            provider_a = HUME_AI
             future_audio_a = executor.submit(text_to_speech_with_hume, prompt, text)
 
-            if compare_hume_with_elevenlabs:
-                provider_b = ELEVENLABS
-                future_audio_b = executor.submit(
-                    text_to_speech_with_elevenlabs, prompt, text
-                )
-            else:
-                provider_b = HUME_AI
-                future_audio_b = executor.submit(text_to_speech_with_hume, prompt, text)
+            match provider_b:
+                case ELEVENLABS:
+                    future_audio_b = executor.submit(
+                        text_to_speech_with_elevenlabs, prompt, text
+                    )
+                case HUME_AI:
+                    future_audio_b = executor.submit(
+                        text_to_speech_with_hume, prompt, text
+                    )
+                case _:
+                    raise ValueError(f"Unsupported provider: {provider_b}")
 
             audio_a = future_audio_a.result()
             audio_b = future_audio_b.result()
