@@ -83,8 +83,15 @@ Expressive TTS Arena/
     ```
 
 5. Run the application:
+
+    Standard
     ```sh
-    watchfiles "python -m src.app"
+    python -m src.app
+    ```
+
+    With hot-reloading
+    ```sh
+    watchfiles "python -m src.app" src
     ```
 
 6. Test the application by navigating to the the localhost URL in your browser (e.g. localhost:7860 or http://127.0.0.1:7860)

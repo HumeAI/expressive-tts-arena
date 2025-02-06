@@ -238,11 +238,11 @@ def build_input_section() -> Tuple[gr.Markdown, gr.Dropdown, gr.Textbox, gr.Butt
     """Builds the input section including instructions, sample prompt dropdown, prompt input, and generate button"""
     instructions = gr.Markdown(
         """
-        1. **Enter or Generate Text:** Type directly in the Text box, or optionally enter a Prompt, click "Generate text", and edit if needed.
-        2. **Synthesize Speech:** Click "Synthesize speech" to generate two audio outputs.
-        3. **Listen & Compare:** Playback both options (A & B) to hear the differences.
-        4. **Vote for Your Favorite:** Click "Vote for option A" or "Vote for option B" to choose the best one.
-    """
+        1. **Enter or Generate Text:** Type directly in the text box—or enter a prompt and click “Generate Text” to auto-populate. Edit as needed.
+        2. **Synthesize Speech:** Click “Synthesize Speech” to generate two audio outputs.
+        3. **Listen & Compare:** Play back both audio options to hear the differences.
+        4. **Vote for Your Favorite:** Click “Vote for Option A” or “Vote for Option B” to cast your vote.
+        """
     )
     sample_prompt_dropdown = gr.Dropdown(
         choices=list(SAMPLE_PROMPTS.keys()),
@@ -253,8 +253,8 @@ def build_input_section() -> Tuple[gr.Markdown, gr.Dropdown, gr.Textbox, gr.Butt
     prompt_input = gr.Textbox(
         label="Prompt",
         placeholder="Enter your prompt...",
-        lines=2,
-        max_lines=2,
+        lines=3,
+        max_lines=8,
         max_length=PROMPT_MAX_LENGTH,
         show_copy_button=True,
     )
@@ -276,8 +276,8 @@ def build_output_section() -> (
         placeholder="Enter text to synthesize speech...",
         interactive=True,
         autoscroll=False,
-        lines=4,
-        max_lines=12,
+        lines=3,
+        max_lines=8,
         max_length=PROMPT_MAX_LENGTH,
         show_copy_button=True,
     )
