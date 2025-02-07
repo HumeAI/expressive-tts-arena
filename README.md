@@ -46,53 +46,36 @@ Expressive TTS Arena/
 
 ## Installation
 
-1. Create and activate the virtual environment:
+1. This project uses the [uv](https://docs.astral.sh/uv/) package manager. Follow the installation instructions for your platform [here](https://docs.astral.sh/uv/getting-started/installation/).
 
-    Mac/Linux
-    ```sh
-    python -m venv gradio-env
-    source gradio-env/bin/activate
-    ```
-
-    Windows
-    ```sh
-    python -m venv gradio-env
-    gradio-env\Scripts\activate
-    ```
-
-2. Install dependencies:
-    ```sh
-    pip install -r requirements.txt
-    ```
-
-3. (Optional) If contributing, install pre-commit hook for automatic file formatting:
-    ```sh
-    pre-commit install
-    ```
-
-4. Configure environment variables:
+2. Configure environment variables:
     - Create a `.env` file based on `.env.example`
     - Add your API keys:
 
-    ```sh
+    ```txt
     HUME_API_KEY=YOUR_HUME_API_KEY
     ANTHROPIC_API_KEY=YOUR_ANTHROPIC_API_KEY
     ELEVENLABS_API_KEY=YOUR_ELEVENLABS_API_KEY
     ```
 
-5. Run the application:
+3. Run the application:
 
     Standard
     ```sh
-    python -m src.app
+    uv run python -m src.app
     ```
 
     With hot-reloading
     ```sh
-    watchfiles "python -m src.app" src
+    uv run watchfiles "python -m src.app" src
     ```
 
-6. Test the application by navigating to the the localhost URL in your browser (e.g. `localhost:7860` or `http://127.0.0.1:7860`)
+4. Test the application by navigating to the the localhost URL in your browser (e.g. `localhost:7860` or `http://127.0.0.1:7860`)
+
+5. (Optional) If contributing, install pre-commit hook for automatic file formatting:
+    ```sh
+    uv run pre-commit install
+    ```
 
 ## User Flow
 
