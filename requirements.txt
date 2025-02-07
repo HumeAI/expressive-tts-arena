@@ -32,6 +32,7 @@ pandas==2.2.3
 pathspec==0.12.1
 pillow==11.1.0
 platformdirs==4.3.6
+pre_commit==4.1.0
 pydantic==2.10.6
 pydantic_core==2.27.2
 pydub==0.25.1
