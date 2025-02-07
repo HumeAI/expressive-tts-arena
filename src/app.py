@@ -289,7 +289,7 @@ def build_input_section() -> Tuple[gr.Markdown, gr.Dropdown, gr.Textbox, gr.Butt
         interactive=True,
     )
     character_description_input = gr.Textbox(
-        label="Character Description",
+        label="Character description",
         placeholder="Enter your character description to be used to generate text and a novel voice...",
         lines=3,
         max_lines=8,
