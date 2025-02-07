@@ -501,7 +501,7 @@ def build_gradio_interface() -> gr.Blocks:
             inputs=[
                 vote_submitted_state,
                 option_map_state,
-                vote_button_a,
+                vote_button_b,
                 comparison_type_state,
                 option_a_generation_id_state,
                 option_b_generation_id_state,
