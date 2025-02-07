@@ -27,6 +27,7 @@ from typing import Optional
 
 # Third-Party Library Imports
 from elevenlabs import ElevenLabs, TextToVoiceCreatePreviewsRequestOutputFormat
+from elevenlabs.core import ApiError
 from tenacity import retry, stop_after_attempt, wait_fixed, before_log, after_log
 
 # Local Application Imports
@@ -63,6 +64,14 @@ class ElevenLabsError(Exception):
     def __init__(self, message: str, original_exception: Optional[Exception] = None):
         super().__init__(message)
         self.original_exception = original_exception
+        self.message = message
+
+
+class UnretryableElevenLabsError(ElevenLabsError):
+    """Custom exception for errors related to the ElevenLabs TTS API that should not be retried."""
+
+    def __init__(self, message: str, original_exception: Optional[Exception] = None):
+        super().__init__(message, original_exception)
 
 
 # Initialize the ElevenLabs client
@@ -120,7 +129,12 @@ def text_to_speech_with_elevenlabs(character_description: str, text: str) -> byt
         return None, save_base64_audio_to_file(base64_audio, filename)
 
     except Exception as e:
-        logger.exception(f"Error synthesizing speech with ElevenLabs: {e}")
+        if isinstance(e, ApiError):
+            if e.status_code >= 400 and e.status_code < 500:
+                raise UnretryableElevenLabsError(
+                    message=f"Failed to synthesize speech with ElevenLabs: \"{e.body['detail']['message']}\"",
+                    original_exception=e,
+                ) from e
         raise ElevenLabsError(
             message=f"Failed to synthesize speech with ElevenLabs: {e}",
             original_exception=e,

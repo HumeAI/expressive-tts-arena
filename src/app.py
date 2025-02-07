@@ -156,7 +156,7 @@ def text_to_speech(
     except ElevenLabsError as ee:
         logger.error(f"ElevenLabsError while synthesizing speech from text: {str(ee)}")
         raise gr.Error(
-            "There was an issue communicating with the Elevenlabs API. Please try again later."
+            f"There was an issue communicating with the Elevenlabs API. {ee.message} Please try again later."
         )
     except HumeError as he:
         logger.error(f"HumeError while synthesizing speech from text: {str(he)}")
