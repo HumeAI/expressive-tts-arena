@@ -27,7 +27,7 @@ OptionMap = Dict[OptionKey, TTSProviderName]
 class VotingResults(TypedDict):
     """Voting results data structure representing values we want to persist to the votes DB"""
 
-    comparison_type: str
+    comparison_type: ComparisonType
     winning_provider: TTSProviderName
     winning_option: OptionKey
     option_a_provider: TTSProviderName

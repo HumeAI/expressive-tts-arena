@@ -8,16 +8,19 @@ This module defines global constants used throughout the project.
 from typing import List
 
 # Third-Party Library Imports
-from src.types import OptionKey, TTSProviderName
+from src.types import ComparisonType, OptionKey, TTSProviderName
 
 
 # UI constants
 HUME_AI: TTSProviderName = "Hume AI"
 ELEVENLABS: TTSProviderName = "ElevenLabs"
-TTS_PROVIDERS: List[TTSProviderName]
+TTS_PROVIDERS: List[TTSProviderName] = ["Hume AI", "ElevenLabs"]
 
-PROMPT_MIN_LENGTH: int = 20
-PROMPT_MAX_LENGTH: int = 800
+HUME_TO_HUME: ComparisonType = "Hume AI - Hume AI"
+HUME_TO_ELEVENLABS: ComparisonType = "Hume AI - ElevenLabs"
+
+CHARACTER_DESCRIPTION_MIN_LENGTH: int = 20
+CHARACTER_DESCRIPTION_MAX_LENGTH: int = 800
 
 OPTION_A: OptionKey = "Option A"
 OPTION_B: OptionKey = "Option B"
@@ -26,41 +29,27 @@ VOTE_FOR_OPTION_A: str = "Vote for option A"
 VOTE_FOR_OPTION_B: str = "Vote for option B"
 
 
-# A collection of pre-defined prompts categorized by theme, used to provide users with
-# inspiration for generating creative text for expressive TTS.
-SAMPLE_PROMPTS: dict = {
-    "🚀 Dramatic Monologue (Stranded Astronaut)": (
-        "Create a poignant final transmission from a lone astronaut on Mars to mission control. "
-        "Voice: low, measured pace, with subtle tremors of emotion. Content should move from "
-        "awe-struck description of the Martian sunset to peaceful acceptance. Include natural "
-        "pauses for emotional weight. Keep the tone intimate and contemplative, as if speaking "
-        "softly into a radio mic. End with dignified finality."
+# A collection of pre-defined character descriptions categorized by theme, used to provide users with
+# inspiration for generating creative text for expressive TTS, and generating novel voices.
+SAMPLE_CHARACTER_DESCRIPTIONS: dict = {
+    "🚀 Stranded Astronaut": (
+        "A lone astronaut whose voice mirrors the silent vastness of space—a low, steady tone imbued with isolation and quiet wonder. "
+        "It carries the measured resolve of someone sending a final transmission, with an undercurrent of wistful melancholy."
     ),
-    "📜 Poetic Sonnet (The Passage of Time)": (
-        "Craft a sonnet about time's flow, suitable for measured, resonant delivery. "
-        "Voice: clear, rhythmic, with careful emphasis on key metaphors. Flow from quiet "
-        "reflection to profound realization. Include strategic pauses between quatrains. "
-        "Balance crisp consonants with flowing vowels for musical quality. Maintain consistent "
-        "meter for natural speech rhythm."
+    "📜 Timeless Poet": (
+        "An ageless poet with a voice that flows like gentle verse—a soft, reflective tone marked by deliberate pauses. "
+        "It speaks with the measured cadence of classic sonnets, evoking both the fragile beauty of time and heartfelt introspection."
     ),
-    "🐱 Whimsical Children's Story (Talking Cat)": (
-        "Tell a playful tale of a curious cat's magical library adventure. "
-        "Voice: bright, energetic, with clear character distinctions. Mix whispered "
-        "conspiracies with excited discoveries. Include dramatic pauses for suspense "
-        "and giggles. Use bouncy rhythm for action scenes, slower pace for wonder. "
-        "End with warm, gentle closure perfect for bedtime."
+    "🐱 Whimsical Feline": (
+        "A mischievous cat whose voice is playful yet mysterious—light, quick-witted, and infused with an enchanting purr. "
+        "It hints at secret adventures and hidden charm, balancing exuberance with a subtle, smooth allure."
     ),
-    "🔥 Intense Speech (Freedom & Justice)": (
-        "Deliver a rousing resistance speech that builds from quiet determination to powerful resolve. "
-        "Voice: start controlled and intense, rise to passionate crescendo. Include strategic "
-        "pauses for impact. Mix shorter, punchy phrases with flowing calls to action. "
-        "Use strong consonants and open vowels for projection. End with unshakeable conviction."
+    "🔥 Revolutionary Orator": (
+        "A defiant orator whose voice builds from quiet determination to passionate fervor—a clear, commanding tone that resonates with conviction. "
+        "It starts measured and resolute, then rises to a crescendo of fervor, punctuated by deliberate pauses that emphasize each rallying cry."
     ),
-    "👻 Mysterious Horror Scene (Haunted Lighthouse)": (
-        "Narrate a spine-chilling lighthouse encounter that escalates from unease to revelation. "
-        "Voice: hushed, tense, with subtle dynamic range. Mix whispers with clearer tones. "
-        "Include extended pauses for tension. Use sibilants and soft consonants for "
-        "atmospheric effect. Build rhythm with the lighthouse's beam pattern. End with haunting "
-        "revelation."
+    "👻 Haunted Keeper": (
+        "A solitary lighthouse keeper with a voice that carries the weight of forgotten storms—a soft, measured tone with an echo of sorrow. "
+        "It speaks as if whispering long-held secrets in the dark, blending quiet melancholy with an air of enduring mystery."
     ),
 }

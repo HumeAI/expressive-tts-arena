@@ -98,7 +98,7 @@ Expressive TTS Arena/
 
 ## User Flow
 
-1. **Enter or Generate Text:** Type directly in the Text box, or optionally enter a Prompt, click "Generate text", and edit if needed.
+1. **Enter or Generate Text:** Type directly in the Text box, or optionally enter a Character description, click "Generate text", and edit if needed.
 2. **Synthesize Speech:** Click "Synthesize speech" to generate two audio outputs.
 3. **Listen & Compare:** Playback both options (A & B) to hear the differences.
 4. **Vote for Your Favorite:** Click "Vote for option A" or "Vote for option B" to choose your favorite.

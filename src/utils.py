@@ -7,7 +7,7 @@ These functions provide reusable logic to simplify code in other modules.
 Functions:
 - truncate_text: Truncates a string to a specified length with ellipses. (used for logging)
 - validate_env_var: Ensures the presence of a specific environment variable and retrieves its value.
-- validate_prompt_length: Ensures that a prompt does not exceed the specified minimum or maximum length.
+- validate_character_description_length: Ensures that a voice description does not exceed the specified minimum or maximum length.
 """
 
 # Standard Library Imports
@@ -16,6 +16,10 @@ import os
 
 # Local Application Imports
 from src.config import AUDIO_DIR, logger
+from src.constants import (
+    CHARACTER_DESCRIPTION_MIN_LENGTH,
+    CHARACTER_DESCRIPTION_MAX_LENGTH,
+)
 
 
 def truncate_text(text: str, max_length: int = 50) -> str:
@@ -80,42 +84,42 @@ def validate_env_var(var_name: str) -> str:
     return value
 
 
-def validate_prompt_length(prompt: str, max_length: int, min_length: int) -> None:
+def validate_character_description_length(character_description: str) -> None:
     """
-    Validates that a prompt is within specified minimum and maximum length limits.
+    Validates that a voice description is within specified minimum and maximum length limits.
 
     Args:
-        prompt (str): The input prompt to validate.
-        max_length (int): The maximum allowed length for the prompt.
-        min_length (int): The minimum required length for the prompt.
+        character_description (str): The input character description to validate.
 
     Raises:
-        ValueError: If the prompt is empty, too short, or exceeds max_length.
+        ValueError: If the character description is empty, too short, or exceeds max length.
 
     Example:
-        >>> validate_prompt_length("Hello world", max_length=500, min_length=5)
+        >>> validate_character_description_length("This is a character description.")
         # Passes validation
 
-        >>> validate_prompt_length("", max_length=300, min_length=10)
-        # Raises ValueError: "Prompt must be at least 10 characters long."
+        >>> validate_character_description_length("")
+        # Raises ValueError: "Voice Description must be at least 20 characters long."
     """
-    stripped_prompt = prompt.strip()
-    prompt_length = len(stripped_prompt)
+    stripped_character_description = character_description.strip()
+    character_description_length = len(stripped_character_description)
 
-    logger.debug(f"Prompt length being validated: {prompt_length} characters")
+    logger.debug(
+        f"Voice description length being validated: {character_description_length} characters"
+    )
 
-    if prompt_length < min_length:
+    if character_description_length < CHARACTER_DESCRIPTION_MIN_LENGTH:
         raise ValueError(
-            f"Your prompt is too short. Please enter at least {min_length} characters. "
-            f"(Current length: {prompt_length})"
+            f"Your character description is too short. Please enter at least {CHARACTER_DESCRIPTION_MIN_LENGTH} characters. "
+            f"(Current length: {character_description_length})"
         )
-    if prompt_length > max_length:
+    if character_description_length > CHARACTER_DESCRIPTION_MAX_LENGTH:
         raise ValueError(
-            f"Your prompt is too long. Please limit it to {max_length} characters. "
-            f"(Current length: {prompt_length})"
+            f"Your character description is too long. Please limit it to {CHARACTER_DESCRIPTION_MAX_LENGTH} characters. "
+            f"(Current length: {character_description_length})"
         )
     logger.debug(
-        f"Prompt length validation passed for prompt: {truncate_text(stripped_prompt)}"
+        f"Character description length validation passed for character_description: {truncate_text(stripped_character_description)}"
     )
 
 

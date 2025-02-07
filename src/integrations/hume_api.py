@@ -86,25 +86,29 @@ hume_config = HumeConfig()
     after=after_log(logger, logging.DEBUG),
     reraise=True,
 )
-def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
+def text_to_speech_with_hume(character_description: str, text: str) -> bytes:
     """
     Synthesizes text to speech using the Hume TTS API, processes audio data, and writes audio to a file.
 
     Args:
-        prompt (str): The original user prompt to use as the description for generating the voice.
+        character_description (str): The original user character description to use as the description for generating the voice.
         text (str): The generated text to be converted to speech.
 
     Returns:
-        str: The relative path for the file the synthesized audio was written to.
+        Tuple[str, str]: A tuple containing:
+            - generation_id (str): The generation ID returned from the Hume API.
+            - file_path (str): The relative path to the file where the synthesized audio was saved.
 
     Raises:
         HumeError: If there is an error communicating with the Hume TTS API or parsing the response.
     """
     logger.debug(
-        f"Processing TTS with Hume. Prompt length: {len(prompt)} characters. Text length: {len(text)} characters."
+        f"Processing TTS with Hume. Prompt length: {len(character_description)} characters. Text length: {len(text)} characters."
     )
 
-    request_body = {"utterances": [{"text": text, "description": prompt}]}
+    request_body = {
+        "utterances": [{"text": text, "description": character_description}]
+    }
 
     try:
         # Synthesize speech using the Hume TTS API
@@ -129,7 +133,7 @@ def text_to_speech_with_hume(prompt: str, text: str) -> bytes:
         filename = f"{generation_id}.mp3"
 
         # Write audio to file and return the relative path
-        return save_base64_audio_to_file(base64_audio, filename)
+        return generation_id, save_base64_audio_to_file(base64_audio, filename)
 
     except Exception as e:
         logger.exception(f"Error synthesizing speech with Hume: {e}")

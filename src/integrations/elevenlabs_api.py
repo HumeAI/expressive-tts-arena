@@ -76,16 +76,18 @@ elevenlabs_config = ElevenLabsConfig()
     after=after_log(logger, logging.DEBUG),
     reraise=True,
 )
-def text_to_speech_with_elevenlabs(prompt: str, text: str) -> bytes:
+def text_to_speech_with_elevenlabs(character_description: str, text: str) -> bytes:
     """
     Synthesizes text to speech using the ElevenLabs TTS API, processes audio data, and writes audio to a file.
 
     Args:
-        prompt (str): The original user prompt used as the voice description.
+        character_description (str): The original user character description used as the voice description.
         text (str): The text to be synthesized to speech.
 
     Returns:
-        str: The relative path for the file the synthesized audio was written to.
+        Tuple[None, str]: A tuple containing:
+            - generation_id (None): We do not record the generation ID for ElevenLabs, but return None for uniformity across TTS integrations
+            - file_path (str): The relative path to the file where the synthesized audio was saved.
 
     Raises:
         ElevenLabsError: If there is an error communicating with the ElevenLabs API or processing the response.
@@ -94,12 +96,10 @@ def text_to_speech_with_elevenlabs(prompt: str, text: str) -> bytes:
         f"Synthesizing speech with ElevenLabs. Text length: {len(text)} characters."
     )
 
-    request_body = {"text": text, "voice_description": prompt}
-
     try:
         # Synthesize speech using the ElevenLabs SDK
         response = elevenlabs_config.client.text_to_voice.create_previews(
-            voice_description=prompt,
+            voice_description=character_description,
             text=text,
             output_format=elevenlabs_config.output_format,
         )
@@ -117,7 +117,7 @@ def text_to_speech_with_elevenlabs(prompt: str, text: str) -> bytes:
         filename = f"{generated_voice_id}.mp3"
 
         # Write audio to file and return the relative path
-        return save_base64_audio_to_file(base64_audio, filename)
+        return None, save_base64_audio_to_file(base64_audio, filename)
 
     except Exception as e:
         logger.exception(f"Error synthesizing speech with ElevenLabs: {e}")

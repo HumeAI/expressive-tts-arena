@@ -3,8 +3,8 @@ app.py
 
 Gradio UI for interacting with the Anthropic API, Hume TTS API, and ElevenLabs TTS API.
 
-Users enter a prompt, which is processed using Claude by Anthropic to generate text.
-The text is then synthesized into speech using both Hume and ElevenLabs text-to-speech (TTS) APIs.
+Users enter a character description, which is processed using Claude by Anthropic to generate text.
+The text is then synthesized into speech using different TTS provider APIs.
 Users can compare the outputs and vote for their favorite in an interactive UI.
 """
 
@@ -19,19 +19,7 @@ import gradio as gr
 
 # Local Application Imports
 from src.config import AUDIO_DIR, logger
-from src.constants import (
-    ELEVENLABS,
-    HUME_AI,
-    OPTION_A,
-    OPTION_B,
-    PROMPT_MAX_LENGTH,
-    PROMPT_MIN_LENGTH,
-    SAMPLE_PROMPTS,
-    TROPHY_EMOJI,
-    TTS_PROVIDERS,
-    VOTE_FOR_OPTION_A,
-    VOTE_FOR_OPTION_B,
-)
+from src import constants
 from src.integrations import (
     AnthropicError,
     ElevenLabsError,
@@ -41,18 +29,18 @@ from src.integrations import (
     text_to_speech_with_hume,
 )
 from src.theme import CustomTheme
-from src.types import OptionMap
-from src.utils import validate_prompt_length
+from src.types import ComparisonType, OptionMap, VotingResults
+from src.utils import validate_character_description_length
 
 
 def generate_text(
-    prompt: str,
+    character_description: str,
 ) -> Tuple[Union[str, gr.update], gr.update]:
     """
-    Validates the prompt and generates text using Anthropic API.
+    Validates the character_description and generates text using Anthropic API.
 
     Args:
-        prompt (str): The user-provided text prompt.
+        character_description (str): The user-provided text for character description.
 
     Returns:
         Tuple containing:
@@ -63,13 +51,13 @@ def generate_text(
         gr.Error: On validation or API errors.
     """
     try:
-        validate_prompt_length(prompt, PROMPT_MAX_LENGTH, PROMPT_MIN_LENGTH)
+        validate_character_description_length(character_description)
     except ValueError as ve:
         logger.warning(f"Validation error: {ve}")
         raise gr.Error(str(ve))
 
     try:
-        generated_text = generate_text_with_claude(prompt)
+        generated_text = generate_text_with_claude(character_description)
         logger.info(f"Generated text ({len(generated_text)} characters).")
         return gr.update(value=generated_text), generated_text
     except AnthropicError as ae:
@@ -83,7 +71,7 @@ def generate_text(
 
 
 def text_to_speech(
-    prompt: str, text: str, generated_text_state: str
+    character_description: str, text: str, generated_text_state: str
 ) -> Tuple[gr.update, gr.update, dict, Union[str, None]]:
     """
     Synthesizes two text to speech outputs, loads the two audio players with the
@@ -92,7 +80,7 @@ def text_to_speech(
         - 50% chance to synthesize two Hume outputs.
 
     Args:
-        prompt (str): The original prompt.
+        character_description (str): The original character_description.
         text (str): The text to synthesize to speech.
 
     Returns:
@@ -110,41 +98,59 @@ def text_to_speech(
         raise gr.Error("Please generate or enter text to synthesize.")
 
     # Hume AI always included in comparison
-    provider_a = HUME_AI
+    provider_a = constants.HUME_AI
     # If not using generated text, then only compare Hume to Hume
-    provider_b = (
-        HUME_AI if text != generated_text_state else random.choice(TTS_PROVIDERS)
+    text_modified = text != generated_text_state
+    provider_b: constants.TTSProviderName = (
+        constants.HUME_AI if text_modified else random.choice(constants.TTS_PROVIDERS)
     )
 
     try:
         with ThreadPoolExecutor(max_workers=2) as executor:
-            future_audio_a = executor.submit(text_to_speech_with_hume, prompt, text)
+            future_audio_a = executor.submit(
+                text_to_speech_with_hume, character_description, text
+            )
 
             match provider_b:
-                case ELEVENLABS:
+                case constants.HUME_AI:
+                    comparison_type: ComparisonType = constants.HUME_TO_HUME
                     future_audio_b = executor.submit(
-                        text_to_speech_with_elevenlabs, prompt, text
+                        text_to_speech_with_hume, character_description, text
                     )
-                case HUME_AI:
+                case constants.ELEVENLABS:
+                    comparison_type: ComparisonType = constants.HUME_TO_ELEVENLABS
                     future_audio_b = executor.submit(
-                        text_to_speech_with_hume, prompt, text
+                        text_to_speech_with_elevenlabs, character_description, text
                     )
                 case _:
                     raise ValueError(f"Unsupported provider: {provider_b}")
 
-            audio_a = future_audio_a.result()
-            audio_b = future_audio_b.result()
+            generation_id_a, audio_a = future_audio_a.result()
+            generation_id_b, audio_b = future_audio_b.result()
 
-        options = [(audio_a, provider_a), (audio_b, provider_b)]
+        options = [
+            (provider_a, audio_a, generation_id_a),
+            (provider_b, audio_b, generation_id_b),
+        ]
         random.shuffle(options)
-        option_a_audio, option_b_audio = options[0][0], options[1][0]
-        options_map: OptionMap = {OPTION_A: options[0][1], OPTION_B: options[1][1]}
+        options_map: OptionMap = {
+            constants.OPTION_A: options[0][0],
+            constants.OPTION_B: options[1][0],
+        }
+        option_a_audio, option_b_audio = options[0][1], options[1][1]
+        option_a_generation_id, option_b_generation_id = options[0][2], options[1][2]
 
         return (
             gr.update(value=option_a_audio, visible=True, autoplay=True),
             gr.update(value=option_b_audio, visible=True),
             options_map,
             option_b_audio,
+            comparison_type,
+            option_a_generation_id,
+            option_b_generation_id,
+            text_modified,
+            text,
+            character_description,
         )
     except ElevenLabsError as ee:
         logger.error(f"ElevenLabsError while synthesizing speech from text: {str(ee)}")
@@ -162,7 +168,15 @@ def text_to_speech(
 
 
 def vote(
-    vote_submitted: bool, option_map: OptionMap, selected_button: str
+    vote_submitted: bool,
+    option_map: OptionMap,
+    selected_button: str,
+    comparison_type: ComparisonType,
+    option_a_generation_id: str,
+    option_b_generation_id: str,
+    text_modified: bool,
+    character_description: str,
+    text: str,
 ) -> Tuple[bool, gr.update, gr.update, gr.update]:
     """
     Handles user voting.
@@ -187,16 +201,34 @@ def vote(
     if not option_map or vote_submitted:
         return gr.skip(), gr.skip(), gr.skip(), gr.skip()
 
-    option_a_selected = selected_button == VOTE_FOR_OPTION_A
+    option_a_selected = selected_button == constants.VOTE_FOR_OPTION_A
     selected_option, other_option = (
-        (OPTION_A, OPTION_B) if option_a_selected else (OPTION_B, OPTION_A)
+        (constants.OPTION_A, constants.OPTION_B)
+        if option_a_selected
+        else (constants.OPTION_B, constants.OPTION_A)
     )
     selected_provider = option_map.get(selected_option)
     other_provider = option_map.get(other_option)
 
     # Build button labels, displaying the provider and voice name, appending the trophy emoji to the selected option.
-    selected_label = f"{selected_provider} {TROPHY_EMOJI}"
+    selected_label = f"{selected_provider} {constants.TROPHY_EMOJI}"
     other_label = f"{other_provider}"
+
+    # Report voting results to be persisted to results DB
+    voting_results: VotingResults = {
+        "comparison_type": comparison_type,
+        "winning_provider": selected_provider,
+        "winning_option": selected_option,
+        "option_a_provider": option_map.get(constants.OPTION_A),
+        "option_b_provider": option_map.get(constants.OPTION_B),
+        "option_a_generation_id": option_a_generation_id,
+        "option_b_generation_id": option_b_generation_id,
+        "character_description": character_description,
+        "text": text,
+        "is_custom_text": text_modified,
+    }
+    # TODO: Currently logging the results until we hook the API for writing results to DB
+    logger.info("Voting results:\n%s", json.dumps(voting_results, indent=4))
 
     return (
         True,
@@ -231,8 +263,8 @@ def reset_ui() -> Tuple[gr.update, gr.update, gr.update, gr.update, None, None, 
     return (
         gr.update(value=None),
         gr.update(value=None, autoplay=False),
-        gr.update(value=VOTE_FOR_OPTION_A, variant="secondary"),
-        gr.update(value=VOTE_FOR_OPTION_B, variant="secondary"),
+        gr.update(value=constants.VOTE_FOR_OPTION_A, variant="secondary"),
+        gr.update(value=constants.VOTE_FOR_OPTION_B, variant="secondary"),
         None,
         None,
         False,
@@ -240,34 +272,34 @@ def reset_ui() -> Tuple[gr.update, gr.update, gr.update, gr.update, None, None, 
 
 
 def build_input_section() -> Tuple[gr.Markdown, gr.Dropdown, gr.Textbox, gr.Button]:
-    """Builds the input section including instructions, sample prompt dropdown, prompt input, and generate button"""
+    """Builds the input section including instructions, sample character description dropdown, character description input, and generate button"""
     instructions = gr.Markdown(
         """
-        1. **Enter or Generate Text:** Type directly in the text box—or enter a prompt and click “Generate Text” to auto-populate. Edit as needed.
+        1. **Enter or Generate Text:** Type directly in the text box—or enter a character description and click “Generate Text” to auto-populate. Edit as needed.
         2. **Synthesize Speech:** Click “Synthesize Speech” to generate two audio outputs.
         3. **Listen & Compare:** Play back both audio options to hear the differences.
         4. **Vote for Your Favorite:** Click “Vote for Option A” or “Vote for Option B” to cast your vote.
         """
     )
-    sample_prompt_dropdown = gr.Dropdown(
-        choices=list(SAMPLE_PROMPTS.keys()),
-        label="Choose a sample prompt (or enter your own)",
+    sample_character_description_dropdown = gr.Dropdown(
+        choices=list(constants.SAMPLE_CHARACTER_DESCRIPTIONS.keys()),
+        label="Choose a sample character description (or enter your own)",
         value=None,
         interactive=True,
     )
-    prompt_input = gr.Textbox(
-        label="Prompt",
-        placeholder="Enter your prompt...",
+    character_description_input = gr.Textbox(
+        label="Character Description",
+        placeholder="Enter your character description to be used to generate text and a novel voice...",
         lines=3,
         max_lines=8,
-        max_length=PROMPT_MAX_LENGTH,
+        max_length=constants.CHARACTER_DESCRIPTION_MAX_LENGTH,
         show_copy_button=True,
     )
     generate_text_button = gr.Button("Generate text", variant="secondary")
     return (
         instructions,
-        sample_prompt_dropdown,
-        prompt_input,
+        sample_character_description_dropdown,
+        character_description_input,
         generate_text_button,
     )
 
@@ -283,20 +315,20 @@ def build_output_section() -> (
         autoscroll=False,
         lines=3,
         max_lines=8,
-        max_length=PROMPT_MAX_LENGTH,
+        max_length=constants.CHARACTER_DESCRIPTION_MAX_LENGTH,
         show_copy_button=True,
     )
     synthesize_speech_button = gr.Button("Synthesize speech", variant="primary")
     with gr.Row(equal_height=True):
         option_a_audio_player = gr.Audio(
-            label=OPTION_A, type="filepath", interactive=False
+            label=constants.OPTION_A, type="filepath", interactive=False
         )
         option_b_audio_player = gr.Audio(
-            label=OPTION_B, type="filepath", interactive=False
+            label=constants.OPTION_B, type="filepath", interactive=False
         )
     with gr.Row(equal_height=True):
-        vote_button_a = gr.Button(VOTE_FOR_OPTION_A, interactive=False)
-        vote_button_b = gr.Button(VOTE_FOR_OPTION_B, interactive=False)
+        vote_button_a = gr.Button(constants.VOTE_FOR_OPTION_A, interactive=False)
+        vote_button_b = gr.Button(constants.VOTE_FOR_OPTION_B, interactive=False)
     return (
         text_input,
         synthesize_speech_button,
@@ -325,9 +357,12 @@ def build_gradio_interface() -> gr.Blocks:
         gr.Markdown("# Expressive TTS Arena")
 
         # Build generate text section
-        (instructions, sample_prompt_dropdown, prompt_input, generate_text_button) = (
-            build_input_section()
-        )
+        (
+            instructions,
+            sample_character_description_dropdown,
+            character_description_input,
+            generate_text_button,
+        ) = build_input_section()
 
         # Build synthesize speech section
         (
@@ -341,6 +376,18 @@ def build_gradio_interface() -> gr.Blocks:
 
         # --- UI state components ---
 
+        # Track text used for speech synthesis
+        text_state = gr.State("")
+        # Track character description used for text and voice generation
+        character_description_state = gr.State("")
+        # Track comparison type (which set of providers are being compared)
+        comparison_type_state = gr.State()
+        # Track generation ID for Option A
+        option_a_generation_id_state = gr.State()
+        # Track generation ID for Option B
+        option_b_generation_id_state = gr.State()
+        # Track whether text that was used was generated or modified/custom
+        text_modified_state = gr.State()
         # Track generated text state
         generated_text_state = gr.State("")
         # Track generated audio for option B for playing automatically after option 1 audio finishes
@@ -352,11 +399,11 @@ def build_gradio_interface() -> gr.Blocks:
 
         # --- Register event handlers ---
 
-        # When a sample prompt is chosen, update the prompt textbox
-        sample_prompt_dropdown.change(
-            fn=lambda choice: SAMPLE_PROMPTS.get(choice, ""),
-            inputs=[sample_prompt_dropdown],
-            outputs=[prompt_input],
+        # When a sample character description is chosen, update the character description textbox
+        sample_character_description_dropdown.change(
+            fn=lambda choice: constants.SAMPLE_CHARACTER_DESCRIPTIONS.get(choice, ""),
+            inputs=[sample_character_description_dropdown],
+            outputs=[character_description_input],
         )
 
         # Generate text button click handler chain:
@@ -369,7 +416,7 @@ def build_gradio_interface() -> gr.Blocks:
             outputs=[generate_text_button],
         ).then(
             fn=generate_text,
-            inputs=[prompt_input],
+            inputs=[character_description_input],
             outputs=[text_input, generated_text_state],
         ).then(
             fn=lambda: gr.update(interactive=True),
@@ -404,12 +451,18 @@ def build_gradio_interface() -> gr.Blocks:
             ],
         ).then(
             fn=text_to_speech,
-            inputs=[prompt_input, text_input, generated_text_state],
+            inputs=[character_description_input, text_input, generated_text_state],
             outputs=[
                 option_a_audio_player,
                 option_b_audio_player,
                 option_map_state,
                 option_b_audio_state,
+                comparison_type_state,
+                option_a_generation_id_state,
+                option_b_generation_id_state,
+                text_modified_state,
+                text_state,
+                character_description_state,
             ],
         ).then(
             fn=lambda: (
@@ -430,6 +483,12 @@ def build_gradio_interface() -> gr.Blocks:
                 vote_button_a,
                 vote_button_b,
                 synthesize_speech_button,
+                comparison_type_state,
+                option_a_generation_id_state,
+                option_b_generation_id_state,
+                text_modified_state,
+                character_description_state,
+                text_state,
             ],
         )
         vote_button_b.click(

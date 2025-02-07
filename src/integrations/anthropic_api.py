@@ -98,6 +98,25 @@ Remember: A shorter, complete response is ALWAYS better than a longer, truncated
         """
         return Anthropic(api_key=self.api_key)
 
+    def build_expressive_prompt(self, character_description: str) -> str:
+        """
+        Constructs and returns a prompt based solely on the provided voice description.
+        The returned prompt is intended to instruct Claude to generate expressive text from a character,
+        capturing the character's personality and emotional nuance, without including the system prompt.
+
+        Args:
+            character_description (str): A description of the character's voice and persona.
+
+        Returns:
+            str: The prompt to be passed to the Anthropic API.
+        """
+        prompt = (
+            f"Character Description: {character_description}\n\n"
+            "Based on the above character description, please generate a line of dialogue that captures the character's unique personality, emotional depth, and distinctive tone. "
+            "The response should sound like something the character would naturally say, reflecting their background and emotional state, and be fully developed for text-to-speech synthesis."
+        )
+        return prompt
+
 
 class AnthropicError(Exception):
     """Custom exception for errors related to the Anthropic API."""
@@ -118,12 +137,12 @@ anthropic_config = AnthropicConfig()
     after=after_log(logger, logging.DEBUG),
     reraise=True,
 )
-def generate_text_with_claude(prompt: str) -> str:
+def generate_text_with_claude(character_description: str) -> str:
     """
     Generates text using Claude (Anthropic LLM) via the Anthropic SDK.
 
     Args:
-        prompt (str): The input prompt for Claude.
+        character_description (str): The input character description used to assist with generating text with Claude.
 
     Returns:
         str: The generated text.
@@ -131,8 +150,10 @@ def generate_text_with_claude(prompt: str) -> str:
     Raises:
         AnthropicError: If there is an error communicating with the Anthropic API.
     """
+    # Build prompt for claude with character description
+    prompt = anthropic_config.build_expressive_prompt(character_description)
     logger.debug(
-        f"Generating text with Claude. Prompt length: {len(prompt)} characters."
+        f"Generating text with Claude. Character description length: {len(prompt)} characters."
     )
 
     response = None
