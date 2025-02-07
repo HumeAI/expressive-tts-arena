@@ -478,12 +478,10 @@ def build_gradio_interface() -> gr.Blocks:
         # Vote button click event handlers
         vote_button_a.click(
             fn=vote,
-            inputs=[vote_submitted_state, option_map_state, vote_button_a],
-            outputs=[
+            inputs=[
                 vote_submitted_state,
+                option_map_state,
                 vote_button_a,
-                vote_button_b,
-                synthesize_speech_button,
                 comparison_type_state,
                 option_a_generation_id_state,
                 option_b_generation_id_state,
@@ -491,10 +489,26 @@ def build_gradio_interface() -> gr.Blocks:
                 character_description_state,
                 text_state,
             ],
+            outputs=[
+                vote_submitted_state,
+                vote_button_a,
+                vote_button_b,
+                synthesize_speech_button,
+            ],
         )
         vote_button_b.click(
             fn=vote,
-            inputs=[vote_submitted_state, option_map_state, vote_button_b],
+            inputs=[
+                vote_submitted_state,
+                option_map_state,
+                vote_button_a,
+                comparison_type_state,
+                option_a_generation_id_state,
+                option_b_generation_id_state,
+                text_modified_state,
+                character_description_state,
+                text_state,
+            ],
             outputs=[
                 vote_submitted_state,
                 vote_button_a,
