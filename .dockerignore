@@ -5,8 +5,8 @@ __pycache__/
 *.pyd
 
 # Virtual environment
+.venv
 venv/
-gradio-env/
 .python-version
 
 # Distribution / Packaging
