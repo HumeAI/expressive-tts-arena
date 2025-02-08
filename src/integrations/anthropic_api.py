@@ -24,7 +24,7 @@ import logging
 from typing import List, Optional, Union
 
 # Third-Party Library Imports
-from anthropic import Anthropic
+from anthropic import APIError, Anthropic
 from anthropic.types import Message, ModelParam, TextBlock
 from tenacity import retry, stop_after_attempt, wait_fixed, before_log, after_log
 
@@ -124,6 +124,14 @@ class AnthropicError(Exception):
     def __init__(self, message: str, original_exception: Optional[Exception] = None):
         super().__init__(message)
         self.original_exception = original_exception
+        self.message = message
+
+
+class UnretryableAnthropicError(AnthropicError):
+    """Custom exception for errors related to the Anthropic TTS API that should not be retried."""
+
+    def __init__(self, message: str, original_exception: Optional[Exception] = None):
+        super().__init__(message, original_exception)
 
 
 # Initialize the Anthropic client
@@ -190,13 +198,14 @@ def generate_text_with_claude(character_description: str) -> str:
         return str(blocks or "No content generated.")
 
     except Exception as e:
-        logger.exception(f"Error generating text with the Anthropic API: {e}")
+        logger.exception(f"Error generating text with the Anthropic API: {str(e)}")
+        if isinstance(e, APIError):
+            if e.status_code >= 400 and e.status_code < 500:
+                raise UnretryableAnthropicError(
+                    message=f"Failed to generate text with Anthropic: \"{e.body['error']['message']}\"",
+                    original_exception=e,
+                ) from e
         raise AnthropicError(
-            message=(
-                f"Error generating text with Anthropic: {e}. "
-                f'HTTP Status: {getattr(response, "status", "N/A")}. '
-                f"Prompt (truncated): {truncate_text(prompt)}. "
-                f"Model: {anthropic_config.model}, Max tokens: {anthropic_config.max_tokens}"
-            ),
+            message=("Failed to generate text with Anthropic: {e}. "),
             original_exception=e,
-        )
+        ) from e

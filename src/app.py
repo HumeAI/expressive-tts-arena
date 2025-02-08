@@ -64,7 +64,7 @@ def generate_text(
     except AnthropicError as ae:
         logger.error(f"AnthropicError while generating text: {str(ae)}")
         raise gr.Error(
-            "There was an issue communicating with the Anthropic API. Please try again later."
+            f"There was an issue communicating with the Anthropic API. {ae.message} Please try again later."
         )
     except Exception as e:
         logger.error(f"Unexpected error while generating text: {e}")

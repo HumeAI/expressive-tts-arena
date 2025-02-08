@@ -129,6 +129,7 @@ def text_to_speech_with_elevenlabs(character_description: str, text: str) -> byt
         return None, save_base64_audio_to_file(base64_audio, filename)
 
     except Exception as e:
+        logger.exception(f"Error generating text with the ElevenLabs API: {str(e)}")
         if isinstance(e, ApiError):
             if e.status_code >= 400 and e.status_code < 500:
                 raise UnretryableElevenLabsError(
