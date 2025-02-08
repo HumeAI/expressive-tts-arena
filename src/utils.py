@@ -13,13 +13,13 @@ Functions:
 # Standard Library Imports
 import base64
 import os
+import random
+from typing import Tuple
 
 # Local Application Imports
+from src import constants
 from src.config import AUDIO_DIR, logger
-from src.constants import (
-    CHARACTER_DESCRIPTION_MIN_LENGTH,
-    CHARACTER_DESCRIPTION_MAX_LENGTH,
-)
+from src.types import ComparisonType, Option, OptionMap, TTSProviderName
 
 
 def truncate_text(text: str, max_length: int = 50) -> str:
@@ -108,14 +108,14 @@ def validate_character_description_length(character_description: str) -> None:
         f"Voice description length being validated: {character_description_length} characters"
     )
 
-    if character_description_length < CHARACTER_DESCRIPTION_MIN_LENGTH:
+    if character_description_length < constants.CHARACTER_DESCRIPTION_MIN_LENGTH:
         raise ValueError(
-            f"Your character description is too short. Please enter at least {CHARACTER_DESCRIPTION_MIN_LENGTH} characters. "
+            f"Your character description is too short. Please enter at least {constants.CHARACTER_DESCRIPTION_MIN_LENGTH} characters. "
             f"(Current length: {character_description_length})"
         )
-    if character_description_length > CHARACTER_DESCRIPTION_MAX_LENGTH:
+    if character_description_length > constants.CHARACTER_DESCRIPTION_MAX_LENGTH:
         raise ValueError(
-            f"Your character description is too long. Please limit it to {CHARACTER_DESCRIPTION_MAX_LENGTH} characters. "
+            f"Your character description is too long. Please limit it to {constants.CHARACTER_DESCRIPTION_MAX_LENGTH} characters. "
             f"(Current length: {character_description_length})"
         )
     logger.debug(
@@ -162,3 +162,102 @@ def save_base64_audio_to_file(base64_audio: str, filename: str) -> str:
     logger.debug(f"Audio file relative path: {relative_path}")
 
     return relative_path
+
+
+def choose_providers(
+    text_modified: bool,
+) -> Tuple[ComparisonType, TTSProviderName, TTSProviderName]:
+    """
+    Select two TTS providers based on whether the text has been modified.
+
+    The first provider is always set to "Hume AI". For the second provider, the function
+    selects "Hume AI" if the text has been modified; otherwise, it randomly chooses one from
+    the TTS_PROVIDERS list.
+
+    Args:
+        text_modified (bool): A flag indicating whether the text has been modified.
+            - If True, both providers will be "Hume AI".
+            - If False, the second provider is randomly selected from TTS_PROVIDERS.
+
+    Returns:
+        Tuple[TTSProviderName, TTSProviderName]: A tuple containing two TTS provider names,
+        where the first is always "Hume AI" and the second is determined by the text_modified
+        flag and random selection.
+    """
+    provider_a = constants.HUME_AI
+    provider_b = (
+        constants.HUME_AI if text_modified else random.choice(constants.TTS_PROVIDERS)
+    )
+
+    match provider_b:
+        case constants.HUME_AI:
+            comparison_type = constants.HUME_TO_HUME
+        case constants.ELEVENLABS:
+            comparison_type = constants.HUME_TO_ELEVENLABS
+
+    return comparison_type, provider_a, provider_b
+
+
+def create_shuffled_tts_options(
+    provider_a: TTSProviderName,
+    audio_a: str,
+    generation_id_a: str,
+    provider_b: TTSProviderName,
+    audio_b: str,
+    generation_id_b: str,
+) -> Tuple[str, str, str, str, OptionMap]:
+    """
+    Create and shuffle TTS generation options.
+
+    This function creates two Option instances from the provided TTS details, shuffles them,
+    and then extracts the audio file paths and generation IDs from the shuffled options.
+    It also returns a mapping from option constants to the corresponding TTS providers.
+
+    Args:
+        provider_a (TTSProviderName): The TTS provider for the first generation.
+        audio_a (str): The relative file path to the audio file for the first generation.
+        generation_id_a (str): The generation ID for the first generation.
+        provider_b (TTSProviderName): The TTS provider for the second generation.
+        audio_b (str): The relative file path to the audio file for the second generation.
+        generation_id_b (str): The generation ID for the second generation.
+
+    Returns:
+        Tuple[str, str, str, str, OptionMap]:
+            A tuple containing:
+            - option_a_audio (str): Audio file path for the first shuffled option.
+            - option_b_audio (str): Audio file path for the second shuffled option.
+            - option_a_generation_id (str): Generation ID for the first shuffled option.
+            - option_b_generation_id (str): Generation ID for the second shuffled option.
+            - options_map (OptionMap): Mapping from option constants to their TTS providers.
+    """
+    # Create a list of Option instances for the available providers.
+    options = [
+        Option(provider=provider_a, audio=audio_a, generation_id=generation_id_a),
+        Option(provider=provider_b, audio=audio_b, generation_id=generation_id_b),
+    ]
+
+    # Randomly shuffle the list of options.
+    random.shuffle(options)
+
+    # Unpack the two options.
+    option_a, option_b = options
+
+    # Extract audio file paths and generation IDs.
+    option_a_audio = option_a.audio
+    option_b_audio = option_b.audio
+    option_a_generation_id = option_a.generation_id
+    option_b_generation_id = option_b.generation_id
+
+    # Build a mapping from option constants to the corresponding providers.
+    options_map: OptionMap = {
+        constants.OPTION_A: option_a.provider,
+        constants.OPTION_B: option_b.provider,
+    }
+
+    return (
+        option_a_audio,
+        option_b_audio,
+        option_a_generation_id,
+        option_b_generation_id,
+        options_map,
+    )

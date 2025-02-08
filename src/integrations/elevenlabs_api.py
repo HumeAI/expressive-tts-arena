@@ -23,7 +23,7 @@ Functions:
 from dataclasses import dataclass
 import logging
 import random
-from typing import Optional
+from typing import Optional, Union
 
 # Third-Party Library Imports
 from elevenlabs import ElevenLabs, TextToVoiceCreatePreviewsRequestOutputFormat
@@ -85,18 +85,20 @@ elevenlabs_config = ElevenLabsConfig()
     after=after_log(logger, logging.DEBUG),
     reraise=True,
 )
-def text_to_speech_with_elevenlabs(character_description: str, text: str) -> bytes:
+def text_to_speech_with_elevenlabs(
+    character_description: str, text: str
+) -> Tuple[None, str]:
     """
-    Synthesizes text to speech using the ElevenLabs TTS API, processes audio data, and writes audio to a file.
+    Synthesizes text to speech using the ElevenLabs TTS API, processes the audio data, and writes it to a file.
 
     Args:
-        character_description (str): The original user character description used as the voice description.
-        text (str): The text to be synthesized to speech.
+        character_description (str): The character description used as the voice description.
+        text (str): The text to be synthesized into speech.
 
     Returns:
         Tuple[None, str]: A tuple containing:
             - generation_id (None): We do not record the generation ID for ElevenLabs, but return None for uniformity across TTS integrations
-            - file_path (str): The relative path to the file where the synthesized audio was saved.
+            - file_path (str): The relative file path to the audio file where the synthesized speech was saved.
 
     Raises:
         ElevenLabsError: If there is an error communicating with the ElevenLabs API or processing the response.
@@ -124,9 +126,10 @@ def text_to_speech_with_elevenlabs(character_description: str, text: str) -> byt
         generated_voice_id = preview.generated_voice_id
         base64_audio = preview.audio_base_64
         filename = f"{generated_voice_id}.mp3"
+        audio_file_path = save_base64_audio_to_file(base64_audio, filename)
 
         # Write audio to file and return the relative path
-        return None, save_base64_audio_to_file(base64_audio, filename)
+        return None, audio_file_path
 
     except Exception as e:
         if isinstance(e, ApiError):

@@ -5,7 +5,7 @@ This module defines custom types for the application.
 """
 
 # Standard Library Imports
-from typing import Dict, Literal, TypedDict
+from typing import Dict, Literal, NamedTuple, TypedDict
 
 
 TTSProviderName = Literal["Hume AI", "ElevenLabs"]
@@ -22,6 +22,25 @@ OptionKey = Literal["Option A", "Option B"]
 
 OptionMap = Dict[OptionKey, TTSProviderName]
 """OptionMap defines the structure of the options mapping, where each key is an OptionKey and the value is a TTS provider."""
+
+
+class Option(NamedTuple):
+    """
+    Represents a text-to-speech generation option.
+
+    This type encapsulates the details for a generated text-to-speech (TTS) option,
+    including the provider that produced the audio, the relative file path to the generated
+    audio file, and the unique generation identifier associated with the TTS output.
+
+    Attributes:
+        provider (TTSProviderName): The TTS provider that generated the audio.
+        audio (str): The relative file path to the audio file produced by the TTS provider.
+        generation_id (str): The unique identifier for this TTS generation.
+    """
+
+    provider: TTSProviderName
+    audio: str
+    generation_id: str
 
 
 class VotingResults(TypedDict):

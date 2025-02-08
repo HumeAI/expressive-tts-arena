@@ -30,8 +30,12 @@ from src.integrations import (
     text_to_speech_with_hume,
 )
 from src.theme import CustomTheme
-from src.types import ComparisonType, OptionMap, VotingResults
-from src.utils import validate_character_description_length
+from src.types import ComparisonType, Option, OptionMap, VotingResults
+from src.utils import (
+    choose_providers,
+    create_shuffled_tts_options,
+    validate_character_description_length,
+)
 
 
 def generate_text(
@@ -73,73 +77,85 @@ def generate_text(
 
 def text_to_speech(
     character_description: str, text: str, generated_text_state: str
-) -> Tuple[gr.update, gr.update, dict, Union[str, None]]:
+) -> Tuple[gr.update, gr.update, dict, str, ComparisonType, str, str, bool, str, str]:
     """
-    Synthesizes two text to speech outputs, loads the two audio players with the
-    output audio, and updates related UI state components.
-        - 50% chance to synthesize one Hume and one Elevenlabs output.
-        - 50% chance to synthesize two Hume outputs.
+    Synthesizes two text-to-speech outputs, updates UI state components, and returns additional TTS metadata.
+
+    This function generates TTS outputs using different providers based on the input text and its modification
+    state. Depending on the selected providers, it may:
+      - Synthesize one Hume and one ElevenLabs output (50% chance), or
+      - Synthesize two Hume outputs (50% chance).
+
+    The outputs are processed and shuffled, and the corresponding UI components for two audio players are updated.
+    Additional metadata such as the generation IDs, comparison type, and state information are also returned.
 
     Args:
-        character_description (str): The original character_description.
-        text (str): The text to synthesize to speech.
+        character_description (str): The description of the character used for generating the voice.
+        text (str): The text content to be synthesized into speech.
+        generated_text_state (str): The previously generated text state, used to determine if the text has been modified.
 
     Returns:
-        A tuple of:
-         - Update for first audio player (with autoplay)
-         - Update for second audio player
-         - A dictionary mapping options to providers
-         - The raw audio value for option B
+        Tuple containing:
+            - gr.update: Update for the first audio player (with autoplay enabled).
+            - gr.update: Update for the second audio player.
+            - dict: A mapping of option constants to their corresponding TTS providers.
+            - str: The raw audio value (relative file path) for option B.
+            - ComparisonType: The comparison type between the selected TTS providers.
+            - str: Generation ID for option A.
+            - str: Generation ID for option B.
+            - bool: Flag indicating whether the text was modified.
+            - str: The original text that was synthesized.
+            - str: The original character description.
 
     Raises:
-        gr.Error: On API or unexpected errors.
+        gr.Error: If any API or unexpected errors occur during the TTS synthesis process.
     """
     if not text:
         logger.warning("Skipping text-to-speech due to empty text.")
         raise gr.Error("Please generate or enter text to synthesize.")
 
-    # Hume AI always included in comparison
-    provider_a = constants.HUME_AI
-    # If not using generated text, then only compare Hume to Hume
+    # Select 2 TTS providers based on whether the text has been modified.
     text_modified = text != generated_text_state
-    provider_b: constants.TTSProviderName = (
-        constants.HUME_AI if text_modified else random.choice(constants.TTS_PROVIDERS)
-    )
+    comparison_type, provider_a, provider_b = choose_providers(text_modified)
 
     try:
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            future_audio_a = executor.submit(
-                text_to_speech_with_hume, character_description, text
-            )
+        if provider_b == constants.HUME_AI:
+            # If generating 2 Hume outputs, do so in a single API call
+            (
+                generation_id_a,
+                audio_a,
+                generation_id_b,
+                audio_b,
+            ) = text_to_speech_with_hume(character_description, text, 2)
+        else:
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                # Generate a single Hume output
+                future_audio_a = executor.submit(
+                    text_to_speech_with_hume, character_description, text
+                )
+                # Generate a second TTS output from the second provider
+                match provider_b:
+                    case constants.ELEVENLABS:
+                        future_audio_b = executor.submit(
+                            text_to_speech_with_elevenlabs, character_description, text
+                        )
+                    case _:
+                        # Additional TTS Providers can be added here
+                        raise ValueError(f"Unsupported provider: {provider_b}")
 
-            match provider_b:
-                case constants.HUME_AI:
-                    comparison_type: ComparisonType = constants.HUME_TO_HUME
-                    future_audio_b = executor.submit(
-                        text_to_speech_with_hume, character_description, text
-                    )
-                case constants.ELEVENLABS:
-                    comparison_type: ComparisonType = constants.HUME_TO_ELEVENLABS
-                    future_audio_b = executor.submit(
-                        text_to_speech_with_elevenlabs, character_description, text
-                    )
-                case _:
-                    raise ValueError(f"Unsupported provider: {provider_b}")
+                generation_id_a, audio_a = future_audio_a.result()
+                generation_id_b, audio_b = future_audio_b.result()
 
-            generation_id_a, audio_a = future_audio_a.result()
-            generation_id_b, audio_b = future_audio_b.result()
-
-        options = [
-            (provider_a, audio_a, generation_id_a),
-            (provider_b, audio_b, generation_id_b),
-        ]
-        random.shuffle(options)
-        options_map: OptionMap = {
-            constants.OPTION_A: options[0][0],
-            constants.OPTION_B: options[1][0],
-        }
-        option_a_audio, option_b_audio = options[0][1], options[1][1]
-        option_a_generation_id, option_b_generation_id = options[0][2], options[1][2]
+        # Shuffle options so that placement of options in the UI will always be random
+        (
+            option_a_audio,
+            option_b_audio,
+            option_a_generation_id,
+            option_b_generation_id,
+            options_map,
+        ) = create_shuffled_tts_options(
+            provider_a, audio_a, generation_id_a, provider_b, audio_b, generation_id_b
+        )
 
         return (
             gr.update(value=option_a_audio, visible=True, autoplay=True),
