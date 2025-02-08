@@ -544,4 +544,4 @@ def build_gradio_interface() -> gr.Blocks:
 if __name__ == "__main__":
     logger.info("Launching TTS Arena Gradio app...")
     demo = build_gradio_interface()
-    demo.launch(allowed_paths=[AUDIO_DIR])
+    demo.launch(server_name="0.0.0.0", allowed_paths=[AUDIO_DIR])

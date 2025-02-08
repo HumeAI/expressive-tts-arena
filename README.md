@@ -7,9 +7,11 @@
 </div>
 
 ## Overview
+
 Expressive TTS Arena is an open-source web application that enables users to compare text-to-speech outputs with a focus on expressiveness rather than just audio quality. Built with [Gradio](https://www.gradio.app/), it provides a seamless interface for generating and comparing speech synthesis from different providers, including Hume AI and ElevenLabs.
 
 ## Features
+
 - Text generation using Claude 3.5 Sonnet by Anthropic for creating expressive content.
 - Direct text input or AI-assisted text generation.
 - Comparative analysis of different TTS outputs.
@@ -24,6 +26,7 @@ Expressive TTS Arena is an open-source web application that enables users to com
 - For a complete list of dependencies, see [requirements.txt](./requirements.txt).
 
 ## Project Structure
+
 ```
 Expressive TTS Arena/
 ├── src/
@@ -85,4 +88,5 @@ Expressive TTS Arena/
 4. **Vote for Your Favorite:** Click "Vote for option A" or "Vote for option B" to choose your favorite.
 
 ## License
+
 This project is licensed under the MIT License - see the [LICENSE.txt](LICENSE.txt) file for details.
