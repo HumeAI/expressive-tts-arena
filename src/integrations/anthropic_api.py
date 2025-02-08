@@ -128,7 +128,7 @@ class AnthropicError(Exception):
 
 
 class UnretryableAnthropicError(AnthropicError):
-    """Custom exception for errors related to the Anthropic TTS API that should not be retried."""
+    """Custom exception for errors related to the Anthropic API that should not be retried."""
 
     def __init__(self, message: str, original_exception: Optional[Exception] = None):
         super().__init__(message, original_exception)
@@ -198,14 +198,13 @@ def generate_text_with_claude(character_description: str) -> str:
         return str(blocks or "No content generated.")
 
     except Exception as e:
-        logger.exception(f"Error generating text with the Anthropic API: {str(e)}")
         if isinstance(e, APIError):
             if e.status_code >= 400 and e.status_code < 500:
                 raise UnretryableAnthropicError(
-                    message=f"Failed to generate text with Anthropic: \"{e.body['error']['message']}\"",
+                    message=f"\"{e.body['error']['message']}\"",
                     original_exception=e,
                 ) from e
         raise AnthropicError(
-            message=("Failed to generate text with Anthropic: {e}. "),
+            message=(f"{e.message}"),
             original_exception=e,
         ) from e

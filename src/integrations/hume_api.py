@@ -27,6 +27,7 @@ from typing import Literal, Optional
 
 # Third-Party Library Imports
 import requests
+from requests.exceptions import HTTPError
 from tenacity import retry, stop_after_attempt, wait_fixed, before_log, after_log
 
 # Local Application Imports
@@ -69,6 +70,15 @@ class HumeConfig:
 
 class HumeError(Exception):
     """Custom exception for errors related to the Hume TTS API."""
+
+    def __init__(self, message: str, original_exception: Optional[Exception] = None):
+        super().__init__(message)
+        self.original_exception = original_exception
+        self.message = message
+
+
+class UnretryableHumeError(HumeError):
+    """Custom exception for errors related to the Hume TTS API that should not be retried."""
 
     def __init__(self, message: str, original_exception: Optional[Exception] = None):
         super().__init__(message)
@@ -136,8 +146,13 @@ def text_to_speech_with_hume(character_description: str, text: str) -> bytes:
         return generation_id, save_base64_audio_to_file(base64_audio, filename)
 
     except Exception as e:
-        logger.exception(f"Error synthesizing speech with Hume: {e}")
+        if isinstance(e, HTTPError):
+            if e.response.status_code >= 400 and e.response.status_code < 500:
+                raise UnretryableHumeError(
+                    message=f'"{e.response.text}"',
+                    original_exception=e,
+                ) from e
         raise HumeError(
-            message=f"Failed to synthesize speech with Hume: {e}",
+            message=f"{e}",
             original_exception=e,
         ) from e

@@ -64,11 +64,11 @@ def generate_text(
     except AnthropicError as ae:
         logger.error(f"AnthropicError while generating text: {str(ae)}")
         raise gr.Error(
-            f"There was an issue communicating with the Anthropic API. {ae.message} Please try again later."
+            f'There was an issue communicating with the Anthropic API: "{ae.message}"'
         )
     except Exception as e:
         logger.error(f"Unexpected error while generating text: {e}")
-        raise gr.Error("Failed to generate text. Please try again.")
+        raise gr.Error("Failed to generate text. Please try again later.")
 
 
 def text_to_speech(
@@ -156,12 +156,12 @@ def text_to_speech(
     except ElevenLabsError as ee:
         logger.error(f"ElevenLabsError while synthesizing speech from text: {str(ee)}")
         raise gr.Error(
-            f"There was an issue communicating with the Elevenlabs API. {ee.message} Please try again later."
+            f'There was an issue communicating with the Elevenlabs API: "{ee.message}"'
         )
     except HumeError as he:
         logger.error(f"HumeError while synthesizing speech from text: {str(he)}")
         raise gr.Error(
-            "There was an issue communicating with the Hume API. Please try again later."
+            f'There was an issue communicating with the Hume API: "{he.message}"'
         )
     except Exception as e:
         logger.error(f"Unexpected error during TTS generation: {e}")
