@@ -14,6 +14,7 @@ Functions:
 import base64
 import os
 import random
+import time
 from typing import Tuple
 
 # Local Application Imports
@@ -123,12 +124,46 @@ def validate_character_description_length(character_description: str) -> None:
     )
 
 
+def delete_files_older_than(directory: str, minutes: int = 30) -> None:
+    """
+    Delete all files in the specified directory that are older than a given number of minutes.
+
+    This function checks each file in the given directory and removes it if its last modification
+    time is older than the specified threshold. By default, the threshold is set to 30 minutes.
+
+    Args:
+        directory (str): The path to the directory where files will be checked and possibly deleted.
+        minutes (int, optional): The age threshold in minutes. Files older than this will be deleted.
+                                 Defaults to 30 minutes.
+
+    Returns: None
+    """
+    # Get the current time in seconds since the epoch.
+    now = time.time()
+    # Convert the minutes threshold to seconds.
+    cutoff = now - (minutes * 60)
+
+    # Iterate over all files in the directory.
+    for filename in os.listdir(directory):
+        file_path = os.path.join(directory, filename)
+        file_mod_time = os.path.getmtime(file_path)
+        # If the file's modification time is older than the cutoff, delete it.
+        if file_mod_time < cutoff:
+            try:
+                os.remove(file_path)
+                print(f"Deleted: {file_path}")
+            except Exception as e:
+                print(f"Error deleting {file_path}: {e}")
+
+
 def save_base64_audio_to_file(base64_audio: str, filename: str) -> str:
     """
     Decode a base64-encoded audio string and write the resulting binary data to a file
-    within the preconfigured AUDIO_DIR directory. This function verifies the file was created,
-    logs the absolute and relative file paths, and returns a path relative to the current
-    working directory (which is what Gradio requires to serve static files).
+    within the preconfigured AUDIO_DIR directory. Prior to writing the bytes to an audio
+    file all files within the directory which are more than 30 minutes old are deleted.
+    This function verifies the file was created, logs the absolute and relative file
+    paths, and returns a path relative to the current working directory (which is what
+    Gradio requires to serve static files).
 
     Args:
         base64_audio (str): The base64-encoded string representing the audio data.
@@ -147,6 +182,10 @@ def save_base64_audio_to_file(base64_audio: str, filename: str) -> str:
 
     # Construct the full absolute file path within the AUDIO_DIR directory.
     file_path = os.path.join(AUDIO_DIR, filename)
+
+    # Delete all audio files older than 30 minutes before writing new audio file.
+    num_minutes = 30
+    delete_files_older_than(AUDIO_DIR, num_minutes)
 
     # Write the binary audio data to the file.
     with open(file_path, "wb") as audio_file:

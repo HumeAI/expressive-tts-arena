@@ -23,7 +23,7 @@ Functions:
 from dataclasses import dataclass
 import logging
 import random
-from typing import Optional, Union
+from typing import Optional, Tuple, Union
 
 # Third-Party Library Imports
 from elevenlabs import ElevenLabs, TextToVoiceCreatePreviewsRequestOutputFormat

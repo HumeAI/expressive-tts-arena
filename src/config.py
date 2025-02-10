@@ -13,7 +13,6 @@ Key Features:
 import atexit
 import logging
 import os
-import shutil
 
 # Third-Party Library Imports
 from dotenv import load_dotenv
@@ -45,35 +44,3 @@ if DEBUG:
 AUDIO_DIR = os.path.join(os.getcwd(), "static", "audio")
 os.makedirs(AUDIO_DIR, exist_ok=True)
 logger.info(f"Audio directory set to {AUDIO_DIR}")
-
-
-def cleanup_audio_directory_contents() -> None:
-    """
-    Delete all audio files within AUDIO_DIR, leaving the directory intact.
-
-    This function is intended to be registered to run when the application exits.
-    It assumes that AUDIO_DIR contains only audio files (or symbolic links), and no subdirectories.
-    """
-    if not os.path.exists(AUDIO_DIR):
-        logger.info(
-            "Audio directory %s does not exist. Nothing to clean up.", AUDIO_DIR
-        )
-        return
-
-    # Use os.scandir for efficient directory iteration.
-    with os.scandir(AUDIO_DIR) as entries:
-        for entry in entries:
-            if entry.is_file() or entry.is_symlink():
-                try:
-                    os.unlink(entry.path)
-                    logger.info("Deleted file: %s", entry.path)
-                except Exception as exc:
-                    logger.error(
-                        "Failed to delete file %s. Reason: %s", entry.path, exc
-                    )
-            else:
-                logger.warning("Skipping non-file entry: %s", entry.path)
-
-
-# Register the cleanup function to be called on normal program termination.
-atexit.register(cleanup_audio_directory_contents)
