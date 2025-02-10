@@ -205,13 +205,14 @@ def save_base64_audio_to_file(base64_audio: str, filename: str) -> str:
 
 def choose_providers(
     text_modified: bool,
+    character_description: str,
 ) -> Tuple[ComparisonType, TTSProviderName, TTSProviderName]:
     """
     Select two TTS providers based on whether the text has been modified.
 
     The first provider is always set to "Hume AI". For the second provider, the function
-    selects "Hume AI" if the text has been modified; otherwise, it randomly chooses one from
-    the TTS_PROVIDERS list.
+    selects "Hume AI" if the text has been modified or if a character description was
+    not provided; otherwise, it randomly chooses one from the TTS_PROVIDERS list.
 
     Args:
         text_modified (bool): A flag indicating whether the text has been modified.
@@ -223,9 +224,13 @@ def choose_providers(
         where the first is always "Hume AI" and the second is determined by the text_modified
         flag and random selection.
     """
+    hume_comparison_only = text_modified or not character_description
+
     provider_a = constants.HUME_AI
     provider_b = (
-        constants.HUME_AI if text_modified else random.choice(constants.TTS_PROVIDERS)
+        constants.HUME_AI
+        if hume_comparison_only
+        else random.choice(constants.TTS_PROVIDERS)
     )
 
     match provider_b:

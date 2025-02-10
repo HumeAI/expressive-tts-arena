@@ -135,7 +135,7 @@ def text_to_speech_with_hume(
         raise ValueError("Invalid number of generations specified. Must be 1 or 2.")
 
     request_body = {
-        "utterances": [{"text": text, "description": character_description}],
+        "utterances": [{"text": text, "description": character_description or None}],
         "format": {
             "type": hume_config.file_format,
         },
@@ -173,7 +173,7 @@ def text_to_speech_with_hume(
         if isinstance(e, HTTPError):
             if e.response.status_code >= 400 and e.response.status_code < 500:
                 raise UnretryableHumeError(
-                    message=f'"{e.response.text}"', original_exception=e
+                    message=f"{e.response.text}", original_exception=e
                 ) from e
         raise HumeError(message=f"{e}", original_exception=e) from e
 

@@ -75,7 +75,7 @@ def generate_text(
         raise gr.Error("Failed to generate text. Please try again later.")
 
 
-def text_to_speech(
+def synthesize_speech(
     character_description: str, text: str, generated_text_state: str
 ) -> Tuple[gr.update, gr.update, dict, str, ComparisonType, str, str, bool, str, str]:
     """
@@ -116,7 +116,9 @@ def text_to_speech(
 
     # Select 2 TTS providers based on whether the text has been modified.
     text_modified = text != generated_text_state
-    comparison_type, provider_a, provider_b = choose_providers(text_modified)
+    comparison_type, provider_a, provider_b = choose_providers(
+        text_modified, character_description
+    )
 
     try:
         if provider_b == constants.HUME_AI:
@@ -288,25 +290,17 @@ def reset_ui() -> Tuple[gr.update, gr.update, gr.update, gr.update, None, None, 
     )
 
 
-def build_input_section() -> Tuple[gr.Markdown, gr.Dropdown, gr.Textbox, gr.Button]:
-    """Builds the input section including instructions, sample character description dropdown, character description input, and generate button"""
-    instructions = gr.Markdown(
-        """
-        1. **Enter or Generate Text:** Type directly in the text box—or enter a character description and click “Generate Text” to auto-populate. Edit as needed.
-        2. **Synthesize Speech:** Click “Synthesize Speech” to generate two audio outputs.
-        3. **Listen & Compare:** Play back both audio options to hear the differences.
-        4. **Vote for Your Favorite:** Click “Vote for Option A” or “Vote for Option B” to cast your vote.
-        """
-    )
+def build_input_section() -> Tuple[gr.Dropdown, gr.Textbox, gr.Button]:
+    """Builds the input section including the sample character description dropdown, character description input, and generate text button"""
     sample_character_description_dropdown = gr.Dropdown(
         choices=list(constants.SAMPLE_CHARACTER_DESCRIPTIONS.keys()),
-        label="Choose a sample character description (or enter your own)",
+        label="Choose a sample character description",
         value=None,
         interactive=True,
     )
     character_description_input = gr.Textbox(
         label="Character description",
-        placeholder="Enter your character description to be used to generate text and a novel voice...",
+        placeholder="Enter a character description...",
         lines=3,
         max_lines=8,
         max_length=constants.CHARACTER_DESCRIPTION_MAX_LENGTH,
@@ -314,7 +308,6 @@ def build_input_section() -> Tuple[gr.Markdown, gr.Dropdown, gr.Textbox, gr.Butt
     )
     generate_text_button = gr.Button("Generate text", variant="secondary")
     return (
-        instructions,
         sample_character_description_dropdown,
         character_description_input,
         generate_text_button,
@@ -327,7 +320,7 @@ def build_output_section() -> (
     """Builds the output section including generated text, audio players, and vote buttons."""
     text_input = gr.Textbox(
         label="Text",
-        placeholder="Enter text to synthesize speech...",
+        placeholder="Generate or enter text...",
         interactive=True,
         autoscroll=False,
         lines=3,
@@ -370,12 +363,19 @@ def build_gradio_interface() -> gr.Blocks:
         fill_width=True,
         css_paths="src/assets/styles.css",
     ) as demo:
-        # Title
+        # Title & instructions
         gr.Markdown("# Expressive TTS Arena")
+        gr.Markdown(
+            """
+            1. **Enter or Generate Text:** Type directly in the text box—or enter a character description and click “Generate Text” to auto-populate. Edit as needed.
+            2. **Synthesize Speech:** Click “Synthesize Speech” to generate two audio outputs.
+            3. **Listen & Compare:** Play back both audio options to hear the differences.
+            4. **Vote for Your Favorite:** Click “Vote for Option A” or “Vote for Option B” to cast your vote.
+            """
+        )
 
         # Build generate text section
         (
-            instructions,
             sample_character_description_dropdown,
             character_description_input,
             generate_text_button,
@@ -393,24 +393,26 @@ def build_gradio_interface() -> gr.Blocks:
 
         # --- UI state components ---
 
-        # Track text used for speech synthesis
-        text_state = gr.State("")
         # Track character description used for text and voice generation
         character_description_state = gr.State("")
-        # Track comparison type (which set of providers are being compared)
-        comparison_type_state = gr.State()
+        # Track text used for speech synthesis
+        text_state = gr.State("")
+        # Track generated text state
+        generated_text_state = gr.State("")
+        # Track whether text that was used was generated or modified/custom
+        text_modified_state = gr.State()
+
+        # Track generated audio for option B (for playing automatically after option 1 audio finishes)
+        option_b_audio_state = gr.State()
         # Track generation ID for Option A
         option_a_generation_id_state = gr.State()
         # Track generation ID for Option B
         option_b_generation_id_state = gr.State()
-        # Track whether text that was used was generated or modified/custom
-        text_modified_state = gr.State()
-        # Track generated text state
-        generated_text_state = gr.State("")
-        # Track generated audio for option B for playing automatically after option 1 audio finishes
-        option_b_audio_state = gr.State()
+        # Track comparison type (which set of providers are being compared)
+        comparison_type_state = gr.State()
         # Track option map (option A and option B are randomized)
         option_map_state = gr.State()
+
         # Track whether the user has voted for an option
         vote_submitted_state = gr.State(False)
 
@@ -467,7 +469,7 @@ def build_gradio_interface() -> gr.Blocks:
                 vote_submitted_state,
             ],
         ).then(
-            fn=text_to_speech,
+            fn=synthesize_speech,
             inputs=[character_description_input, text_input, generated_text_state],
             outputs=[
                 option_a_audio_player,
