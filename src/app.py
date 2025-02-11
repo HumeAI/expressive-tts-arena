@@ -11,7 +11,6 @@ Users can compare the outputs and vote for their favorite in an interactive UI.
 # Standard Library Imports
 from concurrent.futures import ThreadPoolExecutor
 import json
-import random
 import time
 from typing import Union, Tuple
 
@@ -30,7 +29,7 @@ from src.integrations import (
     text_to_speech_with_hume,
 )
 from src.theme import CustomTheme
-from src.types import ComparisonType, Option, OptionMap, VotingResults
+from src.types import ComparisonType, OptionMap, VotingResults
 from src.utils import (
     choose_providers,
     create_shuffled_tts_options,

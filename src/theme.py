@@ -7,7 +7,6 @@ This module defines a custom Gradio theme.
 """
 
 # Standard Library Imports
-from __future__ import annotations
 from collections.abc import Iterable
 
 # Third-Party Library Imports

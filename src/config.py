@@ -10,7 +10,6 @@ Key Features:
 """
 
 # Standard Library Imports
-import atexit
 import logging
 import os
 
