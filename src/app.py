@@ -546,13 +546,9 @@ def build_gradio_interface() -> gr.Blocks:
 
         # Enable voting after second audio option playback finishes
         option_b_audio_player.stop(
-            fn=lambda _: (
-                gr.update(interactive=True),
-                gr.update(interactive=True),
-                gr.update(autoplay=False),
-            ),
+            fn=lambda _: gr.update(autoplay=False),
             inputs=[],
-            outputs=[vote_button_a, vote_button_b, option_b_audio_player],
+            outputs=[option_b_audio_player],
         )
 
     logger.debug("Gradio interface built successfully")
