@@ -4,9 +4,10 @@ config.py
 Global configuration and logger setup for the project.
 
 Key Features:
-- Loads environment variables
+- Uses environment variables defined in the system (Docker in production).
+- Loads a `.env` file only in development to simulate production variables locally.
 - Configures the logger for consistent logging across all modules.
-- Dynamically sets the logging level based on the DEBUG environment variable.
+- Dynamically enables DEBUG logging in development and INFO logging in production (unless overridden).
 """
 
 # Standard Library Imports
@@ -33,12 +34,8 @@ if APP_ENV == "dev":
         print("Warning: .env file not found. Using system environment variables.")
 
 
-# Enable debugging mode based on an environment variable
-debug_raw = os.getenv("DEBUG", "false").lower()
-if debug_raw not in {"true", "false"}:
-    print(f'Warning: Invalid DEBUG value "{debug_raw}". Defaulting to "false".')
-DEBUG = debug_raw == "true"
-
+# Enable debug mode if in development (or if explicitly set in env variables)
+DEBUG = APP_ENV == "dev" or os.getenv("DEBUG", "false").lower() == "true"
 
 # Configure the logger
 logging.basicConfig(
@@ -46,6 +43,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger: logging.Logger = logging.getLogger("tts_arena")
+logger.info(f'App running in "{APP_ENV}" mode.')
 logger.info(f'Debug mode is {"enabled" if DEBUG else "disabled"}.')
 
 if DEBUG:
