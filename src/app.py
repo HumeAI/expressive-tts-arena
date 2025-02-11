@@ -220,7 +220,7 @@ def vote(
     if not option_map or vote_submitted:
         return gr.skip(), gr.skip(), gr.skip(), gr.skip()
 
-    option_a_selected = selected_button == constants.VOTE_FOR_OPTION_A
+    option_a_selected = selected_button == constants.SELECT_OPTION_A
     selected_option, other_option = (
         (constants.OPTION_A, constants.OPTION_B)
         if option_a_selected
@@ -282,8 +282,8 @@ def reset_ui() -> Tuple[gr.update, gr.update, gr.update, gr.update, None, None, 
     return (
         gr.update(value=None),
         gr.update(value=None, autoplay=False),
-        gr.update(value=constants.VOTE_FOR_OPTION_A, variant="secondary"),
-        gr.update(value=constants.VOTE_FOR_OPTION_B, variant="secondary"),
+        gr.update(value=constants.SELECT_OPTION_A, variant="secondary"),
+        gr.update(value=constants.SELECT_OPTION_B, variant="secondary"),
         None,
         None,
         False,
@@ -299,14 +299,14 @@ def build_input_section() -> Tuple[gr.Dropdown, gr.Textbox, gr.Button]:
         interactive=True,
     )
     character_description_input = gr.Textbox(
-        label="Character description",
+        label="Character Description",
         placeholder="Enter a character description...",
         lines=3,
         max_lines=8,
         max_length=constants.CHARACTER_DESCRIPTION_MAX_LENGTH,
         show_copy_button=True,
     )
-    generate_text_button = gr.Button("Generate text", variant="secondary")
+    generate_text_button = gr.Button("Generate Text", variant="secondary")
     return (
         sample_character_description_dropdown,
         character_description_input,
@@ -317,10 +317,10 @@ def build_input_section() -> Tuple[gr.Dropdown, gr.Textbox, gr.Button]:
 def build_output_section() -> (
     Tuple[gr.Textbox, gr.Button, gr.Audio, gr.Audio, gr.Button, gr.Button]
 ):
-    """Builds the output section including generated text, audio players, and vote buttons."""
+    """Builds the output section including text input, audio players, and vote buttons."""
     text_input = gr.Textbox(
-        label="Text",
-        placeholder="Generate or enter text...",
+        label="Input Text",
+        placeholder="Enter or generate text for synthesis...",
         interactive=True,
         autoscroll=False,
         lines=3,
@@ -328,7 +328,7 @@ def build_output_section() -> (
         max_length=constants.CHARACTER_DESCRIPTION_MAX_LENGTH,
         show_copy_button=True,
     )
-    synthesize_speech_button = gr.Button("Synthesize speech", variant="primary")
+    synthesize_speech_button = gr.Button("Synthesize Speech", variant="primary")
     with gr.Row(equal_height=True):
         option_a_audio_player = gr.Audio(
             label=constants.OPTION_A, type="filepath", interactive=False
@@ -337,8 +337,8 @@ def build_output_section() -> (
             label=constants.OPTION_B, type="filepath", interactive=False
         )
     with gr.Row(equal_height=True):
-        vote_button_a = gr.Button(constants.VOTE_FOR_OPTION_A, interactive=False)
-        vote_button_b = gr.Button(constants.VOTE_FOR_OPTION_B, interactive=False)
+        vote_button_a = gr.Button(constants.SELECT_OPTION_A, interactive=False)
+        vote_button_b = gr.Button(constants.SELECT_OPTION_B, interactive=False)
     return (
         text_input,
         synthesize_speech_button,
@@ -367,10 +367,11 @@ def build_gradio_interface() -> gr.Blocks:
         gr.Markdown("# Expressive TTS Arena")
         gr.Markdown(
             """
-            1. **Enter or Generate Text:** Type directly in the text box—or enter a character description and click “Generate Text” to auto-populate. Edit as needed.
-            2. **Synthesize Speech:** Click “Synthesize Speech” to generate two audio outputs.
-            3. **Listen & Compare:** Play back both audio options to hear the differences.
-            4. **Vote for Your Favorite:** Click “Vote for Option A” or “Vote for Option B” to cast your vote.
+            1. **Choose or enter a character description**: Select a sample from the list or enter your own to guide text and voice generation.
+            2. **Generate text**: Click **"Generate Text"** to create dialogue based on the character. The generated text will appear in the input field automatically—edit it if needed.
+            3. **Synthesize speech**: Click **"Synthesize Speech"** to send your text and character description to two TTS APIs. Each API generates a voice and synthesizes speech in that voice.
+            4. **Listen & compare**: Play both audio options and assess their expressiveness.
+            5. **Vote for the best**: Click **"Select Option A"** or **"Select Option B"** to choose the most expressive output.
             """
         )
 

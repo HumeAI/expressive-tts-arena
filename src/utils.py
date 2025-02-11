@@ -3,11 +3,6 @@ utils.py
 
 This file contains utility functions that are shared across the project.
 These functions provide reusable logic to simplify code in other modules.
-
-Functions:
-- truncate_text: Truncates a string to a specified length with ellipses. (used for logging)
-- validate_env_var: Ensures the presence of a specific environment variable and retrieves its value.
-- validate_character_description_length: Ensures that a voice description does not exceed the specified minimum or maximum length.
 """
 
 # Standard Library Imports

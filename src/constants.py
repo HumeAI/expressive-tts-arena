@@ -25,8 +25,8 @@ CHARACTER_DESCRIPTION_MAX_LENGTH: int = 800
 OPTION_A: OptionKey = "Option A"
 OPTION_B: OptionKey = "Option B"
 TROPHY_EMOJI: str = "🏆"
-VOTE_FOR_OPTION_A: str = "Vote for option A"
-VOTE_FOR_OPTION_B: str = "Vote for option B"
+SELECT_OPTION_A: str = "Select Option A"
+SELECT_OPTION_B: str = "Select Option B"
 
 
 # A collection of pre-defined character descriptions categorized by theme, used to provide users with
