@@ -17,8 +17,20 @@ import os
 from dotenv import load_dotenv
 
 
-# Load environment variables
-load_dotenv(override=True)
+# Determine the environment (defaults to "dev" if not explicitly set)
+APP_ENV = os.getenv("APP_ENV", "dev").lower()
+if APP_ENV not in {"dev", "prod"}:
+    print(f'Warning: Invalid APP_ENV "{APP_ENV}". Defaulting to "dev".')
+    APP_ENV = "dev"
+
+
+# In development, load environment variables from .env file (not used in production)
+if APP_ENV == "dev":
+    if os.path.exists(".env"):
+        # Load environment variables
+        load_dotenv(".env", override=True)
+    else:
+        print("Warning: .env file not found. Using system environment variables.")
 
 
 # Enable debugging mode based on an environment variable
@@ -35,6 +47,7 @@ logging.basicConfig(
 )
 logger: logging.Logger = logging.getLogger("tts_arena")
 logger.info(f'Debug mode is {"enabled" if DEBUG else "disabled"}.')
+
 if DEBUG:
     logger.debug(f"DEBUG mode enabled.")
 
