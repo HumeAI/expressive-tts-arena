@@ -76,7 +76,9 @@ def generate_text(
 
 
 def synthesize_speech(
-    character_description: str, text: str, generated_text_state: str
+    character_description: str,
+    text: str,
+    generated_text_state: str,
 ) -> Tuple[gr.update, gr.update, dict, str, ComparisonType, str, str, bool, str, str]:
     """
     Synthesizes two text-to-speech outputs, updates UI state components, and returns additional TTS metadata.
