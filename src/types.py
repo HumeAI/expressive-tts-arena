@@ -5,7 +5,7 @@ This module defines custom types for the application.
 """
 
 # Standard Library Imports
-from typing import Dict, Literal, NamedTuple, TypedDict
+from typing import Dict, Literal, NamedTuple, Optional, TypedDict
 
 
 TTSProviderName = Literal["Hume AI", "ElevenLabs"]
@@ -16,12 +16,12 @@ ComparisonType = Literal["Hume AI - Hume AI", "Hume AI - ElevenLabs"]
 """Comparison type denoting which providers are compared."""
 
 
-OptionKey = Literal["Option A", "Option B"]
-"""OptionKey is restricted to the literal values 'Option A' or 'Option B'."""
+OptionLabel = Literal["Option A", "Option B"]
+"""OptionLabel is restricted to the literal values 'Option A' or 'Option B'."""
 
 
-OptionMap = Dict[OptionKey, TTSProviderName]
-"""OptionMap defines the structure of the options mapping, where each key is an OptionKey and the value is a TTS provider."""
+OptionKey = Literal["option_a", "option_b"]
+"""OptionKey is restricted to the literal values 'option_a' or 'option_b'."""
 
 
 class Option(NamedTuple):
@@ -56,3 +56,31 @@ class VotingResults(TypedDict):
     voice_description: str
     text: str
     is_custom_text: bool
+
+
+class OptionDetail(TypedDict):
+    """
+    Details for a single TTS option.
+
+    Attributes:
+        provider (TTSProviderName): The TTS provider that generated the audio.
+        generation_id (Optional[str]): The unique identifier for this TTS generation, or None if not available.
+        audio_file_path (str): The relative file path to the generated audio file.
+    """
+
+    provider: TTSProviderName
+    generation_id: Optional[str]
+    audio_file_path: str
+
+
+class OptionMap(TypedDict):
+    """
+    Mapping of TTS options.
+
+    Structure:
+        option_a: OptionDetail,
+        option_b: OptionDetail
+    """
+
+    option_a: OptionDetail
+    option_b: OptionDetail

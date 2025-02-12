@@ -7,6 +7,7 @@ These functions provide reusable logic to simplify code in other modules.
 
 # Standard Library Imports
 import base64
+import json
 import os
 import random
 import time
@@ -15,7 +16,14 @@ from typing import Tuple
 # Local Application Imports
 from src import constants
 from src.config import AUDIO_DIR, logger
-from src.types import ComparisonType, Option, OptionMap, TTSProviderName
+from src.types import (
+    ComparisonType,
+    Option,
+    OptionKey,
+    OptionMap,
+    TTSProviderName,
+    VotingResults,
+)
 
 
 def truncate_text(text: str, max_length: int = 50) -> str:
@@ -244,13 +252,13 @@ def create_shuffled_tts_options(
     provider_b: TTSProviderName,
     audio_b: str,
     generation_id_b: str,
-) -> Tuple[str, str, str, str, OptionMap]:
+) -> OptionMap:
     """
     Create and shuffle TTS generation options.
 
     This function creates two Option instances from the provided TTS details, shuffles them,
-    and then extracts the audio file paths and generation IDs from the shuffled options.
-    It also returns a mapping from option constants to the corresponding TTS providers.
+    then extracts the providers, audio file paths, and generation IDs from the shuffled options,
+    and finally maps the options to an OptionMap.
 
     Args:
         provider_a (TTSProviderName): The TTS provider for the first generation.
@@ -261,13 +269,7 @@ def create_shuffled_tts_options(
         generation_id_b (str): The generation ID for the second generation.
 
     Returns:
-        Tuple[str, str, str, str, OptionMap]:
-            A tuple containing:
-            - option_a_audio (str): Audio file path for the first shuffled option.
-            - option_b_audio (str): Audio file path for the second shuffled option.
-            - option_a_generation_id (str): Generation ID for the first shuffled option.
-            - option_b_generation_id (str): Generation ID for the second shuffled option.
-            - options_map (OptionMap): Mapping from option constants to their TTS providers.
+        options_map (OptionMap): Mapping of TTS output options.
     """
     # Create a list of Option instances for the available providers.
     options = [
@@ -281,22 +283,82 @@ def create_shuffled_tts_options(
     # Unpack the two options.
     option_a, option_b = options
 
-    # Extract audio file paths and generation IDs.
-    option_a_audio = option_a.audio
-    option_b_audio = option_b.audio
-    option_a_generation_id = option_a.generation_id
-    option_b_generation_id = option_b.generation_id
-
     # Build a mapping from option constants to the corresponding providers.
     options_map: OptionMap = {
-        constants.OPTION_A: option_a.provider,
-        constants.OPTION_B: option_b.provider,
+        "option_a": {
+            "provider": option_a.provider,
+            "generation_id": option_a.generation_id,
+            "audio_file_path": option_a.audio,
+        },
+        "option_b": {
+            "provider": option_b.provider,
+            "generation_id": option_b.generation_id,
+            "audio_file_path": option_b.audio,
+        },
     }
 
-    return (
-        option_a_audio,
-        option_b_audio,
-        option_a_generation_id,
-        option_b_generation_id,
-        options_map,
-    )
+    return options_map
+
+
+def determine_selected_option(
+    selected_option_button: str,
+) -> Tuple[OptionKey, OptionKey]:
+    """
+    Determines the selected option and the alternative option based on the user's selection.
+
+    Args:
+        selected_option_button (str): The option selected by the user, expected to be either
+            constants.OPTION_A_KEY or constants.OPTION_B_KEY.
+
+    Returns:
+        tuple: A tuple (selected_option, other_option) where:
+            - selected_option is the same as the selected_option.
+            - other_option is the alternative option.
+    """
+    if selected_option_button == constants.SELECT_OPTION_A:
+        selected_option, other_option = constants.OPTION_A_KEY, constants.OPTION_B_KEY
+    elif selected_option_button == constants.SELECT_OPTION_B:
+        selected_option, other_option = constants.OPTION_B_KEY, constants.OPTION_A_KEY
+    else:
+        raise ValueError(f"Invalid selected button: {selected_option_button}")
+
+    return selected_option, other_option
+
+
+def submit_voting_results(
+    option_map: OptionMap,
+    selected_option: str,
+    comparison_type: ComparisonType,
+    text_modified: bool,
+    character_description: str,
+    text: str,
+) -> VotingResults:
+    """
+    Constructs the voting results dictionary from the provided inputs and logs it.
+
+    Args:
+        option_map (OptionMap): Mapping of comparison data and TTS options.
+        selected_option (str): The option selected by the user.
+        comparison_type (ComparisonType): The type of comparison between providers.
+        text_modified (bool): Indicates whether the text was modified.
+        character_description (str): Description of the voice/character.
+        text (str): The text associated with the TTS generation.
+
+    Returns:
+        VotingResults: The constructed voting results dictionary.
+    """
+    voting_results: VotingResults = {
+        "comparison_type": comparison_type,
+        "winning_provider": option_map[selected_option]["provider"],
+        "winning_option": selected_option,
+        "option_a_provider": option_map[constants.OPTION_A_KEY]["provider"],
+        "option_b_provider": option_map[constants.OPTION_B_KEY]["provider"],
+        "option_a_generation_id": option_map[constants.OPTION_A_KEY]["generation_id"],
+        "option_b_generation_id": option_map[constants.OPTION_B_KEY]["generation_id"],
+        "voice_description": character_description,
+        "text": text,
+        "is_custom_text": text_modified,
+    }
+    # TODO: Currently logging the results until we hook the API for writing results to DB
+    logger.info("Voting results:\n%s", json.dumps(voting_results, indent=4))
+    return voting_results

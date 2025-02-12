@@ -8,7 +8,7 @@ This module defines global constants used throughout the project.
 from typing import List
 
 # Third-Party Library Imports
-from src.types import ComparisonType, OptionKey, TTSProviderName
+from src.types import ComparisonType, OptionKey, OptionLabel, TTSProviderName
 
 
 # UI constants
@@ -22,8 +22,10 @@ HUME_TO_ELEVENLABS: ComparisonType = "Hume AI - ElevenLabs"
 CHARACTER_DESCRIPTION_MIN_LENGTH: int = 20
 CHARACTER_DESCRIPTION_MAX_LENGTH: int = 800
 
-OPTION_A: OptionKey = "Option A"
-OPTION_B: OptionKey = "Option B"
+OPTION_A_KEY: OptionKey = "option_a"
+OPTION_B_KEY: OptionKey = "option_b"
+OPTION_A_LABEL: OptionLabel = "Option A"
+OPTION_B_LABEL: OptionLabel = "Option B"
 TROPHY_EMOJI: str = "🏆"
 SELECT_OPTION_A: str = "Select Option A"
 SELECT_OPTION_B: str = "Select Option B"

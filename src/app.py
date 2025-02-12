@@ -10,9 +10,8 @@ Users can compare the outputs and vote for their favorite in an interactive UI.
 
 # Standard Library Imports
 from concurrent.futures import ThreadPoolExecutor
-import json
 import time
-from typing import Union, Tuple
+from typing import Tuple, Union
 
 # Third-Party Library Imports
 import gradio as gr
@@ -29,10 +28,12 @@ from src.integrations import (
     text_to_speech_with_hume,
 )
 from src.theme import CustomTheme
-from src.types import ComparisonType, OptionMap, VotingResults
+from src.types import ComparisonType, OptionMap
 from src.utils import (
     choose_providers,
     create_shuffled_tts_options,
+    determine_selected_option,
+    submit_voting_results,
     validate_character_description_length,
 )
 
@@ -148,24 +149,18 @@ def synthesize_speech(
                 generation_id_b, audio_b = future_audio_b.result()
 
         # Shuffle options so that placement of options in the UI will always be random
-        (
-            option_a_audio,
-            option_b_audio,
-            option_a_generation_id,
-            option_b_generation_id,
-            options_map,
-        ) = create_shuffled_tts_options(
+        options_map: OptionMap = create_shuffled_tts_options(
             provider_a, audio_a, generation_id_a, provider_b, audio_b, generation_id_b
         )
+
+        option_a_audio = options_map["option_a"]["audio_file_path"]
+        option_b_audio = options_map["option_b"]["audio_file_path"]
 
         return (
             gr.update(value=option_a_audio, visible=True, autoplay=True),
             gr.update(value=option_b_audio, visible=True),
             options_map,
-            option_b_audio,
             comparison_type,
-            option_a_generation_id,
-            option_b_generation_id,
             text_modified,
             text,
             character_description,
@@ -188,10 +183,8 @@ def synthesize_speech(
 def vote(
     vote_submitted: bool,
     option_map: OptionMap,
-    selected_button: str,
+    clicked_option_button: str,
     comparison_type: ComparisonType,
-    option_a_generation_id: str,
-    option_b_generation_id: str,
     text_modified: bool,
     character_description: str,
     text: str,
@@ -219,52 +212,41 @@ def vote(
     if not option_map or vote_submitted:
         return gr.skip(), gr.skip(), gr.skip(), gr.skip()
 
-    option_a_selected = selected_button == constants.SELECT_OPTION_A
-    selected_option, other_option = (
-        (constants.OPTION_A, constants.OPTION_B)
-        if option_a_selected
-        else (constants.OPTION_B, constants.OPTION_A)
-    )
-    selected_provider = option_map.get(selected_option)
-    other_provider = option_map.get(other_option)
-
-    # Build button labels, displaying the provider and voice name, appending the trophy emoji to the selected option.
-    selected_label = f"{selected_provider} {constants.TROPHY_EMOJI}"
-    other_label = f"{other_provider}"
+    selected_option, other_option = determine_selected_option(clicked_option_button)
+    selected_provider = option_map[selected_option]["provider"]
+    other_provider = option_map[other_option]["provider"]
 
     # Report voting results to be persisted to results DB
-    voting_results: VotingResults = {
-        "comparison_type": comparison_type,
-        "winning_provider": selected_provider,
-        "winning_option": selected_option,
-        "option_a_provider": option_map.get(constants.OPTION_A),
-        "option_b_provider": option_map.get(constants.OPTION_B),
-        "option_a_generation_id": option_a_generation_id,
-        "option_b_generation_id": option_b_generation_id,
-        "character_description": character_description,
-        "text": text,
-        "is_custom_text": text_modified,
-    }
-    # TODO: Currently logging the results until we hook the API for writing results to DB
-    logger.info("Voting results:\n%s", json.dumps(voting_results, indent=4))
+    submit_voting_results(
+        option_map,
+        selected_option,
+        comparison_type,
+        text_modified,
+        character_description,
+        text,
+    )
+
+    # Build button text, displaying the provider and voice name, appending the trophy emoji to the selected option.
+    selected_label = f"{selected_provider} {constants.TROPHY_EMOJI}"
+    other_label = f"{other_provider}"
 
     return (
         True,
         (
             gr.update(value=selected_label, variant="primary", interactive=False)
-            if option_a_selected
+            if selected_option == constants.OPTION_A_KEY
             else gr.update(value=other_label, variant="secondary", interactive=False)
         ),
         (
             gr.update(value=other_label, variant="secondary", interactive=False)
-            if option_a_selected
+            if selected_option == constants.OPTION_A_KEY
             else gr.update(value=selected_label, variant="primary", interactive=False)
         ),
         gr.update(interactive=True),
     )
 
 
-def reset_ui() -> Tuple[gr.update, gr.update, gr.update, gr.update, None, None, bool]:
+def reset_ui() -> Tuple[gr.update, gr.update, gr.update, gr.update, None, bool]:
     """
     Resets UI state before generating new text.
 
@@ -275,7 +257,6 @@ def reset_ui() -> Tuple[gr.update, gr.update, gr.update, gr.update, None, None, 
          - vote_button_a (disable and reset button text)
          - vote_button_a (disable and reset button text)
          - option_map_state (reset option map state)
-         - option_b_audio_state (reset option B audio state)
          - vote_submitted_state (reset submitted vote state)
     """
     return (
@@ -283,7 +264,6 @@ def reset_ui() -> Tuple[gr.update, gr.update, gr.update, gr.update, None, None, 
         gr.update(value=None, autoplay=False),
         gr.update(value=constants.SELECT_OPTION_A, variant="secondary"),
         gr.update(value=constants.SELECT_OPTION_B, variant="secondary"),
-        None,
         None,
         False,
     )
@@ -330,10 +310,10 @@ def build_output_section() -> (
     synthesize_speech_button = gr.Button("Synthesize Speech", variant="primary")
     with gr.Row(equal_height=True):
         option_a_audio_player = gr.Audio(
-            label=constants.OPTION_A, type="filepath", interactive=False
+            label=constants.OPTION_A_LABEL, type="filepath", interactive=False
         )
         option_b_audio_player = gr.Audio(
-            label=constants.OPTION_B, type="filepath", interactive=False
+            label=constants.OPTION_B_LABEL, type="filepath", interactive=False
         )
     with gr.Row(equal_height=True):
         vote_button_a = gr.Button(constants.SELECT_OPTION_A, interactive=False)
@@ -402,12 +382,6 @@ def build_gradio_interface() -> gr.Blocks:
         # Track whether text that was used was generated or modified/custom
         text_modified_state = gr.State()
 
-        # Track generated audio for option B (for playing automatically after option 1 audio finishes)
-        option_b_audio_state = gr.State()
-        # Track generation ID for Option A
-        option_a_generation_id_state = gr.State()
-        # Track generation ID for Option B
-        option_b_generation_id_state = gr.State()
         # Track comparison type (which set of providers are being compared)
         comparison_type_state = gr.State()
         # Track option map (option A and option B are randomized)
@@ -465,7 +439,6 @@ def build_gradio_interface() -> gr.Blocks:
                 vote_button_a,
                 vote_button_b,
                 option_map_state,
-                option_b_audio_state,
                 vote_submitted_state,
             ],
         ).then(
@@ -475,10 +448,7 @@ def build_gradio_interface() -> gr.Blocks:
                 option_a_audio_player,
                 option_b_audio_player,
                 option_map_state,
-                option_b_audio_state,
                 comparison_type_state,
-                option_a_generation_id_state,
-                option_b_generation_id_state,
                 text_modified_state,
                 text_state,
                 character_description_state,
@@ -501,8 +471,6 @@ def build_gradio_interface() -> gr.Blocks:
                 option_map_state,
                 vote_button_a,
                 comparison_type_state,
-                option_a_generation_id_state,
-                option_b_generation_id_state,
                 text_modified_state,
                 character_description_state,
                 text_state,
@@ -521,8 +489,6 @@ def build_gradio_interface() -> gr.Blocks:
                 option_map_state,
                 vote_button_b,
                 comparison_type_state,
-                option_a_generation_id_state,
-                option_b_generation_id_state,
                 text_modified_state,
                 character_description_state,
                 text_state,
@@ -537,10 +503,11 @@ def build_gradio_interface() -> gr.Blocks:
 
         # Reload audio player B with audio and set autoplay to True (workaround to play audio back-to-back)
         option_a_audio_player.stop(
-            fn=lambda current_audio_path: gr.update(
-                value=f"{current_audio_path}?t={int(time.time())}", autoplay=True
+            fn=lambda option_map: gr.update(
+                value=f"{option_map['option_b']['audio_file_path']}?t={int(time.time())}",
+                autoplay=True,
             ),
-            inputs=[option_b_audio_state],
+            inputs=[option_map_state],
             outputs=[option_b_audio_player],
         )
 
