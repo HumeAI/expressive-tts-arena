@@ -30,12 +30,25 @@ Expressive TTS Arena is an open-source web application that enables users to com
 ```
 Expressive TTS Arena/
 ├── src/
+│   ├── assets/
+│   │   ├── styles.css          # Defines custom css
+│   ├── database/
+│   │   ├── __init__.py         # Makes database a package; exposes methods for persisting votes
+│   │   ├── crud.py             # Defines operations for interacting with database
+│   │   ├── database.py         # Sets up SQLAlchemy database connection
+│   │   └── models.py           # SQLAlchemy database models
 │   ├── integrations/
 │   │   ├── __init__.py         # Makes integrations a package; exposes API clients
 │   │   ├── anthropic_api.py    # Anthropic API integration
 │   │   ├── elevenlabs_api.py   # ElevenLabs API integration
 │   │   └── hume_api.py         # Hume API integration
-│   ├── __init__.py             # Makes src a package; exposes key functionality
+│   ├── scripts/
+│   │   ├── __init__.py         # Makes scripts a package
+│   │   ├── init_db.py          # Script for initializing database
+│   │   ├── test_db.py          # Script for testing database connection
+│   ├── static/
+│   │   ├── audio/              # Directory for storing generated audio
+│   ├── __init__.py             # Makes src a package
 │   ├── app.py                  # Entry file
 │   ├── config.py               # Global config and logger setup
 │   ├── constants.py            # Global constants
@@ -45,7 +58,11 @@ Expressive TTS Arena/
 ├── .env.example
 ├── .gitignore
 ├── .pre-commit-config.yaml
-└── requirements.txt
+├── Dockerfile
+├── LICENSE.txt
+├── pyproject.toml
+├── README.md
+├── uv.lock
 ```
 
 ## Installation
