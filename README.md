@@ -12,10 +12,10 @@ Expressive TTS Arena is an open-source web application that enables users to com
 
 ## Prerequisites
 
-- Python >=3.11.11
-- pip >=25.0
-- uv >=0.5.29
-- API keys for **Hume AI**, **Anthropic**, and **ElevenLabs**
+- [Python >=3.11.11](https://www.python.org/downloads/)
+- [pip >=25.0](https://pypi.org/project/pip/)
+- [uv >=0.5.29](https://github.com/astral-sh/uv)
+- API keys for Hume AI, Anthropic, and ElevenLabs
 
 ## Project Structure
 
