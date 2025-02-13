@@ -10,20 +10,12 @@
 
 Expressive TTS Arena is an open-source web application that enables users to compare text-to-speech outputs with a focus on expressiveness rather than just audio quality. Built with [Gradio](https://www.gradio.app/), it provides a seamless interface for generating and comparing speech synthesis from different providers, including Hume AI and ElevenLabs.
 
-## Features
-
-- Text generation using Claude 3.5 Sonnet by Anthropic for creating expressive content.
-- Direct text input or AI-assisted text generation.
-- Comparative analysis of different TTS outputs.
-- Simple voting mechanism for preferred outputs.
-
 ## Prerequisites
 
 - Python >=3.11.11
 - pip >=25.0
-- Virtual environment capability
-- API keys for Hume AI, Anthropic, and ElevenLabs
-- For a complete list of dependencies, see [requirements.txt](./requirements.txt).
+- uv >=0.5.29
+- API keys for **Hume AI**, **Anthropic**, and **ElevenLabs**
 
 ## Project Structure
 
