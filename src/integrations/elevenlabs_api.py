@@ -1,8 +1,8 @@
 """
 elevenlabs_api.py
 
-This file defines the interaction with the ElevenLabs text-to-speech (TTS) API using the ElevenLabs Python SDK.
-It includes functionality for API request handling and processing API responses.
+This file defines the interaction with the ElevenLabs text-to-speech (TTS) API using the
+ElevenLabs Python SDK. It includes functionality for API request handling and processing API responses.
 
 Key Features:
 - Encapsulates all logic related to the ElevenLabs TTS API.
@@ -20,32 +20,34 @@ Functions:
 """
 
 # Standard Library Imports
-from dataclasses import dataclass
 import logging
 import random
+from dataclasses import dataclass
 from typing import Optional, Tuple
 
 # Third-Party Library Imports
 from elevenlabs import ElevenLabs, TextToVoiceCreatePreviewsRequestOutputFormat
 from elevenlabs.core import ApiError
-from tenacity import retry, stop_after_attempt, wait_fixed, before_log, after_log
+from tenacity import after_log, before_log, retry, stop_after_attempt, wait_fixed
 
 # Local Application Imports
-from src.config import logger
-from src.utils import save_base64_audio_to_file, validate_env_var
+from src.config import logger, validate_env_var
+from src.constants import CLIENT_ERROR_CODE, SERVER_ERROR_CODE
+from src.utils import save_base64_audio_to_file
 
 
 @dataclass(frozen=True)
 class ElevenLabsConfig:
     """Immutable configuration for interacting with the ElevenLabs TTS API."""
 
-    api_key: str = validate_env_var("ELEVENLABS_API_KEY")
+    api_key: Optional[str] = None
     output_format: TextToVoiceCreatePreviewsRequestOutputFormat = "mp3_44100_128"
 
     def __post_init__(self):
         # Validate that required attributes are set
         if not self.api_key:
-            raise ValueError("ElevenLabs API key is not set.")
+            api_key = validate_env_var("ELEVENLABS_API_KEY")
+            object.__setattr__(self, "api_key", api_key)
 
     @property
     def client(self) -> ElevenLabs:
@@ -97,7 +99,8 @@ def text_to_speech_with_elevenlabs(
 
     Returns:
         Tuple[None, str]: A tuple containing:
-            - generation_id (None): We do not record the generation ID for ElevenLabs, but return None for uniformity across TTS integrations
+            - generation_id (None): We do not record the generation ID for ElevenLabs, but return None for uniformity
+                                    across TTS integrations
             - file_path (str): The relative file path to the audio file where the synthesized speech was saved.
 
     Raises:
@@ -132,12 +135,15 @@ def text_to_speech_with_elevenlabs(
         return None, audio_file_path
 
     except Exception as e:
-        if isinstance(e, ApiError):
-            if e.status_code >= 400 and e.status_code < 500:
-                raise UnretryableElevenLabsError(
-                    message=f"{e.body['detail']['message']}",
-                    original_exception=e,
-                ) from e
+        if (
+            isinstance(e, ApiError)
+            and e.status_code >= CLIENT_ERROR_CODE and e.status_code < SERVER_ERROR_CODE
+        ):
+            raise UnretryableElevenLabsError(
+                message=f"{e.body['detail']['message']}",
+                original_exception=e,
+            ) from e
+
         raise ElevenLabsError(
             message=f"{e}",
             original_exception=e,

@@ -1,5 +1,5 @@
 """
-types.py
+custom_types.py
 
 This module defines custom types for the application.
 """

@@ -9,26 +9,26 @@ Users can compare the outputs and vote for their favorite in an interactive UI.
 """
 
 # Standard Library Imports
-from concurrent.futures import ThreadPoolExecutor
 import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import Tuple, Union
 
 # Third-Party Library Imports
 import gradio as gr
 
 # Local Application Imports
-from src.config import AUDIO_DIR, logger
 from src import constants
+from src.config import AUDIO_DIR, logger
+from src.custom_types import ComparisonType, Option, OptionMap
 from src.integrations import (
     AnthropicError,
     ElevenLabsError,
-    generate_text_with_claude,
     HumeError,
+    generate_text_with_claude,
     text_to_speech_with_elevenlabs,
     text_to_speech_with_hume,
 )
 from src.theme import CustomTheme
-from src.types import ComparisonType, OptionMap
 from src.utils import (
     choose_providers,
     create_shuffled_tts_options,
@@ -66,7 +66,7 @@ def generate_text(
         logger.info(f"Generated text ({len(generated_text)} characters).")
         return gr.update(value=generated_text), generated_text
     except AnthropicError as ae:
-        logger.error(f"AnthropicError while generating text: {str(ae)}")
+        logger.error(f"AnthropicError while generating text: {ae!s}")
         raise gr.Error(
             f'There was an issue communicating with the Anthropic API: "{ae.message}"'
         )
@@ -94,7 +94,8 @@ def synthesize_speech(
     Args:
         character_description (str): The description of the character used for generating the voice.
         text (str): The text content to be synthesized into speech.
-        generated_text_state (str): The previously generated text state, used to determine if the text has been modified.
+        generated_text_state (str): The previously generated text state, used to determine if the text has
+                                    been modified.
 
     Returns:
         Tuple containing:
@@ -118,7 +119,7 @@ def synthesize_speech(
 
     # Select 2 TTS providers based on whether the text has been modified.
     text_modified = text != generated_text_state
-    comparison_type, provider_a, provider_b = choose_providers(
+    provider_a, provider_b = choose_providers(
         text_modified, character_description
     )
 
@@ -151,9 +152,9 @@ def synthesize_speech(
                 generation_id_b, audio_b = future_audio_b.result()
 
         # Shuffle options so that placement of options in the UI will always be random
-        options_map: OptionMap = create_shuffled_tts_options(
-            provider_a, audio_a, generation_id_a, provider_b, audio_b, generation_id_b
-        )
+        option_a = Option(provider=provider_a, audio=audio_a, generation_id=generation_id_a)
+        option_b = Option(provider=provider_b, audio=audio_b, generation_id=generation_id_b)
+        options_map: OptionMap = create_shuffled_tts_options(option_a, option_b)
 
         option_a_audio = options_map["option_a"]["audio_file_path"]
         option_b_audio = options_map["option_b"]["audio_file_path"]
@@ -162,18 +163,17 @@ def synthesize_speech(
             gr.update(value=option_a_audio, visible=True, autoplay=True),
             gr.update(value=option_b_audio, visible=True),
             options_map,
-            comparison_type,
             text_modified,
             text,
             character_description,
         )
     except ElevenLabsError as ee:
-        logger.error(f"ElevenLabsError while synthesizing speech from text: {str(ee)}")
+        logger.error(f"ElevenLabsError while synthesizing speech from text: {ee!s}")
         raise gr.Error(
             f'There was an issue communicating with the Elevenlabs API: "{ee.message}"'
         )
     except HumeError as he:
-        logger.error(f"HumeError while synthesizing speech from text: {str(he)}")
+        logger.error(f"HumeError while synthesizing speech from text: {he!s}")
         raise gr.Error(
             f'There was an issue communicating with the Hume API: "{he.message}"'
         )
@@ -186,7 +186,6 @@ def vote(
     vote_submitted: bool,
     option_map: OptionMap,
     clicked_option_button: str,
-    comparison_type: ComparisonType,
     text_modified: bool,
     character_description: str,
     text: str,
@@ -222,7 +221,6 @@ def vote(
     submit_voting_results(
         option_map,
         selected_option,
-        comparison_type,
         text_modified,
         character_description,
         text,
@@ -272,7 +270,10 @@ def reset_ui() -> Tuple[gr.update, gr.update, gr.update, gr.update, None, bool]:
 
 
 def build_input_section() -> Tuple[gr.Dropdown, gr.Textbox, gr.Button]:
-    """Builds the input section including the sample character description dropdown, character description input, and generate text button"""
+    """
+        Builds the input section including the sample character description dropdown, character
+        description input, and generate text button.
+    """
     sample_character_description_dropdown = gr.Dropdown(
         choices=list(constants.SAMPLE_CHARACTER_DESCRIPTIONS.keys()),
         label="Choose a sample character description",
@@ -298,7 +299,9 @@ def build_input_section() -> Tuple[gr.Dropdown, gr.Textbox, gr.Button]:
 def build_output_section() -> (
     Tuple[gr.Textbox, gr.Button, gr.Audio, gr.Audio, gr.Button, gr.Button]
 ):
-    """Builds the output section including text input, audio players, and vote buttons."""
+    """
+        Builds the output section including text input, audio players, and vote buttons.
+    """
     text_input = gr.Textbox(
         label="Input Text",
         placeholder="Enter or generate text for synthesis...",
@@ -348,11 +351,15 @@ def build_gradio_interface() -> gr.Blocks:
         gr.Markdown("# Expressive TTS Arena")
         gr.Markdown(
             """
-            1. **Choose or enter a character description**: Select a sample from the list or enter your own to guide text and voice generation.
-            2. **Generate text**: Click **"Generate Text"** to create dialogue based on the character. The generated text will appear in the input field automatically—edit it if needed.
-            3. **Synthesize speech**: Click **"Synthesize Speech"** to send your text and character description to two TTS APIs. Each API generates a voice and synthesizes speech in that voice.
+            1. **Choose or enter a character description**: Select a sample from the list or enter your own to guide
+            text and voice generation.
+            2. **Generate text**: Click **"Generate Text"** to create dialogue based on the character. The generated
+            text will appear in the input field automatically—edit it if needed.
+            3. **Synthesize speech**: Click **"Synthesize Speech"** to send your text and character description to two
+            TTS APIs. Each API generates a voice and synthesizes speech in that voice.
             4. **Listen & compare**: Play both audio options and assess their expressiveness.
-            5. **Vote for the best**: Click **"Select Option A"** or **"Select Option B"** to choose the most expressive output.
+            5. **Vote for the best**: Click **"Select Option A"** or **"Select Option B"** to choose the most
+            expressive output.
             """
         )
 
@@ -384,8 +391,6 @@ def build_gradio_interface() -> gr.Blocks:
         # Track whether text that was used was generated or modified/custom
         text_modified_state = gr.State()
 
-        # Track comparison type (which set of providers are being compared)
-        comparison_type_state = gr.State()
         # Track option map (option A and option B are randomized)
         option_map_state = gr.State()
 
@@ -450,7 +455,6 @@ def build_gradio_interface() -> gr.Blocks:
                 option_a_audio_player,
                 option_b_audio_player,
                 option_map_state,
-                comparison_type_state,
                 text_modified_state,
                 text_state,
                 character_description_state,
@@ -472,7 +476,6 @@ def build_gradio_interface() -> gr.Blocks:
                 vote_submitted_state,
                 option_map_state,
                 vote_button_a,
-                comparison_type_state,
                 text_modified_state,
                 character_description_state,
                 text_state,
@@ -490,7 +493,6 @@ def build_gradio_interface() -> gr.Blocks:
                 vote_submitted_state,
                 option_map_state,
                 vote_button_b,
-                comparison_type_state,
                 text_modified_state,
                 character_description_state,
                 text_state,

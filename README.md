@@ -39,6 +39,7 @@ Expressive TTS Arena/
 │   ├── app.py                  # Entry file
 │   ├── config.py               # Global config and logger setup
 │   ├── constants.py            # Global constants
+│   ├── custom_types.py         # Global custom types
 │   ├── theme.py                # Custom Gradio Theme
 │   └── utils.py                # Utility functions
 ├── .env.example

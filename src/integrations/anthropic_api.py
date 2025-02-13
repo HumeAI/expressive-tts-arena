@@ -19,25 +19,26 @@ Functions:
 """
 
 # Standard Library Imports
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 from typing import List, Optional, Union
 
 # Third-Party Library Imports
-from anthropic import APIError, Anthropic
+from anthropic import Anthropic, APIError
 from anthropic.types import Message, ModelParam, TextBlock
-from tenacity import retry, stop_after_attempt, wait_fixed, before_log, after_log
+from tenacity import after_log, before_log, retry, stop_after_attempt, wait_fixed
 
 # Local Application Imports
-from src.config import logger
-from src.utils import truncate_text, validate_env_var
+from src.config import logger, validate_env_var
+from src.constants import CLIENT_ERROR_CODE, SERVER_ERROR_CODE
+from src.utils import truncate_text
 
 
 @dataclass(frozen=True)
 class AnthropicConfig:
     """Immutable configuration for interacting with the Anthropic API."""
 
-    api_key: str = validate_env_var("ANTHROPIC_API_KEY")
+    api_key: Optional[str] = None
     model: ModelParam = "claude-3-5-sonnet-latest"
     max_tokens: int = 150
     system_prompt: Optional[str] = (
@@ -47,13 +48,16 @@ class AnthropicConfig:
     def __post_init__(self):
         # Validate that required attributes are set
         if not self.api_key:
-            raise ValueError("Anthropic API key is not set.")
+            api_key = validate_env_var("ANTHROPIC_API_KEY")
+            object.__setattr__(self, "api_key", api_key)
         if not self.model:
             raise ValueError("Anthropic Model is not set.")
         if not self.max_tokens:
             raise ValueError("Anthropic Max Tokens is not set.")
         if self.system_prompt is None:
-            system_prompt: str = f"""You are an expert at generating micro-content optimized for text-to-speech synthesis. Your absolute priority is delivering complete, untruncated responses within strict length limits.
+            system_prompt: str = f"""You are an expert at generating micro-content optimized for text-to-speech
+synthesis. Your absolute priority is delivering complete, untruncated responses within strict length limits.
+
 CRITICAL LENGTH CONSTRAINTS:
 
 Maximum length: {self.max_tokens} tokens (approximately 400 characters)
@@ -84,7 +88,8 @@ Opening hook (50-75 characters)
 Emotional journey (200-250 characters)
 Resolution (75-100 characters)
 
-MANDATORY: If you find yourself reaching 300 characters, immediately begin your conclusion regardless of where you are in the narrative.
+MANDATORY: If you find yourself reaching 300 characters, immediately begin your conclusion regardless of where you
+are in the narrative.
 Remember: A shorter, complete response is ALWAYS better than a longer, truncated one."""
             object.__setattr__(self, "system_prompt", system_prompt)
 
@@ -110,12 +115,13 @@ Remember: A shorter, complete response is ALWAYS better than a longer, truncated
         Returns:
             str: The prompt to be passed to the Anthropic API.
         """
-        prompt = (
+        return (
             f"Character Description: {character_description}\n\n"
-            "Based on the above character description, please generate a line of dialogue that captures the character's unique personality, emotional depth, and distinctive tone. "
-            "The response should sound like something the character would naturally say, reflecting their background and emotional state, and be fully developed for text-to-speech synthesis."
+            "Based on the above character description, please generate a line of dialogue that captures the "
+            "character's unique personality, emotional depth, and distinctive tone. The response should sound "
+            "like something the character would naturally say, reflecting their background and emotional state, "
+            "and be fully developed for text-to-speech synthesis."
         )
-        return prompt
 
 
 class AnthropicError(Exception):
@@ -198,12 +204,15 @@ def generate_text_with_claude(character_description: str) -> str:
         return str(blocks or "No content generated.")
 
     except Exception as e:
-        if isinstance(e, APIError):
-            if e.status_code >= 400 and e.status_code < 500:
-                raise UnretryableAnthropicError(
-                    message=f"\"{e.body['error']['message']}\"",
-                    original_exception=e,
-                ) from e
+        if (
+            isinstance(e, APIError)
+            and e.status_code >= CLIENT_ERROR_CODE and e.status_code < SERVER_ERROR_CODE
+        ):
+            raise UnretryableAnthropicError(
+                message=f"\"{e.body['error']['message']}\"",
+                original_exception=e,
+            ) from e
+
         raise AnthropicError(
             message=(f"{e.message}"),
             original_exception=e,

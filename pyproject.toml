@@ -29,7 +29,20 @@ line-length = 120
 src = ["src"]
 
 [tool.ruff.lint]
-ignore = ["D100", "D104", "FIX002", "TD002", "TD003"]
+ignore = [
+    "B904",
+    "BLE001",
+    "D100",
+    "D104",
+    "EM101",
+    "EM102",
+    "FIX002",
+    "G004",
+    "PLR0913",
+    "PLR2004",
+    "TD002",
+    "TD003",
+]
 select = [
     "A",
     "ARG",

@@ -19,21 +19,19 @@ Functions:
 """
 
 # Standard Library Imports
-from dataclasses import dataclass
 import logging
-import os
-import random
+from dataclasses import dataclass
 from typing import Any, Dict, Literal, Optional, Tuple, Union
 
 # Third-Party Library Imports
 import requests
 from requests.exceptions import HTTPError
-from tenacity import retry, stop_after_attempt, wait_fixed, before_log, after_log
+from tenacity import after_log, before_log, retry, stop_after_attempt, wait_fixed
 
 # Local Application Imports
-from src.config import logger
-from src.utils import save_base64_audio_to_file, validate_env_var
-
+from src.config import logger, validate_env_var
+from src.constants import CLIENT_ERROR_CODE, SERVER_ERROR_CODE
+from src.utils import save_base64_audio_to_file
 
 HumeSupportedFileFormat = Literal["mp3", "pcm", "wav"]
 """ Support audio file formats for the Hume TTS API"""
@@ -43,7 +41,7 @@ HumeSupportedFileFormat = Literal["mp3", "pcm", "wav"]
 class HumeConfig:
     """Immutable configuration for interacting with the Hume TTS API."""
 
-    api_key: str = validate_env_var("HUME_API_KEY")
+    api_key: Optional[str] = None
     url: str = "https://test-api.hume.ai/v0/tts/octave"
     headers: dict = None
     file_format: HumeSupportedFileFormat = "mp3"
@@ -51,7 +49,8 @@ class HumeConfig:
     def __post_init__(self):
         # Validate required attributes
         if not self.api_key:
-            raise ValueError("Hume API key is not set.")
+            api_key = validate_env_var("HUME_API_KEY")
+            object.__setattr__(self, "api_key", api_key)
         if not self.url:
             raise ValueError("Hume TTS endpoint URL is not set.")
         if not self.file_format:
@@ -118,17 +117,19 @@ def text_to_speech_with_hume(
 
     Returns:
         Union[Tuple[str, str], Tuple[str, str, str, str]]:
-            - If num_generations == 1: A tuple in the form (generation_a_id, audio_a_path).
-            - If num_generations == 2: A tuple in the form (generation_a_id, audio_a_path, generation_b_id, audio_b_path).
+            - If num_generations == 1: (generation_a_id, audio_a_path).
+            - If num_generations == 2: (generation_a_id, audio_a_path, generation_b_id, audio_b_path).
 
     Raises:
         ValueError: If num_generations is not 1 or 2.
         HumeError: If there is an error communicating with the Hume TTS API or parsing its response.
         UnretryableHumeError: If a client-side HTTP error (status code in the 4xx range) is encountered.
-        Exception: Any other exceptions raised during the request or processing will be wrapped and re-raised as HumeError.
+        Exception: Any other exceptions raised during the request or processing will be wrapped and
+                   re-raised as HumeError.
     """
     logger.debug(
-        f"Processing TTS with Hume. Prompt length: {len(character_description)} characters. Text length: {len(text)} characters."
+        f"Processing TTS with Hume. Prompt length: {len(character_description)} characters. "
+        f"Text length: {len(text)} characters."
     )
 
     if num_generations < 1 or num_generations > 2:
@@ -170,12 +171,19 @@ def text_to_speech_with_hume(
         return (generation_a_id, audio_a_path, generation_b_id, audio_b_path)
 
     except Exception as e:
-        if isinstance(e, HTTPError):
-            if e.response.status_code >= 400 and e.response.status_code < 500:
-                raise UnretryableHumeError(
-                    message=f"{e.response.text}", original_exception=e
-                ) from e
-        raise HumeError(message=f"{e}", original_exception=e) from e
+        if (
+            isinstance(e, HTTPError)
+            and CLIENT_ERROR_CODE <= e.response.status_code < SERVER_ERROR_CODE
+        ):
+            raise UnretryableHumeError(
+                message=f"{e.response.text}",
+                original_exception=e,
+            ) from e
+
+        raise HumeError(
+            message=f"{e}",
+            original_exception=e,
+        ) from e
 
 
 def parse_hume_tts_generation(generation: Dict[str, Any]) -> Tuple[str, str]:
