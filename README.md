@@ -33,7 +33,7 @@ Expressive TTS Arena/
 │   ├── assets/
 │   │   ├── styles.css          # Defines custom css
 │   ├── database/
-│   │   ├── __init__.py         # Makes database a package; expose methods to persist votes
+│   │   ├── __init__.py         # Makes database a package; expose ORM methods
 │   │   ├── crud.py             # Defines operations for interacting with database
 │   │   ├── database.py         # Sets up SQLAlchemy database connection
 │   │   └── models.py           # SQLAlchemy database models
