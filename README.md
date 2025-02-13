@@ -1,8 +1,8 @@
 <div align="center">
     <img src="https://storage.googleapis.com/hume-public-logos/hume/hume-banner.png">
-    <h1>Hume AI | Expressive TTS Arena</h1>
+    <h1>Expressive TTS Arena</h1>
     <p>
-        <strong> An interactive platform for comparing and evaluating the expressiveness of different text-to-speech models </strong>
+        <strong> An web application for comparing and evaluating the expressiveness of different text-to-speech models </strong>
     </p>
 </div>
 
