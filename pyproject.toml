@@ -19,6 +19,7 @@ dependencies = [
 dev-dependencies = [
     "mypy>=1.15.0",
     "pre-commit>=4.1.0",
+    "pyright>=1.1.394",
     "pytest>=8.3.4",
     "ruff>=0.9.5",
     "watchfiles>=1.0.4",

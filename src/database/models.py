@@ -34,6 +34,7 @@ class OptionEnum(str, Enum):
     OPTION_A = "option_a"
     OPTION_B = "option_b"
 
+
 class VoteResult(Base):
     __tablename__ = "vote_results"
 

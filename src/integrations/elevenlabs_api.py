@@ -31,9 +31,9 @@ from elevenlabs.core import ApiError
 from tenacity import after_log, before_log, retry, stop_after_attempt, wait_fixed
 
 # Local Application Imports
-from src.config import logger, validate_env_var
+from src.config import Config, logger
 from src.constants import CLIENT_ERROR_CODE, SERVER_ERROR_CODE
-from src.utils import save_base64_audio_to_file
+from src.utils import save_base64_audio_to_file, validate_env_var
 
 
 @dataclass(frozen=True)
@@ -76,10 +76,6 @@ class UnretryableElevenLabsError(ElevenLabsError):
         super().__init__(message, original_exception)
 
 
-# Initialize the ElevenLabs client
-elevenlabs_config = ElevenLabsConfig()
-
-
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_fixed(2),
@@ -87,9 +83,7 @@ elevenlabs_config = ElevenLabsConfig()
     after=after_log(logger, logging.DEBUG),
     reraise=True,
 )
-def text_to_speech_with_elevenlabs(
-    character_description: str, text: str
-) -> Tuple[None, str]:
+def text_to_speech_with_elevenlabs(character_description: str, text: str, config: Config) -> Tuple[None, str]:
     """
     Synthesizes text to speech using the ElevenLabs TTS API, processes the audio data, and writes it to a file.
 
@@ -106,9 +100,9 @@ def text_to_speech_with_elevenlabs(
     Raises:
         ElevenLabsError: If there is an error communicating with the ElevenLabs API or processing the response.
     """
-    logger.debug(
-        f"Synthesizing speech with ElevenLabs. Text length: {len(text)} characters."
-    )
+    logger.debug(f"Synthesizing speech with ElevenLabs. Text length: {len(text)} characters.")
+
+    elevenlabs_config = config.elevenlabs_config
 
     try:
         # Synthesize speech using the ElevenLabs SDK
@@ -129,16 +123,13 @@ def text_to_speech_with_elevenlabs(
         generated_voice_id = preview.generated_voice_id
         base64_audio = preview.audio_base_64
         filename = f"{generated_voice_id}.mp3"
-        audio_file_path = save_base64_audio_to_file(base64_audio, filename)
+        audio_file_path = save_base64_audio_to_file(base64_audio, filename, config)
 
         # Write audio to file and return the relative path
         return None, audio_file_path
 
     except Exception as e:
-        if (
-            isinstance(e, ApiError)
-            and e.status_code >= CLIENT_ERROR_CODE and e.status_code < SERVER_ERROR_CODE
-        ):
+        if isinstance(e, ApiError) and e.status_code >= CLIENT_ERROR_CODE and e.status_code < SERVER_ERROR_CODE:
             raise UnretryableElevenLabsError(
                 message=f"{e.body['detail']['message']}",
                 original_exception=e,

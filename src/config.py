@@ -13,71 +13,78 @@ Key Features:
 # Standard Library Imports
 import logging
 import os
+from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING, ClassVar, Optional
 
 # Third-Party Library Imports
 from dotenv import load_dotenv
 
-# Determine the environment (defaults to "dev" if not explicitly set)
-APP_ENV = os.getenv("APP_ENV", "dev").lower()
-if APP_ENV not in {"dev", "prod"}:
-    APP_ENV = "dev"
+if TYPE_CHECKING:
+    from src.integrations import AnthropicConfig, ElevenLabsConfig, HumeConfig
 
-
-# In development, load environment variables from .env file (not used in production)
-if APP_ENV == "dev" and Path(".env").exists():
-    load_dotenv(".env", override=True)
-
-
-# Enable debug mode if in development (or if explicitly set in env variables)
-DEBUG = APP_ENV == "dev" or os.getenv("DEBUG", "false").lower() == "true"
-
-# Configure the logger
-logging.basicConfig(
-    level=logging.DEBUG if DEBUG else logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
 logger: logging.Logger = logging.getLogger("tts_arena")
-logger.info(f'App running in "{APP_ENV}" mode.')
-logger.info(f'Debug mode is {"enabled" if DEBUG else "disabled"}.')
-
-if DEBUG:
-    logger.debug("DEBUG mode enabled.")
 
 
-# Define the directory for audio files relative to the project root
-AUDIO_DIR = Path.cwd() / "static" / "audio"
-AUDIO_DIR.mkdir(parents=True, exist_ok=True)
-logger.info(f"Audio directory set to {AUDIO_DIR}")
+@dataclass(frozen=True)
+class Config:
+    _config: ClassVar[Optional["Config"]] = None
+    app_env: str
+    debug: bool
+    database_url: Optional[str]
+    audio_dir: Path
+    anthropic_config: "AnthropicConfig"
+    hume_config: "HumeConfig"
+    elevenlabs_config: "ElevenLabsConfig"
 
+    @classmethod
+    def get(cls) -> "Config":
+        if cls._config is None:
+            _config = Config._init()
+            cls._config = _config
+            return _config
+        return cls._config
 
-def validate_env_var(var_name: str) -> str:
-    """
-    Validates that an environment variable is set and returns its value.
+    @staticmethod
+    def _init():
+        app_env = os.getenv("APP_ENV", "dev").lower()
+        if app_env not in {"dev", "prod"}:
+            app_env = "dev"
 
-    Args:
-        var_name (str): The name of the environment variable to validate.
+        # In development, load environment variables from .env file (not used in production)
+        if app_env == "dev" and Path(".env").exists():
+            load_dotenv(".env", override=True)
 
-    Returns:
-        str: The value of the environment variable.
+        # Enable debug mode if in development (or if explicitly set in env variables)
+        debug = app_env == "dev" or os.getenv("DEBUG", "false").lower() == "true"
 
-    Raises:
-        ValueError: If the environment variable is not set.
+        database_url = os.getenv("DATABASE_URL")
 
-    Examples:
-        >>> import os
-        >>> os.environ["EXAMPLE_VAR"] = "example_value"
-        >>> validate_env_var("EXAMPLE_VAR")
-        'example_value'
-
-        >>> validate_env_var("MISSING_VAR")
-        Traceback (most recent call last):
-          ...
-        ValueError: MISSING_VAR is not set. Please ensure it is defined in your environment variables.
-    """
-    value = os.environ.get(var_name, "")
-    if not value:
-        raise ValueError(
-            f"{var_name} is not set. Please ensure it is defined in your environment variables."
+        # Configure the logger
+        logging.basicConfig(
+            level=logging.DEBUG if debug else logging.INFO,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
-    return value
+        logger.info(f'App running in "{app_env}" mode.')
+        logger.info(f"Debug mode is {'enabled' if debug else 'disabled'}.")
+
+        # Define the directory for audio files relative to the project root
+        audio_dir = Path.cwd() / "static" / "audio"
+        audio_dir.mkdir(parents=True, exist_ok=True)
+
+        logger.info(f"Audio directory set to {audio_dir}")
+
+        if debug:
+            logger.debug("DEBUG mode enabled.")
+
+        from src.integrations import AnthropicConfig, ElevenLabsConfig, HumeConfig
+
+        return Config(
+            app_env=app_env,
+            debug=debug,
+            database_url=database_url,
+            audio_dir=audio_dir,
+            anthropic_config=AnthropicConfig(),
+            hume_config=HumeConfig(),
+            elevenlabs_config=ElevenLabsConfig(),
+        )

@@ -1,9 +1,10 @@
 from .crud import create_vote
-from .database import Base, SessionLocal, engine
+from .database import Base, DBSessionMaker, engine, init_db
 
 __all__ = [
     "Base",
-    "SessionLocal",
+    "DBSessionMaker",
     "create_vote",
-    "engine"
+    "engine",
+    "init_db",
 ]

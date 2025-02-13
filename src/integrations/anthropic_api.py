@@ -29,9 +29,9 @@ from anthropic.types import Message, ModelParam, TextBlock
 from tenacity import after_log, before_log, retry, stop_after_attempt, wait_fixed
 
 # Local Application Imports
-from src.config import logger, validate_env_var
+from src.config import Config, logger
 from src.constants import CLIENT_ERROR_CODE, SERVER_ERROR_CODE
-from src.utils import truncate_text
+from src.utils import truncate_text, validate_env_var
 
 
 @dataclass(frozen=True)
@@ -140,10 +140,6 @@ class UnretryableAnthropicError(AnthropicError):
         super().__init__(message, original_exception)
 
 
-# Initialize the Anthropic client
-anthropic_config = AnthropicConfig()
-
-
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_fixed(2),
@@ -151,7 +147,7 @@ anthropic_config = AnthropicConfig()
     after=after_log(logger, logging.DEBUG),
     reraise=True,
 )
-def generate_text_with_claude(character_description: str) -> str:
+def generate_text_with_claude(character_description: str, config: Config) -> str:
     """
     Generates text using Claude (Anthropic LLM) via the Anthropic SDK.
 
@@ -165,10 +161,9 @@ def generate_text_with_claude(character_description: str) -> str:
         AnthropicError: If there is an error communicating with the Anthropic API.
     """
     # Build prompt for claude with character description
+    anthropic_config = config.anthropic_config
     prompt = anthropic_config.build_expressive_prompt(character_description)
-    logger.debug(
-        f"Generating text with Claude. Character description length: {len(prompt)} characters."
-    )
+    logger.debug(f"Generating text with Claude. Character description length: {len(prompt)} characters.")
 
     response = None
     try:
@@ -189,27 +184,20 @@ def generate_text_with_claude(character_description: str) -> str:
         # Process response
         blocks: Union[List[TextBlock], TextBlock, None] = response.content
         if isinstance(blocks, list):
-            result = "\n\n".join(
-                block.text for block in blocks if isinstance(block, TextBlock)
-            )
+            result = "\n\n".join(block.text for block in blocks if isinstance(block, TextBlock))
             logger.debug(f"Processed response from list: {truncate_text(result)}")
             return result
         if isinstance(blocks, TextBlock):
-            logger.debug(
-                f"Processed response from single TextBlock: {truncate_text(blocks.text)}"
-            )
+            logger.debug(f"Processed response from single TextBlock: {truncate_text(blocks.text)}")
             return blocks.text
 
         logger.warning(f"Unexpected response type: {type(blocks)}")
         return str(blocks or "No content generated.")
 
     except Exception as e:
-        if (
-            isinstance(e, APIError)
-            and e.status_code >= CLIENT_ERROR_CODE and e.status_code < SERVER_ERROR_CODE
-        ):
+        if isinstance(e, APIError) and e.status_code >= CLIENT_ERROR_CODE and e.status_code < SERVER_ERROR_CODE:
             raise UnretryableAnthropicError(
-                message=f"\"{e.body['error']['message']}\"",
+                message=f'"{e.body["error"]["message"]}"',
                 original_exception=e,
             ) from e
 

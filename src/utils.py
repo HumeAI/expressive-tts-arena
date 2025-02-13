@@ -8,14 +8,17 @@ These functions provide reusable logic to simplify code in other modules.
 # Standard Library Imports
 import base64
 import json
+import os
 import random
 import time
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, cast
+
+from sqlalchemy.orm import Session
 
 # Local Application Imports
 from src import constants
-from src.config import APP_ENV, AUDIO_DIR, logger
+from src.config import Config, logger
 from src.custom_types import (
     ComparisonType,
     Option,
@@ -24,7 +27,8 @@ from src.custom_types import (
     TTSProviderName,
     VotingResults,
 )
-from src.database import SessionLocal, crud
+from src.database import crud
+from src.database.database import DBSessionMaker
 
 
 def truncate_text(text: str, max_length: int = 50) -> str:
@@ -77,9 +81,7 @@ def validate_character_description_length(character_description: str) -> None:
     stripped_character_description = character_description.strip()
     character_description_length = len(stripped_character_description)
 
-    logger.debug(
-        f"Voice description length being validated: {character_description_length} characters"
-    )
+    logger.debug(f"Voice description length being validated: {character_description_length} characters")
 
     if character_description_length < constants.CHARACTER_DESCRIPTION_MIN_LENGTH:
         raise ValueError(
@@ -95,9 +97,7 @@ def validate_character_description_length(character_description: str) -> None:
         )
 
     truncated_description = truncate_text(stripped_character_description)
-    logger.debug(
-        f"Character description length validation passed for character_description: {truncated_description}"
-    )
+    logger.debug(f"Character description length validation passed for character_description: {truncated_description}")
 
 
 def delete_files_older_than(directory: str, minutes: int = 30) -> None:
@@ -133,7 +133,7 @@ def delete_files_older_than(directory: str, minutes: int = 30) -> None:
                     logger.exception(f"Error deleting {file_path}: {e}")
 
 
-def save_base64_audio_to_file(base64_audio: str, filename: str) -> str:
+def save_base64_audio_to_file(base64_audio: str, filename: str, config: Config) -> str:
     """
     Decode a base64-encoded audio string and write the resulting binary data to a file
     within the preconfigured AUDIO_DIR directory. Prior to writing the bytes to an audio
@@ -158,11 +158,11 @@ def save_base64_audio_to_file(base64_audio: str, filename: str) -> str:
     audio_bytes = base64.b64decode(base64_audio)
 
     # Construct the full absolute file path within the AUDIO_DIR directory using Path.
-    file_path = Path(AUDIO_DIR) / filename
+    file_path = Path(config.audio_dir) / filename
 
     # Delete all audio files older than 30 minutes before writing the new audio file.
     num_minutes = 30
-    delete_files_older_than(AUDIO_DIR, num_minutes)
+    delete_files_older_than(config.audio_dir, num_minutes)
 
     # Write the binary audio data to the file.
     with file_path.open("wb") as audio_file:
@@ -204,11 +204,7 @@ def choose_providers(
     hume_comparison_only = text_modified or not character_description
 
     provider_a = constants.HUME_AI
-    provider_b = (
-        constants.HUME_AI
-        if hume_comparison_only
-        else random.choice(constants.TTS_PROVIDERS)
-    )
+    provider_b = constants.HUME_AI if hume_comparison_only else random.choice(constants.TTS_PROVIDERS)
 
     return provider_a, provider_b
 
@@ -277,10 +273,8 @@ def determine_selected_option(
 
     return selected_option, other_option
 
-def determine_comparison_type(
-    provider_a: TTSProviderName,
-    provider_b: TTSProviderName
-) -> ComparisonType:
+
+def determine_comparison_type(provider_a: TTSProviderName, provider_b: TTSProviderName) -> ComparisonType:
     """
     Determine the comparison type based on the given TTS provider names.
 
@@ -311,7 +305,7 @@ def log_voting_results(voting_results: VotingResults) -> None:
     logger.info("Voting results:\n%s", json.dumps(voting_results, indent=4))
 
 
-def handle_vote_failure(e: Exception, voting_results: VotingResults, is_dummy_db_session: bool) -> None:
+def handle_vote_failure(e: Exception, voting_results: VotingResults, is_dummy_db_session: bool, config: Config) -> None:
     """
     Handles logging when creating a vote record fails.
 
@@ -322,14 +316,32 @@ def handle_vote_failure(e: Exception, voting_results: VotingResults, is_dummy_db
     In development with a dummy session:
       - Only logs the voting results.
     """
-    if APP_ENV == "prod" or (APP_ENV == "dev" and not is_dummy_db_session):
-        logger.error("Failed to create vote record: %s", e, exc_info=(APP_ENV == "prod"))
+    if config.app_env == "prod" or (config.app_env == "dev" and not is_dummy_db_session):
+        logger.error("Failed to create vote record: %s", e, exc_info=(config.app_env == "prod"))
         log_voting_results(voting_results)
-        if APP_ENV == "prod":
+        if config.app_env == "prod":
             raise e
     else:
         # Dev mode with a dummy session: only log the voting results.
         log_voting_results(voting_results)
+
+
+def _persist_vote(db_session_maker: DBSessionMaker, voting_results: VotingResults, config: Config) -> None:
+    db = db_session_maker()
+    is_dummy_db_session = getattr(db, "is_dummy", False)
+    if is_dummy_db_session:
+        logger.info("Vote record created successfully.")
+        log_voting_results(voting_results)
+    try:
+        crud.create_vote(cast(Session, db), voting_results)
+    except Exception as e:
+        handle_vote_failure(e, voting_results, is_dummy_db_session, config)
+    else:
+        logger.info("Vote record created successfully.")
+        if config.app_env == "dev":
+            log_voting_results(voting_results)
+    finally:
+        db.close()
 
 
 def submit_voting_results(
@@ -338,6 +350,8 @@ def submit_voting_results(
     text_modified: bool,
     character_description: str,
     text: str,
+    db_session_maker: DBSessionMaker,
+    config: Config,
 ) -> None:
     """
     Constructs the voting results dictionary from the provided inputs,
@@ -367,17 +381,34 @@ def submit_voting_results(
         "is_custom_text": text_modified,
     }
 
-    db = SessionLocal()
-    is_dummy_db_session = getattr(db, "is_dummy", False)
-    try:
-        crud.create_vote(db, voting_results)
-    except Exception as e:
-        handle_vote_failure(e, voting_results, is_dummy_db_session)
-    else:
-        logger.info("Vote record created successfully.")
-        if APP_ENV == "dev":
-            log_voting_results(voting_results)
-    finally:
-        db.close()
+    _persist_vote(db_session_maker, voting_results, config)
 
 
+def validate_env_var(var_name: str) -> str:
+    """
+    Validates that an environment variable is set and returns its value.
+
+    Args:
+        var_name (str): The name of the environment variable to validate.
+
+    Returns:
+        str: The value of the environment variable.
+
+    Raises:
+        ValueError: If the environment variable is not set.
+
+    Examples:
+        >>> import os
+        >>> os.environ["EXAMPLE_VAR"] = "example_value"
+        >>> validate_env_var("EXAMPLE_VAR")
+        'example_value'
+
+        >>> validate_env_var("MISSING_VAR")
+        Traceback (most recent call last):
+          ...
+        ValueError: MISSING_VAR is not set. Please ensure it is defined in your environment variables.
+    """
+    value = os.environ.get(var_name, "")
+    if not value:
+        raise ValueError(f"{var_name} is not set. Please ensure it is defined in your environment variables.")
+    return value

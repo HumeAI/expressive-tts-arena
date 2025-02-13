@@ -76,12 +76,12 @@ Expressive TTS Arena/
 
     Standard
     ```sh
-    uv run python -m src.app
+    uv run python -m src.main
     ```
 
     With hot-reloading
     ```sh
-    uv run watchfiles "python -m src.app" src
+    uv run watchfiles "python -m src.main" src
     ```
 
 4. Test the application by navigating to the the localhost URL in your browser (e.g. `localhost:7860` or `http://127.0.0.1:7860`)

@@ -29,9 +29,9 @@ from requests.exceptions import HTTPError
 from tenacity import after_log, before_log, retry, stop_after_attempt, wait_fixed
 
 # Local Application Imports
-from src.config import logger, validate_env_var
+from src.config import Config, logger
 from src.constants import CLIENT_ERROR_CODE, SERVER_ERROR_CODE
-from src.utils import save_base64_audio_to_file
+from src.utils import save_base64_audio_to_file, validate_env_var
 
 HumeSupportedFileFormat = Literal["mp3", "pcm", "wav"]
 """ Support audio file formats for the Hume TTS API"""
@@ -85,7 +85,6 @@ class UnretryableHumeError(HumeError):
 
 
 # Initialize the Hume client
-hume_config = HumeConfig()
 
 
 @retry(
@@ -96,7 +95,7 @@ hume_config = HumeConfig()
     reraise=True,
 )
 def text_to_speech_with_hume(
-    character_description: str, text: str, num_generations: int = 1
+    character_description: str, text: str, num_generations: int, config: Config
 ) -> Union[Tuple[str, str], Tuple[str, str, str, str]]:
     """
     Synthesizes text to speech using the Hume TTS API, processes audio data, and writes audio to a file.
@@ -135,6 +134,7 @@ def text_to_speech_with_hume(
     if num_generations < 1 or num_generations > 2:
         raise ValueError("Invalid number of generations specified. Must be 1 or 2.")
 
+    hume_config = config.hume_config
     request_body = {
         "utterances": [{"text": text, "description": character_description or None}],
         "format": {
@@ -161,20 +161,17 @@ def text_to_speech_with_hume(
 
         # Extract the base64 encoded audio and generation ID from the generation
         generation_a = generations[0]
-        generation_a_id, audio_a_path = parse_hume_tts_generation(generation_a)
+        generation_a_id, audio_a_path = parse_hume_tts_generation(generation_a, config)
 
         if num_generations == 1:
             return (generation_a_id, audio_a_path)
 
         generation_b = generations[1]
-        generation_b_id, audio_b_path = parse_hume_tts_generation(generation_b)
+        generation_b_id, audio_b_path = parse_hume_tts_generation(generation_b, config)
         return (generation_a_id, audio_a_path, generation_b_id, audio_b_path)
 
     except Exception as e:
-        if (
-            isinstance(e, HTTPError)
-            and CLIENT_ERROR_CODE <= e.response.status_code < SERVER_ERROR_CODE
-        ):
+        if isinstance(e, HTTPError) and CLIENT_ERROR_CODE <= e.response.status_code < SERVER_ERROR_CODE:
             raise UnretryableHumeError(
                 message=f"{e.response.text}",
                 original_exception=e,
@@ -186,7 +183,7 @@ def text_to_speech_with_hume(
         ) from e
 
 
-def parse_hume_tts_generation(generation: Dict[str, Any]) -> Tuple[str, str]:
+def parse_hume_tts_generation(generation: Dict[str, Any], config: Config) -> Tuple[str, str]:
     """
     Parse a Hume TTS generation response and save the decoded audio as an MP3 file.
 
@@ -220,5 +217,5 @@ def parse_hume_tts_generation(generation: Dict[str, Any]) -> Tuple[str, str]:
         raise KeyError("The generation dictionary is missing the 'audio' key.")
 
     filename = f"{generation_id}.mp3"
-    audio_file_path = save_base64_audio_to_file(base64_audio, filename)
+    audio_file_path = save_base64_audio_to_file(base64_audio, filename, config)
     return generation_id, audio_file_path
