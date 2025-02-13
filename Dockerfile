@@ -1,13 +1,17 @@
 # Use the official lightweight Python 3.11 slim image as the base
 FROM python:3.11-slim
 
-# Install uv using its standalone installer
+# Install uv and required system dependencies
 #   - `apt-get update` fetches the latest package lists
-#   - `apt-get install -y --no-install-recommends curl` installs curl to fetch the uv installer
+#   - `apt-get install -y --no-install-recommends curl libpq-dev gcc build-essential` installs:
+#       - curl: to fetch the uv installer script
+#       - libpq-dev: provides pg_config required by psycopg2
+#       - gcc & build-essential: required for compiling C extensions (e.g. psycopg2)
 #   - `curl -LsSf` downloads and runs the uv installer script
 #   - `apt-get remove -y curl` removes curl after installation to save space
 #   - `apt-get clean && rm -rf /var/lib/apt/lists/*` removes cached package lists to reduce image size
-RUN apt-get update && apt-get install -y --no-install-recommends curl && \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl libpq-dev gcc build-essential && \
     curl -LsSf https://astral.sh/uv/install.sh | sh && \
     apt-get remove -y curl && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
