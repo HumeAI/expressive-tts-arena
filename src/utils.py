@@ -15,7 +15,7 @@ from typing import Tuple
 
 # Local Application Imports
 from src import constants
-from src.config import AUDIO_DIR, logger
+from src.config import APP_ENV, AUDIO_DIR, logger
 from src.custom_types import (
     ComparisonType,
     Option,
@@ -24,7 +24,7 @@ from src.custom_types import (
     TTSProviderName,
     VotingResults,
 )
-from src.database import SessionLocal, VoteResult, crud
+from src.database import SessionLocal, crud
 
 
 def truncate_text(text: str, max_length: int = 50) -> str:
@@ -306,13 +306,39 @@ def determine_comparison_type(
     raise ValueError(f"Invalid provider combination: {provider_a}, {provider_b}")
 
 
+def log_voting_results(voting_results: VotingResults) -> None:
+    """Log the full voting results."""
+    logger.info("Voting results:\n%s", json.dumps(voting_results, indent=4))
+
+
+def handle_vote_failure(e: Exception, voting_results: VotingResults, is_dummy_db_session: bool) -> None:
+    """
+    Handles logging when creating a vote record fails.
+
+    In production (or in dev with a real session):
+      - Logs the error (with full traceback in prod) and the voting results.
+      - In production, re-raises the exception.
+
+    In development with a dummy session:
+      - Only logs the voting results.
+    """
+    if APP_ENV == "prod" or (APP_ENV == "dev" and not is_dummy_db_session):
+        logger.error("Failed to create vote record: %s", e, exc_info=(APP_ENV == "prod"))
+        log_voting_results(voting_results)
+        if APP_ENV == "prod":
+            raise e
+    else:
+        # Dev mode with a dummy session: only log the voting results.
+        log_voting_results(voting_results)
+
+
 def submit_voting_results(
     option_map: OptionMap,
     selected_option: str,
     text_modified: bool,
     character_description: str,
     text: str,
-) -> VoteResult:
+) -> None:
     """
     Constructs the voting results dictionary from the provided inputs,
     logs it, persists a new vote record in the database, and returns the record.
@@ -323,9 +349,6 @@ def submit_voting_results(
         text_modified (bool): Indicates whether the text was modified.
         character_description (str): Description of the voice/character.
         text (str): The text associated with the TTS generation.
-
-    Returns:
-        VoteResult: The newly created vote record from the database.
     """
     provider_a: TTSProviderName = option_map[constants.OPTION_A_KEY]["provider"]
     provider_b: TTSProviderName = option_map[constants.OPTION_B_KEY]["provider"]
@@ -344,14 +367,17 @@ def submit_voting_results(
         "is_custom_text": text_modified,
     }
 
-    logger.info("Voting results:\n%s", json.dumps(voting_results, indent=4))
-
-    # Create a new database session, persist the vote record, and then close the session.
     db = SessionLocal()
+    is_dummy_db_session = getattr(db, "is_dummy", False)
     try:
-        vote_record = crud.create_vote(db, voting_results)
-        logger.info("Vote record created successfully")
+        crud.create_vote(db, voting_results)
+    except Exception as e:
+        handle_vote_failure(e, voting_results, is_dummy_db_session)
+    else:
+        logger.info("Vote record created successfully.")
+        if APP_ENV == "dev":
+            log_voting_results(voting_results)
     finally:
         db.close()
 
-    return vote_record
+
