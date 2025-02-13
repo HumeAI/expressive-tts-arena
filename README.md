@@ -46,8 +46,6 @@ Expressive TTS Arena/
 │   │   ├── __init__.py         # Makes scripts a package
 │   │   ├── init_db.py          # Script for initializing database
 │   │   ├── test_db.py          # Script for testing database connection
-│   ├── static/
-│   │   ├── audio/              # Directory for storing generated audio
 │   ├── __init__.py             # Makes src a package
 │   ├── app.py                  # Entry file
 │   ├── config.py               # Global config and logger setup
@@ -55,6 +53,8 @@ Expressive TTS Arena/
 │   ├── custom_types.py         # Global custom types
 │   ├── theme.py                # Custom Gradio Theme
 │   └── utils.py                # Utility functions
+│── static/
+│   ├── audio/                  # Directory for storing generated audio files
 ├── .env.example
 ├── .gitignore
 ├── .pre-commit-config.yaml
