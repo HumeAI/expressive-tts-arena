@@ -24,6 +24,7 @@ from src.custom_types import (
     TTSProviderName,
     VotingResults,
 )
+from src.database import SessionLocal, VoteResult, crud
 
 
 def truncate_text(text: str, max_length: int = 50) -> str:
@@ -311,20 +312,20 @@ def submit_voting_results(
     text_modified: bool,
     character_description: str,
     text: str,
-) -> VotingResults:
+) -> VoteResult:
     """
-    Constructs the voting results dictionary from the provided inputs and logs it.
+    Constructs the voting results dictionary from the provided inputs,
+    logs it, persists a new vote record in the database, and returns the record.
 
     Args:
         option_map (OptionMap): Mapping of comparison data and TTS options.
         selected_option (str): The option selected by the user.
-        comparison_type (ComparisonType): The type of comparison between providers.
         text_modified (bool): Indicates whether the text was modified.
         character_description (str): Description of the voice/character.
         text (str): The text associated with the TTS generation.
 
     Returns:
-        VotingResults: The constructed voting results dictionary.
+        VoteResult: The newly created vote record from the database.
     """
     provider_a: TTSProviderName = option_map[constants.OPTION_A_KEY]["provider"]
     provider_b: TTSProviderName = option_map[constants.OPTION_B_KEY]["provider"]
@@ -342,6 +343,15 @@ def submit_voting_results(
         "text": text,
         "is_custom_text": text_modified,
     }
-    # TODO: Currently logging the results until we hook the API for writing results to DB
+
     logger.info("Voting results:\n%s", json.dumps(voting_results, indent=4))
-    return voting_results
+
+    # Create a new database session, persist the vote record, and then close the session.
+    db = SessionLocal()
+    try:
+        vote_record = crud.create_vote(db, voting_results)
+        logger.info("Vote record created successfully")
+    finally:
+        db.close()
+
+    return vote_record
