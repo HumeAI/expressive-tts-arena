@@ -233,14 +233,14 @@ def vote(
     return (
         True,
         (
-            gr.update(value=selected_label, variant="primary", interactive=False)
+            gr.update(value=selected_label, variant="primary")
             if selected_option == constants.OPTION_A_KEY
-            else gr.update(value=other_label, variant="secondary", interactive=False)
+            else gr.update(value=other_label, variant="secondary")
         ),
         (
-            gr.update(value=other_label, variant="secondary", interactive=False)
+            gr.update(value=other_label, variant="secondary")
             if selected_option == constants.OPTION_A_KEY
-            else gr.update(value=selected_label, variant="primary", interactive=False)
+            else gr.update(value=selected_label, variant="primary")
         ),
         gr.update(interactive=True),
     )
@@ -471,6 +471,13 @@ def build_gradio_interface() -> gr.Blocks:
 
         # Vote button click event handlers
         vote_button_a.click(
+            fn=lambda: (
+                gr.update(interactive=False),
+                gr.update(interactive=False),
+            ),
+            inputs=[],
+            outputs=[vote_button_a, vote_button_b],
+        ).then(
             fn=vote,
             inputs=[
                 vote_submitted_state,
@@ -487,7 +494,15 @@ def build_gradio_interface() -> gr.Blocks:
                 synthesize_speech_button,
             ],
         )
+
         vote_button_b.click(
+            fn=lambda: (
+                gr.update(interactive=False),
+                gr.update(interactive=False),
+            ),
+            inputs=[],
+            outputs=[vote_button_a, vote_button_b],
+        ).then(
             fn=vote,
             inputs=[
                 vote_submitted_state,
