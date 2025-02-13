@@ -15,12 +15,60 @@ dependencies = [
     "tenacity>=9.0.0",
 ]
 
-[dependency-groups]
-dev = [
-    "black>=25.1.0",
+[tool.uv]
+dev-dependencies = [
     "mypy>=1.15.0",
     "pre-commit>=4.1.0",
     "pytest>=8.3.4",
     "ruff>=0.9.5",
     "watchfiles>=1.0.4",
 ]
+
+[tool.ruff]
+line-length = 120
+src = ["src"]
+
+[tool.ruff.lint]
+ignore = ["D100", "D104", "FIX002", "TD002", "TD003"]
+select = [
+    "A",
+    "ARG",
+    "B",
+    "BLE",
+    "C4",
+    "E",
+    "EM",
+    "ERA",
+    "F",
+    "FIX",
+    "G",
+    "I",
+    "ICN",
+    "ISC",
+    "LOG",
+    "N",
+    "PL",
+    "PT",
+    "PTH",
+    "PLR",
+    "RET",
+    "RUF",
+    "SIM",
+    "SLF",
+    "T20",
+    "TCH",
+    "TD",
+    "TID",
+    "W",
+]
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 120
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.extend-per-file-ignores]
+"**/*.py" = ["A001", "A002"]
+"**/tests/**/*.py" = ["SLF", "PLR2004", "PLR6301"]
+"src/myxa/cli.py" = ["T201", "T203"]

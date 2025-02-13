@@ -5,8 +5,7 @@ This module defines custom types for the application.
 """
 
 # Standard Library Imports
-from typing import Dict, Literal, NamedTuple, Optional, TypedDict
-
+from typing import Literal, NamedTuple, Optional, TypedDict
 
 TTSProviderName = Literal["Hume AI", "ElevenLabs"]
 """TTSProviderName represents the allowed provider names for TTS services."""
@@ -53,7 +52,7 @@ class VotingResults(TypedDict):
     option_b_provider: TTSProviderName
     option_a_generation_id: str
     option_b_generation_id: str
-    voice_description: str
+    character_description: str
     text: str
     is_custom_text: bool
 
