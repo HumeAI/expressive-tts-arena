@@ -15,6 +15,7 @@ Expressive TTS Arena is an open-source web application that enables users to com
 - [Python >=3.11.11](https://www.python.org/downloads/)
 - [pip >=25.0](https://pypi.org/project/pip/)
 - [uv >=0.5.29](https://github.com/astral-sh/uv)
+- [Postgres](https://www.postgresql.org/download/)
 - API keys for Hume AI, Anthropic, and ElevenLabs
 
 ## Project Structure
