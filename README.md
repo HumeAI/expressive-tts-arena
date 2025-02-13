@@ -100,10 +100,11 @@ Expressive TTS Arena/
 
 ## User Flow
 
-1. **Enter or Generate Text:** Type directly in the Text box, or optionally enter a Character description, click "Generate text", and edit if needed.
-2. **Synthesize Speech:** Click "Synthesize speech" to generate two audio outputs.
-3. **Listen & Compare:** Playback both options (A & B) to hear the differences.
-4. **Vote for Your Favorite:** Click "Vote for option A" or "Vote for option B" to choose your favorite.
+1. **Choose or enter a character description**: Select a sample from the list or enter your own to guide text and voice generation.
+2. **Generate text**: Click **"Generate Text"** to create dialogue based on the character. The generated text will appear in the input field automatically—edit it if needed.
+3. **Synthesize speech**: Click **"Synthesize Speech"** to send your text and character description to two TTS APIs. Each API generates a voice and synthesizes speech in that voice.
+4. **Listen & compare**: Play both audio options and assess their expressiveness.
+5. **Vote for the best**: Click **"Select Option A"** or **"Select Option B"** to choose the most expressive output.
 
 ## License
 
