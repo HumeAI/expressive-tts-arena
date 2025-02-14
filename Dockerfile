@@ -34,7 +34,7 @@ RUN uv sync
 # Copy the remaining project files into the container
 COPY . .
 
-# Document the port used by Gradio (optional)
+# Document the port used by Gradio
 #   - This does not actually expose the port, it is just metadata for users
 #   - To actually expose the port, use `docker run -p 7860:7860 <image>`
 EXPOSE 7860
