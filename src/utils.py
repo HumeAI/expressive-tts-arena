@@ -100,7 +100,7 @@ def validate_character_description_length(character_description: str) -> None:
     logger.debug(f"Character description length validation passed for character_description: {truncated_description}")
 
 
-def delete_files_older_than(directory: str, minutes: int = 30) -> None:
+def delete_files_older_than(directory: Path, minutes: int = 30) -> None:
     """
     Delete all files in the specified directory that are older than a given number of minutes.
 
@@ -274,7 +274,7 @@ def determine_selected_option(
     return selected_option, other_option
 
 
-def determine_comparison_type(provider_a: TTSProviderName, provider_b: TTSProviderName) -> ComparisonType:
+def _determine_comparison_type(provider_a: TTSProviderName, provider_b: TTSProviderName) -> ComparisonType:
     """
     Determine the comparison type based on the given TTS provider names.
 
@@ -300,12 +300,17 @@ def determine_comparison_type(provider_a: TTSProviderName, provider_b: TTSProvid
     raise ValueError(f"Invalid provider combination: {provider_a}, {provider_b}")
 
 
-def log_voting_results(voting_results: VotingResults) -> None:
+def _log_voting_results(voting_results: VotingResults) -> None:
     """Log the full voting results."""
     logger.info("Voting results:\n%s", json.dumps(voting_results, indent=4))
 
 
-def handle_vote_failure(e: Exception, voting_results: VotingResults, is_dummy_db_session: bool, config: Config) -> None:
+def _handle_vote_failure(
+    e: Exception,
+    voting_results: VotingResults,
+    is_dummy_db_session: bool,
+    config: Config,
+) -> None:
     """
     Handles logging when creating a vote record fails.
 
@@ -318,12 +323,12 @@ def handle_vote_failure(e: Exception, voting_results: VotingResults, is_dummy_db
     """
     if config.app_env == "prod" or (config.app_env == "dev" and not is_dummy_db_session):
         logger.error("Failed to create vote record: %s", e, exc_info=(config.app_env == "prod"))
-        log_voting_results(voting_results)
+        _log_voting_results(voting_results)
         if config.app_env == "prod":
             raise e
     else:
         # Dev mode with a dummy session: only log the voting results.
-        log_voting_results(voting_results)
+        _log_voting_results(voting_results)
 
 
 def _persist_vote(db_session_maker: DBSessionMaker, voting_results: VotingResults, config: Config) -> None:
@@ -331,22 +336,22 @@ def _persist_vote(db_session_maker: DBSessionMaker, voting_results: VotingResult
     is_dummy_db_session = getattr(db, "is_dummy", False)
     if is_dummy_db_session:
         logger.info("Vote record created successfully.")
-        log_voting_results(voting_results)
+        _log_voting_results(voting_results)
     try:
         crud.create_vote(cast(Session, db), voting_results)
     except Exception as e:
-        handle_vote_failure(e, voting_results, is_dummy_db_session, config)
+        _handle_vote_failure(e, voting_results, is_dummy_db_session, config)
     else:
         logger.info("Vote record created successfully.")
         if config.app_env == "dev":
-            log_voting_results(voting_results)
+            _log_voting_results(voting_results)
     finally:
         db.close()
 
 
 def submit_voting_results(
     option_map: OptionMap,
-    selected_option: str,
+    selected_option: OptionKey,
     text_modified: bool,
     character_description: str,
     text: str,
@@ -366,7 +371,7 @@ def submit_voting_results(
     """
     provider_a: TTSProviderName = option_map[constants.OPTION_A_KEY]["provider"]
     provider_b: TTSProviderName = option_map[constants.OPTION_B_KEY]["provider"]
-    comparison_type: ComparisonType = determine_comparison_type(provider_a, provider_b)
+    comparison_type: ComparisonType = _determine_comparison_type(provider_a, provider_b)
 
     voting_results: VotingResults = {
         "comparison_type": comparison_type,
@@ -376,7 +381,7 @@ def submit_voting_results(
         "option_b_provider": provider_b,
         "option_a_generation_id": option_map[constants.OPTION_A_KEY]["generation_id"],
         "option_b_generation_id": option_map[constants.OPTION_B_KEY]["generation_id"],
-        "voice_description": character_description,
+        "character_description": character_description,
         "text": text,
         "is_custom_text": text_modified,
     }

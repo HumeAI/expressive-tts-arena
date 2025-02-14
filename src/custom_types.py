@@ -50,8 +50,8 @@ class VotingResults(TypedDict):
     winning_option: OptionKey
     option_a_provider: TTSProviderName
     option_b_provider: TTSProviderName
-    option_a_generation_id: str
-    option_b_generation_id: str
+    option_a_generation_id: Optional[str]
+    option_b_generation_id: Optional[str]
     character_description: str
     text: str
     is_custom_text: bool
