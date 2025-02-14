@@ -36,6 +36,7 @@ Thumbs.db
 
 # Python cache
 *.cache
+.mypy_cache
 .ruff_cache
 
 # Temp files
