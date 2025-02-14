@@ -23,6 +23,7 @@ dev-dependencies = [
     "pytest>=8.3.4",
     "ruff>=0.9.5",
     "watchfiles>=1.0.4",
+    "types-requests>=2.28.0",
 ]
 
 [tool.ruff]
