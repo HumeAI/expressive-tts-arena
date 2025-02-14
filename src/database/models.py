@@ -42,7 +42,7 @@ class VoteResult(Base):
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     comparison_type = Column(String(50), nullable=False)
     winning_provider = Column(String(50), nullable=False)
-    winning_option = Column(saEnum(OptionEnum), nullable=False)
+    winning_option = Column(saEnum(OptionEnum), nullable=False)  # type: ignore
     option_a_provider = Column(String(50), nullable=False)
     option_b_provider = Column(String(50), nullable=False)
     option_a_generation_id = Column(String(100), nullable=True)

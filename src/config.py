@@ -20,9 +20,9 @@ from typing import TYPE_CHECKING, ClassVar, Optional
 # Third-Party Library Imports
 from dotenv import load_dotenv
 
+# Local Application Imports
 if TYPE_CHECKING:
     from src.integrations import AnthropicConfig, ElevenLabsConfig, HumeConfig
-
 
 logger: logging.Logger = logging.getLogger("tts_arena")
 

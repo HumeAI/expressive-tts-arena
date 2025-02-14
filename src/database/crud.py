@@ -32,7 +32,7 @@ def create_vote(db: Session, vote_data: VotingResults) -> VoteResult:
         option_b_provider=vote_data["option_b_provider"],
         option_a_generation_id=vote_data["option_a_generation_id"],
         option_b_generation_id=vote_data["option_b_generation_id"],
-        voice_description=vote_data["voice_description"],
+        voice_description=vote_data["character_description"],
         text=vote_data["text"],
         is_custom_text=vote_data["is_custom_text"],
     )
