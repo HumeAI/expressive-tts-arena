@@ -42,4 +42,4 @@ EXPOSE 7860
 # Define the command to start the application
 #   - `uv run` ensures that the virtual environment is activated and dependencies are up to date
 #   - `python -m src.app` runs the main application module
-CMD ["uv", "run", "python", "-m", "src.app"]
+CMD ["uv", "run", "python", "-m", "src.main"]
