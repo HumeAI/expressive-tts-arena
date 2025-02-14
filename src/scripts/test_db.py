@@ -25,6 +25,9 @@ Troubleshooting:
 
 """
 
+# Standard Library Imports
+import sys
+
 # Third-Party Library Imports
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
@@ -33,9 +36,20 @@ from sqlalchemy.exc import OperationalError
 from src.config import logger
 from src.database import engine
 
-try:
-    with engine.connect() as conn:
-        result = conn.execute(text("SELECT 1"))
-        logger.info("Database connection successful!")
-except OperationalError as e:
-    logger.error(f"Database connection failed: {e}")
+
+def main() -> None:
+    if engine is None:
+        logger.error("No valid database engine configured.")
+        sys.exit(1)
+
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+            logger.info("Database connection successful!")
+    except OperationalError as e:
+        logger.error(f"Database connection failed: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
