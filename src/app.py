@@ -47,7 +47,7 @@ class App:
         self.config = config
         self.db_session_maker = db_session_maker
 
-    def generate_text(
+    def _generate_text(
         self,
         character_description: str,
     ) -> Tuple[Union[str, gr.update], gr.update]:
@@ -65,6 +65,7 @@ class App:
         Raises:
             gr.Error: On validation or API errors.
         """
+
         try:
             validate_character_description_length(character_description)
         except ValueError as ve:
@@ -82,7 +83,7 @@ class App:
             logger.error(f"Unexpected error while generating text: {e}")
             raise gr.Error("Failed to generate text. Please try again later.")
 
-    def synthesize_speech(
+    def _synthesize_speech(
         self,
         character_description: str,
         text: str,
@@ -121,6 +122,7 @@ class App:
         Raises:
             gr.Error: If any API or unexpected errors occur during the TTS synthesis process.
         """
+
         if not text:
             logger.warning("Skipping text-to-speech due to empty text.")
             raise gr.Error("Please generate or enter text to synthesize.")
@@ -185,7 +187,7 @@ class App:
             logger.error(f"Unexpected error during TTS generation: {e}")
             raise gr.Error("An unexpected error ocurred. Please try again later.")
 
-    def vote(
+    def _vote(
         self,
         vote_submitted: bool,
         option_map: OptionMap,
@@ -214,6 +216,7 @@ class App:
              - An update for the unselected vote button (showing provider).
              - An update for enabling vote interactions.
         """
+
         if not option_map or vote_submitted:
             return gr.skip(), gr.skip(), gr.skip(), gr.skip()
 
@@ -251,7 +254,7 @@ class App:
             gr.update(interactive=True),
         )
 
-    def reset_ui(self) -> Tuple[gr.update, gr.update, gr.update, gr.update, None, bool]:
+    def _reset_ui(self) -> Tuple[gr.update, gr.update, gr.update, gr.update, None, bool]:
         """
         Resets UI state before generating new text.
 
@@ -264,6 +267,7 @@ class App:
              - option_map_state (reset option map state)
              - vote_submitted_state (reset submitted vote state)
         """
+
         return (
             gr.update(value=None),
             gr.update(value=None, autoplay=False),
@@ -273,11 +277,12 @@ class App:
             False,
         )
 
-    def build_input_section(self) -> Tuple[gr.Dropdown, gr.Textbox, gr.Button]:
+    def _build_input_section(self) -> Tuple[gr.Dropdown, gr.Textbox, gr.Button]:
         """
         Builds the input section including the sample character description dropdown, character
         description input, and generate text button.
         """
+
         sample_character_description_dropdown = gr.Dropdown(
             choices=list(constants.SAMPLE_CHARACTER_DESCRIPTIONS.keys()),
             label="Choose a sample character description",
@@ -299,10 +304,11 @@ class App:
             generate_text_button,
         )
 
-    def build_output_section(self) -> Tuple[gr.Textbox, gr.Button, gr.Audio, gr.Audio, gr.Button, gr.Button]:
+    def _build_output_section(self) -> Tuple[gr.Textbox, gr.Button, gr.Audio, gr.Audio, gr.Button, gr.Button]:
         """
         Builds the output section including text input, audio players, and vote buttons.
         """
+
         text_input = gr.Textbox(
             label="Input Text",
             placeholder="Enter or generate text for synthesis...",
@@ -336,6 +342,7 @@ class App:
         Returns:
             gr.Blocks: The fully constructed Gradio UI layout.
         """
+
         custom_theme = CustomTheme()
         with gr.Blocks(
             title="Expressive TTS Arena",
@@ -364,7 +371,7 @@ class App:
                 sample_character_description_dropdown,
                 character_description_input,
                 generate_text_button,
-            ) = self.build_input_section()
+            ) = self._build_input_section()
 
             # Build synthesize speech section
             (
@@ -374,7 +381,7 @@ class App:
                 option_b_audio_player,
                 vote_button_a,
                 vote_button_b,
-            ) = self.build_output_section()
+            ) = self._build_output_section()
 
             # --- UI state components ---
 
@@ -411,7 +418,7 @@ class App:
                 inputs=[],
                 outputs=[generate_text_button],
             ).then(
-                fn=self.generate_text,
+                fn=self._generate_text,
                 inputs=[character_description_input],
                 outputs=[text_input, generated_text_state],
             ).then(
@@ -434,7 +441,7 @@ class App:
                 inputs=[],
                 outputs=[synthesize_speech_button, vote_button_a, vote_button_b],
             ).then(
-                fn=self.reset_ui,
+                fn=self._reset_ui,
                 inputs=[],
                 outputs=[
                     option_a_audio_player,
@@ -445,7 +452,7 @@ class App:
                     vote_submitted_state,
                 ],
             ).then(
-                fn=self.synthesize_speech,
+                fn=self._synthesize_speech,
                 inputs=[character_description_input, text_input, generated_text_state],
                 outputs=[
                     option_a_audio_player,
@@ -474,7 +481,7 @@ class App:
                 inputs=[],
                 outputs=[vote_button_a, vote_button_b],
             ).then(
-                fn=self.vote,
+                fn=self._vote,
                 inputs=[
                     vote_submitted_state,
                     option_map_state,

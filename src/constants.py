@@ -13,6 +13,7 @@ from src.custom_types import ComparisonType, OptionKey, OptionLabel, TTSProvider
 CLIENT_ERROR_CODE = 400
 SERVER_ERROR_CODE = 500
 
+
 # UI constants
 HUME_AI: TTSProviderName = "Hume AI"
 ELEVENLABS: TTSProviderName = "ElevenLabs"
@@ -28,13 +29,15 @@ OPTION_A_KEY: OptionKey = "option_a"
 OPTION_B_KEY: OptionKey = "option_b"
 OPTION_A_LABEL: OptionLabel = "Option A"
 OPTION_B_LABEL: OptionLabel = "Option B"
+
 TROPHY_EMOJI: str = "🏆"
+
 SELECT_OPTION_A: str = "Select Option A"
 SELECT_OPTION_B: str = "Select Option B"
 
 
 # A collection of pre-defined character descriptions categorized by theme, used to provide users with
-# inspiration for generating creative text for expressive TTS, and generating novel voices.
+# inspiration for generating creative, expressive text inputs for TTS, and generating novel voices.
 SAMPLE_CHARACTER_DESCRIPTIONS: dict = {
     "🚀 Stranded Astronaut": (
         "A lone astronaut whose voice mirrors the silent vastness of space—a low, steady tone imbued "

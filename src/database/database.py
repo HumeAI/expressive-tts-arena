@@ -52,6 +52,7 @@ class DummySession:
 Base = declarative_base()
 engine: Optional[Engine] = None
 
+
 DBSessionMaker = sessionmaker | Callable[[], DummySession]
 
 

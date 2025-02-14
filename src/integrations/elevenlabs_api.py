@@ -105,6 +105,7 @@ def text_to_speech_with_elevenlabs(
     Raises:
         ElevenLabsError: If there is an error communicating with the ElevenLabs API or processing the response.
     """
+
     logger.debug(f"Synthesizing speech with ElevenLabs. Text length: {len(text)} characters.")
 
     elevenlabs_config = config.elevenlabs_config

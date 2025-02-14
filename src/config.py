@@ -23,6 +23,7 @@ from dotenv import load_dotenv
 if TYPE_CHECKING:
     from src.integrations import AnthropicConfig, ElevenLabsConfig, HumeConfig
 
+
 logger: logging.Logger = logging.getLogger("tts_arena")
 
 

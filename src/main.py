@@ -4,9 +4,10 @@ main.py
 This module is the entry point for the app. It loads configuration and starts the Gradio app.
 """
 
+# Local Application Imports
 from src.app import App
 from src.config import Config, logger
-from src.database.database import init_db
+from src.database import init_db
 
 if __name__ == "__main__":
     config = Config.get()

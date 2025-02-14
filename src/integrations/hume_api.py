@@ -128,6 +128,7 @@ def text_to_speech_with_hume(
         Exception: Any other exceptions raised during the request or processing will be wrapped and
                    re-raised as HumeError.
     """
+
     logger.debug(
         f"Processing TTS with Hume. Prompt length: {len(character_description)} characters. "
         f"Text length: {len(text)} characters."
@@ -161,13 +162,13 @@ def text_to_speech_with_hume(
 
         # Extract the base64 encoded audio and generation ID from the generation.
         generation_a = generations[0]
-        generation_a_id, audio_a_path = parse_hume_tts_generation(generation_a, config)
+        generation_a_id, audio_a_path = _parse_hume_tts_generation(generation_a, config)
 
         if num_generations == 1:
             return (generation_a_id, audio_a_path)
 
         generation_b = generations[1]
-        generation_b_id, audio_b_path = parse_hume_tts_generation(generation_b, config)
+        generation_b_id, audio_b_path = _parse_hume_tts_generation(generation_b, config)
         return (generation_a_id, audio_a_path, generation_b_id, audio_b_path)
 
     except Exception as e:
@@ -187,7 +188,7 @@ def text_to_speech_with_hume(
         ) from e
 
 
-def parse_hume_tts_generation(generation: Dict[str, Any], config: Config) -> Tuple[str, str]:
+def _parse_hume_tts_generation(generation: Dict[str, Any], config: Config) -> Tuple[str, str]:
     """
     Parse a Hume TTS generation response and save the decoded audio as an MP3 file.
 

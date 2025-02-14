@@ -100,7 +100,7 @@ def validate_character_description_length(character_description: str) -> None:
     logger.debug(f"Character description length validation passed for character_description: {truncated_description}")
 
 
-def delete_files_older_than(directory: Path, minutes: int = 30) -> None:
+def _delete_files_older_than(directory: Path, minutes: int = 30) -> None:
     """
     Delete all files in the specified directory that are older than a given number of minutes.
 
@@ -154,15 +154,12 @@ def save_base64_audio_to_file(base64_audio: str, filename: str, config: Config) 
     Raises:
         FileNotFoundError: If the audio file was not created.
     """
-    # Decode the base64-encoded audio into binary data.
+
     audio_bytes = base64.b64decode(base64_audio)
-
-    # Construct the full absolute file path within the AUDIO_DIR directory using Path.
     file_path = Path(config.audio_dir) / filename
-
-    # Delete all audio files older than 30 minutes before writing the new audio file.
     num_minutes = 30
-    delete_files_older_than(config.audio_dir, num_minutes)
+
+    _delete_files_older_than(config.audio_dir, num_minutes)
 
     # Write the binary audio data to the file.
     with file_path.open("wb") as audio_file:
@@ -201,6 +198,7 @@ def choose_providers(
         where the first is always "Hume AI" and the second is determined by the text_modified
         flag and random selection.
     """
+
     hume_comparison_only = text_modified or not character_description
 
     provider_a = constants.HUME_AI
@@ -225,16 +223,11 @@ def create_shuffled_tts_options(option_a: Option, option_b: Option) -> OptionMap
         OptionMap: A mapping of shuffled TTS options, where each option includes
                    its provider, audio file path, and generation ID.
     """
-    # Create a list of Option instances for the available providers.
+
     options = [option_a, option_b]
-
-    # Randomly shuffle the list of options.
     random.shuffle(options)
-
-    # Unpack the two options.
     shuffled_option_a, shuffled_option_b = options
 
-    # Build a mapping from option constants to the corresponding providers.
     return {
         "option_a": {
             "provider": shuffled_option_a.provider,
@@ -264,6 +257,7 @@ def determine_selected_option(
             - selected_option is the same as the selected_option.
             - other_option is the alternative option.
     """
+
     if selected_option_button == constants.SELECT_OPTION_A:
         selected_option, other_option = constants.OPTION_A_KEY, constants.OPTION_B_KEY
     elif selected_option_button == constants.SELECT_OPTION_B:
@@ -291,6 +285,7 @@ def _determine_comparison_type(provider_a: TTSProviderName, provider_b: TTSProvi
     Raises:
         ValueError: If the combination of providers is not recognized.
     """
+
     if provider_a == constants.HUME_AI and provider_b == constants.HUME_AI:
         return constants.HUME_TO_HUME
 
@@ -302,6 +297,7 @@ def _determine_comparison_type(provider_a: TTSProviderName, provider_b: TTSProvi
 
 def _log_voting_results(voting_results: VotingResults) -> None:
     """Log the full voting results."""
+
     logger.info("Voting results:\n%s", json.dumps(voting_results, indent=4))
 
 
@@ -321,6 +317,7 @@ def _handle_vote_failure(
     In development with a dummy session:
       - Only logs the voting results.
     """
+
     if config.app_env == "prod" or (config.app_env == "dev" and not is_dummy_db_session):
         logger.error("Failed to create vote record: %s", e, exc_info=(config.app_env == "prod"))
         _log_voting_results(voting_results)
@@ -332,6 +329,23 @@ def _handle_vote_failure(
 
 
 def _persist_vote(db_session_maker: DBSessionMaker, voting_results: VotingResults, config: Config) -> None:
+    """
+    Persist a vote record in the database and handle potential failures.
+
+    This function obtains a database session using the provided session maker and attempts
+    to create a vote record using the specified voting results. If the session is identified
+    as a dummy session, it logs a success message and outputs the voting results. If an error
+    occurs during vote creation, the function delegates error handling to _handle_vote_failure.
+    On successful vote creation, it logs the success and, when running in a development environment,
+    logs the full voting results for debugging purposes. In all cases, the database session is
+    properly closed after the operation.
+
+    Args:
+        db_session_maker (DBSessionMaker): A callable that returns a new database session.
+        voting_results (VotingResults): A dictionary containing the details of the vote to persist.
+        config (Config): The application configuration, used to determine environment-specific behavior.
+    """
+
     db = db_session_maker()
     is_dummy_db_session = getattr(db, "is_dummy", False)
     if is_dummy_db_session:
@@ -369,6 +383,7 @@ def submit_voting_results(
         character_description (str): Description of the voice/character.
         text (str): The text associated with the TTS generation.
     """
+
     provider_a: TTSProviderName = option_map[constants.OPTION_A_KEY]["provider"]
     provider_b: TTSProviderName = option_map[constants.OPTION_B_KEY]["provider"]
     comparison_type: ComparisonType = _determine_comparison_type(provider_a, provider_b)

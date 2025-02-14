@@ -69,6 +69,7 @@ where you are in the narrative.
 Remember: A shorter, complete response is ALWAYS better than a longer, truncated one."""
 )
 
+
 @dataclass(frozen=True)
 class AnthropicConfig:
     """Immutable configuration for interacting with the Anthropic API."""
@@ -166,6 +167,7 @@ def generate_text_with_claude(character_description: str, config: Config) -> str
         UnretryableAnthropicError: For errors that should not be retried.
         AnthropicError: For other errors communicating with the Anthropic API.
     """
+
     try:
         anthropic_config = config.anthropic_config
         prompt = anthropic_config.build_expressive_prompt(character_description)
