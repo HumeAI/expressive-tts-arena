@@ -20,12 +20,12 @@ Functions:
 
 # Standard Library Imports
 import logging
-from dataclasses import dataclass
-from typing import List, Optional, Union
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Union, cast
 
 # Third-Party Library Imports
 from anthropic import Anthropic, APIError
-from anthropic.types import Message, ModelParam, TextBlock
+from anthropic.types import Message, ModelParam, TextBlock, ToolUseBlock
 from tenacity import after_log, before_log, retry, stop_after_attempt, wait_fixed
 
 # Local Application Imports
@@ -33,65 +33,65 @@ from src.config import Config, logger
 from src.constants import CLIENT_ERROR_CODE, SERVER_ERROR_CODE
 from src.utils import truncate_text, validate_env_var
 
+PROMPT_TEMPLATE: str = (
+    """You are an expert at generating micro-content optimized for text-to-speech synthesis.
+Your absolute priority is delivering complete, untruncated responses within strict length limits.
+
+CRITICAL LENGTH CONSTRAINTS:
+- Maximum length: {max_tokens} tokens (approximately 400 characters)
+- You MUST complete all thoughts and sentences
+- Responses should be 25% shorter than you initially plan
+- Never exceed 400 characters total
+
+Response Generation Process:
+- Draft your response mentally first
+- ut it down to 75% of its original length
+- Reserve the last 100 characters for a proper conclusion
+- If you start running long, immediately wrap up
+- End every piece with a clear conclusion
+
+Content Requirements:
+- Allow natural emotional progression
+- Create an arc of connected moments
+- Use efficient but expressive language
+- Balance description with emotional depth
+- Ensure perfect completion
+- No meta-commentary or formatting
+
+Structure for Emotional Pieces:
+- Opening hook (50-75 characters)
+- Emotional journey (200-250 characters)
+- Resolution (75-100 characters)
+
+MANDATORY: If you find yourself reaching 300 characters, immediately begin your conclusion regardless of
+where you are in the narrative.
+
+Remember: A shorter, complete response is ALWAYS better than a longer, truncated one."""
+)
 
 @dataclass(frozen=True)
 class AnthropicConfig:
     """Immutable configuration for interacting with the Anthropic API."""
 
-    api_key: Optional[str] = None
+    api_key: str = field(init=False)
+    system_prompt: str = field(init=False)
     model: ModelParam = "claude-3-5-sonnet-latest"
     max_tokens: int = 150
-    system_prompt: Optional[str] = (
-        None  # system prompt is set post initialization, since self.max_tokens is leveraged in the prompt.
-    )
 
-    def __post_init__(self):
-        # Validate that required attributes are set
-        if not self.api_key:
-            api_key = validate_env_var("ANTHROPIC_API_KEY")
-            object.__setattr__(self, "api_key", api_key)
+    def __post_init__(self) -> None:
+        # Validate required non-computed attributes.
         if not self.model:
             raise ValueError("Anthropic Model is not set.")
         if not self.max_tokens:
             raise ValueError("Anthropic Max Tokens is not set.")
-        if self.system_prompt is None:
-            system_prompt: str = f"""You are an expert at generating micro-content optimized for text-to-speech
-synthesis. Your absolute priority is delivering complete, untruncated responses within strict length limits.
 
-CRITICAL LENGTH CONSTRAINTS:
+        # Compute the API key from the environment.
+        computed_api_key = validate_env_var("ANTHROPIC_API_KEY")
+        object.__setattr__(self, "api_key", computed_api_key)
 
-Maximum length: {self.max_tokens} tokens (approximately 400 characters)
-You MUST complete all thoughts and sentences
-Responses should be 25% shorter than you initially plan
-Never exceed 400 characters total
-
-Response Generation Process:
-
-Draft your response mentally first
-Cut it down to 75% of its original length
-Reserve the last 100 characters for a proper conclusion
-If you start running long, immediately wrap up
-End every piece with a clear conclusion
-
-Content Requirements:
-
-Allow natural emotional progression
-Create an arc of connected moments
-Use efficient but expressive language
-Balance description with emotional depth
-Ensure perfect completion
-No meta-commentary or formatting
-
-Structure for Emotional Pieces:
-
-Opening hook (50-75 characters)
-Emotional journey (200-250 characters)
-Resolution (75-100 characters)
-
-MANDATORY: If you find yourself reaching 300 characters, immediately begin your conclusion regardless of where you
-are in the narrative.
-Remember: A shorter, complete response is ALWAYS better than a longer, truncated one."""
-            object.__setattr__(self, "system_prompt", system_prompt)
+        # Compute the system prompt using max_tokens and other logic.
+        computed_prompt = PROMPT_TEMPLATE.format(max_tokens=self.max_tokens)
+        object.__setattr__(self, "system_prompt", computed_prompt)
 
     @property
     def client(self) -> Anthropic:
@@ -127,7 +127,7 @@ Remember: A shorter, complete response is ALWAYS better than a longer, truncated
 class AnthropicError(Exception):
     """Custom exception for errors related to the Anthropic API."""
 
-    def __init__(self, message: str, original_exception: Optional[Exception] = None):
+    def __init__(self, message: str, original_exception: Optional[Exception] = None) -> None:
         super().__init__(message)
         self.original_exception = original_exception
         self.message = message
@@ -136,7 +136,7 @@ class AnthropicError(Exception):
 class UnretryableAnthropicError(AnthropicError):
     """Custom exception for errors related to the Anthropic API that should not be retried."""
 
-    def __init__(self, message: str, original_exception: Optional[Exception] = None):
+    def __init__(self, message: str, original_exception: Optional[Exception] = None) -> None:
         super().__init__(message, original_exception)
 
 
@@ -151,23 +151,29 @@ def generate_text_with_claude(character_description: str, config: Config) -> str
     """
     Generates text using Claude (Anthropic LLM) via the Anthropic SDK.
 
+    This function includes retry logic and error translation. It raises a custom
+    UnretryableAnthropicError for API errors deemed unretryable and AnthropicError
+    for other errors.
+
     Args:
-        character_description (str): The input character description used to assist with generating text with Claude.
+        character_description (str): The input character description used to assist with generating text.
+        config (Config): Application configuration including Anthropic settings.
 
     Returns:
         str: The generated text.
 
     Raises:
-        AnthropicError: If there is an error communicating with the Anthropic API.
+        UnretryableAnthropicError: For errors that should not be retried.
+        AnthropicError: For other errors communicating with the Anthropic API.
     """
-    # Build prompt for claude with character description
-    anthropic_config = config.anthropic_config
-    prompt = anthropic_config.build_expressive_prompt(character_description)
-    logger.debug(f"Generating text with Claude. Character description length: {len(prompt)} characters.")
-
-    response = None
     try:
-        # Generate text using the Anthropic SDK
+        anthropic_config = config.anthropic_config
+        prompt = anthropic_config.build_expressive_prompt(character_description)
+        logger.debug(f"Generating text with Claude. Character description length: {len(prompt)} characters.")
+
+        # Ensure system_prompt is set (guaranteed by __post_init__)
+        assert anthropic_config.system_prompt is not None, "system_prompt must be set."
+
         response: Message = anthropic_config.client.messages.create(
             model=anthropic_config.model,
             max_tokens=anthropic_config.max_tokens,
@@ -176,17 +182,17 @@ def generate_text_with_claude(character_description: str, config: Config) -> str
         )
         logger.debug(f"API response received: {truncate_text(str(response))}")
 
-        # Validate response
-        if not hasattr(response, "content"):
+        if not hasattr(response, "content") or response.content is None:
             logger.error("Response is missing 'content'. Response: %s", response)
             raise AnthropicError('Invalid API response: Missing "content".')
 
-        # Process response
-        blocks: Union[List[TextBlock], TextBlock, None] = response.content
+        blocks: Union[List[Union[TextBlock, ToolUseBlock]], TextBlock, None] = response.content
+
         if isinstance(blocks, list):
             result = "\n\n".join(block.text for block in blocks if isinstance(block, TextBlock))
             logger.debug(f"Processed response from list: {truncate_text(result)}")
             return result
+
         if isinstance(blocks, TextBlock):
             logger.debug(f"Processed response from single TextBlock: {truncate_text(blocks.text)}")
             return blocks.text
@@ -195,13 +201,21 @@ def generate_text_with_claude(character_description: str, config: Config) -> str
         return str(blocks or "No content generated.")
 
     except Exception as e:
-        if isinstance(e, APIError) and e.status_code >= CLIENT_ERROR_CODE and e.status_code < SERVER_ERROR_CODE:
-            raise UnretryableAnthropicError(
-                message=f'"{e.body["error"]["message"]}"',
-                original_exception=e,
-            ) from e
+        # If the error is an APIError, check if it's unretryable.
+        if isinstance(e, APIError):
+            status_code: Optional[int] = getattr(e, "status_code", None)
+            if status_code is not None and CLIENT_ERROR_CODE <= status_code < SERVER_ERROR_CODE:
+                error_body: Any = e.body
+                error_message: str = "Unknown error"
+                if isinstance(error_body, dict):
+                    error_message = cast(Dict[str, Any], error_body).get("error", {}).get("message", "Unknown error")
+                raise UnretryableAnthropicError(
+                    message=f'"{error_message}"',
+                    original_exception=e,
+                ) from e
 
+        # For all other errors, wrap them in an AnthropicError.
         raise AnthropicError(
-            message=(f"{e.message}"),
+            message=str(e),
             original_exception=e,
         ) from e

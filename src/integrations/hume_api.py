@@ -20,8 +20,8 @@ Functions:
 
 # Standard Library Imports
 import logging
-from dataclasses import dataclass
-from typing import Any, Dict, Literal, Optional, Tuple, Union
+from dataclasses import dataclass, field
+from typing import Any, Dict, Literal, Tuple, Union
 
 # Third-Party Library Imports
 import requests
@@ -34,43 +34,44 @@ from src.constants import CLIENT_ERROR_CODE, SERVER_ERROR_CODE
 from src.utils import save_base64_audio_to_file, validate_env_var
 
 HumeSupportedFileFormat = Literal["mp3", "pcm", "wav"]
-""" Support audio file formats for the Hume TTS API"""
+"""Supported audio file formats for the Hume TTS API"""
 
 
 @dataclass(frozen=True)
 class HumeConfig:
     """Immutable configuration for interacting with the Hume TTS API."""
 
-    api_key: Optional[str] = None
+    # Computed fields.
+    api_key: str = field(init=False)
+    headers: Dict[str, str] = field(init=False)
+
+    # Provided fields.
     url: str = "https://test-api.hume.ai/v0/tts/octave"
-    headers: dict = None
     file_format: HumeSupportedFileFormat = "mp3"
 
-    def __post_init__(self):
-        # Validate required attributes
-        if not self.api_key:
-            api_key = validate_env_var("HUME_API_KEY")
-            object.__setattr__(self, "api_key", api_key)
+    def __post_init__(self) -> None:
+        # Validate required attributes.
         if not self.url:
             raise ValueError("Hume TTS endpoint URL is not set.")
         if not self.file_format:
             raise ValueError("Hume TTS file format is not set.")
 
-        # Set headers dynamically after validation
-        object.__setattr__(
-            self,
-            "headers",
-            {
-                "X-Hume-Api-Key": f"{self.api_key}",
-                "Content-Type": "application/json",
-            },
-        )
+        # Compute the API key from the environment.
+        computed_api_key = validate_env_var("HUME_API_KEY")
+        object.__setattr__(self, "api_key", computed_api_key)
+
+        # Compute the headers.
+        computed_headers = {
+            "X-Hume-Api-Key": f"{computed_api_key}",
+            "Content-Type": "application/json",
+        }
+        object.__setattr__(self, "headers", computed_headers)
 
 
 class HumeError(Exception):
     """Custom exception for errors related to the Hume TTS API."""
 
-    def __init__(self, message: str, original_exception: Optional[Exception] = None):
+    def __init__(self, message: str, original_exception: Union[Exception, None] = None):
         super().__init__(message)
         self.original_exception = original_exception
         self.message = message
@@ -79,12 +80,9 @@ class HumeError(Exception):
 class UnretryableHumeError(HumeError):
     """Custom exception for errors related to the Hume TTS API that should not be retried."""
 
-    def __init__(self, message: str, original_exception: Optional[Exception] = None):
-        super().__init__(message)
+    def __init__(self, message: str, original_exception: Union[Exception, None] = None):
+        super().__init__(message, original_exception)
         self.original_exception = original_exception
-
-
-# Initialize the Hume client
 
 
 @retry(
@@ -95,7 +93,10 @@ class UnretryableHumeError(HumeError):
     reraise=True,
 )
 def text_to_speech_with_hume(
-    character_description: str, text: str, num_generations: int, config: Config
+    character_description: str,
+    text: str,
+    num_generations: int,
+    config: Config,
 ) -> Union[Tuple[str, str], Tuple[str, str, str, str]]:
     """
     Synthesizes text to speech using the Hume TTS API, processes audio data, and writes audio to a file.
@@ -110,9 +111,10 @@ def text_to_speech_with_hume(
         character_description (str): A description of the character, which is used as contextual input
             for generating the voice.
         text (str): The text to be converted to speech.
-        num_generations (int, optional): The number of audio generations to request from the API.
+        num_generations (int): The number of audio generations to request from the API.
             Allowed values are 1 or 2. If 1, only a single generation is processed; if 2, a second
-            generation is expected in the API response. Defaults to 1.
+            generation is expected in the API response.
+        config (Config): The application configuration containing Hume API settings.
 
     Returns:
         Union[Tuple[str, str], Tuple[str, str, str, str]]:
@@ -137,9 +139,7 @@ def text_to_speech_with_hume(
     hume_config = config.hume_config
     request_body = {
         "utterances": [{"text": text, "description": character_description or None}],
-        "format": {
-            "type": hume_config.file_format,
-        },
+        "format": {"type": hume_config.file_format},
         "num_generations": num_generations,
     }
 
@@ -159,7 +159,7 @@ def text_to_speech_with_hume(
             logger.error(msg)
             raise HumeError(msg)
 
-        # Extract the base64 encoded audio and generation ID from the generation
+        # Extract the base64 encoded audio and generation ID from the generation.
         generation_a = generations[0]
         generation_a_id, audio_a_path = parse_hume_tts_generation(generation_a, config)
 
@@ -171,7 +171,11 @@ def text_to_speech_with_hume(
         return (generation_a_id, audio_a_path, generation_b_id, audio_b_path)
 
     except Exception as e:
-        if isinstance(e, HTTPError) and CLIENT_ERROR_CODE <= e.response.status_code < SERVER_ERROR_CODE:
+        if (
+            isinstance(e, HTTPError)
+            and e.response is not None
+            and CLIENT_ERROR_CODE <= e.response.status_code < SERVER_ERROR_CODE
+        ):
             raise UnretryableHumeError(
                 message=f"{e.response.text}",
                 original_exception=e,
@@ -197,6 +201,7 @@ def parse_hume_tts_generation(generation: Dict[str, Any], config: Config) -> Tup
             Expected keys are:
                 - "generation_id" (str): A unique identifier for the generated audio.
                 - "audio" (str): A base64 encoded string of the audio data.
+        config (Config): The application configuration used for saving the audio file.
 
     Returns:
         Tuple[str, str]: A tuple containing:

@@ -22,7 +22,7 @@ Functions:
 # Standard Library Imports
 import logging
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, Tuple
 
 # Third-Party Library Imports
@@ -40,14 +40,17 @@ from src.utils import save_base64_audio_to_file, validate_env_var
 class ElevenLabsConfig:
     """Immutable configuration for interacting with the ElevenLabs TTS API."""
 
-    api_key: Optional[str] = None
+    api_key: str = field(init=False)
     output_format: TextToVoiceCreatePreviewsRequestOutputFormat = "mp3_44100_128"
 
     def __post_init__(self):
-        # Validate that required attributes are set
-        if not self.api_key:
-            api_key = validate_env_var("ELEVENLABS_API_KEY")
-            object.__setattr__(self, "api_key", api_key)
+        # Validate required attributes.
+        if not self.output_format:
+            raise ValueError("ElevenLabs TTS API output format is not set.")
+
+        # Compute the API key from the environment.
+        computed_key = validate_env_var("ELEVENLABS_API_KEY")
+        object.__setattr__(self, "api_key", computed_key)
 
     @property
     def client(self) -> ElevenLabs:
@@ -83,7 +86,9 @@ class UnretryableElevenLabsError(ElevenLabsError):
     after=after_log(logger, logging.DEBUG),
     reraise=True,
 )
-def text_to_speech_with_elevenlabs(character_description: str, text: str, config: Config) -> Tuple[None, str]:
+def text_to_speech_with_elevenlabs(
+    character_description: str, text: str, config: Config
+) -> Tuple[None, str]:
     """
     Synthesizes text to speech using the ElevenLabs TTS API, processes the audio data, and writes it to a file.
 
@@ -94,7 +99,7 @@ def text_to_speech_with_elevenlabs(character_description: str, text: str, config
     Returns:
         Tuple[None, str]: A tuple containing:
             - generation_id (None): We do not record the generation ID for ElevenLabs, but return None for uniformity
-                                    across TTS integrations
+                                    across TTS integrations.
             - file_path (str): The relative file path to the audio file where the synthesized speech was saved.
 
     Raises:
@@ -129,7 +134,11 @@ def text_to_speech_with_elevenlabs(character_description: str, text: str, config
         return None, audio_file_path
 
     except Exception as e:
-        if isinstance(e, ApiError) and e.status_code >= CLIENT_ERROR_CODE and e.status_code < SERVER_ERROR_CODE:
+        if (
+            isinstance(e, ApiError)
+            and e.status_code is not None
+            and CLIENT_ERROR_CODE <= e.status_code < SERVER_ERROR_CODE
+        ):
             raise UnretryableElevenLabsError(
                 message=f"{e.body['detail']['message']}",
                 original_exception=e,
