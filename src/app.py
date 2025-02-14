@@ -11,7 +11,7 @@ Users can compare the outputs and vote for their favorite in an interactive UI.
 # Standard Library Imports
 import time
 from concurrent.futures import ThreadPoolExecutor
-from typing import Tuple, Union
+from typing import Tuple
 
 # Third-Party Library Imports
 import gradio as gr
@@ -19,7 +19,7 @@ import gradio as gr
 # Local Application Imports
 from src import constants
 from src.config import Config, logger
-from src.custom_types import ComparisonType, Option, OptionMap
+from src.custom_types import Option, OptionMap
 from src.database.database import DBSessionMaker
 from src.integrations import (
     AnthropicError,
@@ -50,7 +50,7 @@ class App:
     def _generate_text(
         self,
         character_description: str,
-    ) -> Tuple[Union[str, gr.update], gr.update]:
+    ) -> Tuple[dict, str]:
         """
         Validates the character_description and generates text using Anthropic API.
 
@@ -59,13 +59,12 @@ class App:
 
         Returns:
             Tuple containing:
-              - The generated text (as a gr.update).
-              - An update for the generated text state.
+              - The generated text update (as a dict from gr.update).
+              - The generated text string.
 
         Raises:
             gr.Error: On validation or API errors.
         """
-
         try:
             validate_character_description_length(character_description)
         except ValueError as ve:
@@ -88,7 +87,7 @@ class App:
         character_description: str,
         text: str,
         generated_text_state: str,
-    ) -> Tuple[gr.update, gr.update, dict, str, ComparisonType, str, str, bool, str, str]:
+    ) -> Tuple[dict, dict, OptionMap, bool, str, str]:
         """
         Synthesizes two text-to-speech outputs, updates UI state components, and returns additional TTS metadata.
 
@@ -98,7 +97,7 @@ class App:
           - Synthesize two Hume outputs (50% chance).
 
         The outputs are processed and shuffled, and the corresponding UI components for two audio players are updated.
-        Additional metadata such as the generation IDs, comparison type, and state information are also returned.
+        Additional metadata such as the comparison type, generation IDs, and state information are also returned.
 
         Args:
             character_description (str): The description of the character used for generating the voice.
@@ -108,13 +107,9 @@ class App:
 
         Returns:
             Tuple containing:
-                - gr.update: Update for the first audio player (with autoplay enabled).
-                - gr.update: Update for the second audio player.
-                - dict: A mapping of option constants to their corresponding TTS providers.
-                - str: The raw audio value (relative file path) for option B.
-                - ComparisonType: The comparison type between the selected TTS providers.
-                - str: Generation ID for option A.
-                - str: Generation ID for option B.
+                - dict: Update for the first audio player (with autoplay enabled).
+                - dict: Update for the second audio player.
+                - OptionMap: A mapping of option constants to their corresponding TTS providers.
                 - bool: Flag indicating whether the text was modified.
                 - str: The original text that was synthesized.
                 - str: The original character description.
@@ -122,7 +117,6 @@ class App:
         Raises:
             gr.Error: If any API or unexpected errors occur during the TTS synthesis process.
         """
-
         if not text:
             logger.warning("Skipping text-to-speech due to empty text.")
             raise gr.Error("Please generate or enter text to synthesize.")
@@ -134,34 +128,41 @@ class App:
         try:
             if provider_b == constants.HUME_AI:
                 num_generations = 2
-                # If generating 2 Hume outputs, do so in a single API call
-                (
-                    generation_id_a,
-                    audio_a,
-                    generation_id_b,
-                    audio_b,
-                ) = text_to_speech_with_hume(character_description, text, num_generations, self.config)
+                # If generating 2 Hume outputs, do so in a single API call.
+                result = text_to_speech_with_hume(character_description, text, num_generations, self.config)
+                # Enforce that 4 values are returned.
+                if not (isinstance(result, tuple) and len(result) == 4):
+                    raise ValueError("Expected 4 values from Hume TTS call when generating 2 outputs")
+                generation_id_a, audio_a, generation_id_b, audio_b = result
             else:
                 with ThreadPoolExecutor(max_workers=2) as executor:
                     num_generations = 1
-                    # Generate a single Hume output
+                    # Generate a single Hume output.
                     future_audio_a = executor.submit(
                         text_to_speech_with_hume, character_description, text, num_generations, self.config
                     )
-                    # Generate a second TTS output from the second provider
+                    # Generate a second TTS output from the second provider.
                     match provider_b:
                         case constants.ELEVENLABS:
                             future_audio_b = executor.submit(
                                 text_to_speech_with_elevenlabs, character_description, text, self.config
                             )
                         case _:
-                            # Additional TTS Providers can be added here
+                            # Additional TTS Providers can be added here.
                             raise ValueError(f"Unsupported provider: {provider_b}")
 
-                    generation_id_a, audio_a = future_audio_a.result()
-                    generation_id_b, audio_b = future_audio_b.result()
+                    result_a = future_audio_a.result()
+                    result_b = future_audio_b.result()
+                    if isinstance(result_a, tuple) and len(result_a) >= 2:
+                        generation_id_a, audio_a = result_a[0], result_a[1]
+                    else:
+                        raise ValueError("Unexpected return from text_to_speech_with_hume")
+                    if isinstance(result_b, tuple) and len(result_b) >= 2:
+                        generation_id_b, audio_b = result_b[0], result_b[1] # type: ignore
+                    else:
+                        raise ValueError("Unexpected return from text_to_speech_with_elevenlabs")
 
-            # Shuffle options so that placement of options in the UI will always be random
+            # Shuffle options so that placement of options in the UI will always be random.
             option_a = Option(provider=provider_a, audio=audio_a, generation_id=generation_id_a)
             option_b = Option(provider=provider_b, audio=audio_b, generation_id=generation_id_b)
             options_map: OptionMap = create_shuffled_tts_options(option_a, option_b)
@@ -185,7 +186,7 @@ class App:
             raise gr.Error(f'There was an issue communicating with the Hume API: "{he.message}"')
         except Exception as e:
             logger.error(f"Unexpected error during TTS generation: {e}")
-            raise gr.Error("An unexpected error ocurred. Please try again later.")
+            raise gr.Error("An unexpected error occurred. Please try again later.")
 
     def _vote(
         self,
@@ -195,7 +196,7 @@ class App:
         text_modified: bool,
         character_description: str,
         text: str,
-    ) -> Tuple[bool, gr.update, gr.update, gr.update]:
+    ) -> Tuple[bool, dict, dict, dict]:
         """
         Handles user voting.
 
@@ -207,16 +208,15 @@ class App:
                     'Option A': 'Hume AI',
                     'Option B': 'ElevenLabs',
                 }
-            selected_button (str): The button that was clicked.
+            clicked_option_button (str): The button that was clicked.
 
         Returns:
             A tuple of:
              - A boolean indicating if the vote was accepted.
-             - An update for the selected vote button (showing provider and trophy emoji).
-             - An update for the unselected vote button (showing provider).
-             - An update for enabling vote interactions.
+             - A dict update for the selected vote button (showing provider and trophy emoji).
+             - A dict update for the unselected vote button (showing provider).
+             - A dict update for enabling vote interactions.
         """
-
         if not option_map or vote_submitted:
             return gr.skip(), gr.skip(), gr.skip(), gr.skip()
 
@@ -224,7 +224,7 @@ class App:
         selected_provider = option_map[selected_option]["provider"]
         other_provider = option_map[other_option]["provider"]
 
-        # Report voting results to be persisted to results DB
+        # Report voting results to be persisted to results DB.
         submit_voting_results(
             option_map,
             selected_option,
@@ -254,7 +254,7 @@ class App:
             gr.update(interactive=True),
         )
 
-    def _reset_ui(self) -> Tuple[gr.update, gr.update, gr.update, gr.update, None, bool]:
+    def _reset_ui(self) -> Tuple[dict, dict, dict, dict, OptionMap, bool]:
         """
         Resets UI state before generating new text.
 
@@ -263,17 +263,20 @@ class App:
              - option_a_audio_player (clear audio)
              - option_b_audio_player (clear audio)
              - vote_button_a (disable and reset button text)
-             - vote_button_a (disable and reset button text)
+             - vote_button_b (disable and reset button text)
              - option_map_state (reset option map state)
              - vote_submitted_state (reset submitted vote state)
         """
-
+        default_option_map: OptionMap = {
+            "option_a": {"provider": constants.HUME_AI, "generation_id": None, "audio_file_path": ""},
+            "option_b": {"provider": constants.HUME_AI, "generation_id": None, "audio_file_path": ""},
+        }
         return (
             gr.update(value=None),
             gr.update(value=None, autoplay=False),
             gr.update(value=constants.SELECT_OPTION_A, variant="secondary"),
             gr.update(value=constants.SELECT_OPTION_B, variant="secondary"),
-            None,
+            default_option_map,  # Reset option_map_state as a default OptionMap
             False,
         )
 
@@ -282,7 +285,6 @@ class App:
         Builds the input section including the sample character description dropdown, character
         description input, and generate text button.
         """
-
         sample_character_description_dropdown = gr.Dropdown(
             choices=list(constants.SAMPLE_CHARACTER_DESCRIPTIONS.keys()),
             label="Choose a sample character description",
@@ -308,7 +310,6 @@ class App:
         """
         Builds the output section including text input, audio players, and vote buttons.
         """
-
         text_input = gr.Textbox(
             label="Input Text",
             placeholder="Enter or generate text for synthesis...",
@@ -342,7 +343,6 @@ class App:
         Returns:
             gr.Blocks: The fully constructed Gradio UI layout.
         """
-
         custom_theme = CustomTheme()
         with gr.Blocks(
             title="Expressive TTS Arena",
@@ -384,7 +384,6 @@ class App:
             ) = self._build_output_section()
 
             # --- UI state components ---
-
             # Track character description used for text and voice generation
             character_description_state = gr.State("")
             # Track text used for speech synthesis
@@ -393,10 +392,8 @@ class App:
             generated_text_state = gr.State("")
             # Track whether text that was used was generated or modified/custom
             text_modified_state = gr.State()
-
             # Track option map (option A and option B are randomized)
-            option_map_state = gr.State()
-
+            option_map_state = gr.State({})  # OptionMap state as a dictionary
             # Track whether the user has voted for an option
             vote_submitted_state = gr.State(False)
 
@@ -506,7 +503,7 @@ class App:
                 inputs=[],
                 outputs=[vote_button_a, vote_button_b],
             ).then(
-                fn=self.vote,
+                fn=self._vote,
                 inputs=[
                     vote_submitted_state,
                     option_map_state,
