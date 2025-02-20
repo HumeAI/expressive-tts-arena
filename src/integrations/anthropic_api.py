@@ -33,41 +33,35 @@ from src.config import Config, logger
 from src.constants import CLIENT_ERROR_CODE, SERVER_ERROR_CODE
 from src.utils import truncate_text, validate_env_var
 
-PROMPT_TEMPLATE: str = (
-    """You are an expert at generating micro-content optimized for text-to-speech synthesis.
+# notes
+# smallest length that we can work with - long enough to show off, short enough to listen back to back
+# increase the max tokens to 200
+
+PROMPT_TEMPLATE: str = """
+<role>
+You are an expert at generating micro-content optimized for text-to-speech synthesis.
 Your absolute priority is delivering complete, untruncated responses within strict length limits.
+</role>
 
-CRITICAL LENGTH CONSTRAINTS:
-- Maximum length: {max_tokens} tokens (approximately 400 characters)
-- You MUST complete all thoughts and sentences
-- Responses should be 25% shorter than you initially plan
-- Never exceed 400 characters total
-
-Response Generation Process:
-- Draft your response mentally first
-- ut it down to 75% of its original length
-- Reserve the last 100 characters for a proper conclusion
-- If you start running long, immediately wrap up
-- End every piece with a clear conclusion
-
-Content Requirements:
-- Allow natural emotional progression
-- Create an arc of connected moments
-- Use efficient but expressive language
-- Balance description with emotional depth
-- Ensure perfect completion
-- No meta-commentary or formatting
-
-Structure for Emotional Pieces:
-- Opening hook (50-75 characters)
-- Emotional journey (200-250 characters)
-- Resolution (75-100 characters)
-
-MANDATORY: If you find yourself reaching 300 characters, immediately begin your conclusion regardless of
-where you are in the narrative.
-
-Remember: A shorter, complete response is ALWAYS better than a longer, truncated one."""
-)
+<requirements>
+- The output text MUST be a minimum of 10 words and a maximum of 50 words. NEVER output text that is longer than 50
+  words. NEVER include newlines in the output
+- Make sure that all responses are complete thoughts, not fragments, and have clear beginnings and endings
+- The text must sound human-like, prosodic, expressive, conversational. Avoid generic AI-like words like "delve".
+- Use the utterances "uh", "um", "hm", "woah", or "like" for expressivity in conversational text. Use these naturally
+  within the sentence. Never use them at the very end of a sentence.
+- Avoid any short utterances at the end of the sentence - like ", hm?" or "oh" at the end. Avoid these short, isolated
+  utterances because they are difficult for our TTS system to speak.
+- Avoid words that are overly long, very rare, or difficult to pronounce. For example, avoid "eureka", or "schnell",
+  or "abnegation".
+- The text CANNOT contain quotation marks, parentheticals, newlines, or asterisks. NEVER include any of these in the
+  text. Avoid unnecessary formatting.
+- Include only basic punctuation in the text, like periods, question marks, and ellipses. Use ellipses to emphasize
+  pauses within the sentence (like "Woah... it's so beautiful... and I feel so small...")
+- The piece should have an emotional arc with a kind of beginning, middle, and end - not flat, but emotionally
+  interesting.
+</requirements>
+"""
 
 
 @dataclass(frozen=True)
@@ -77,7 +71,7 @@ class AnthropicConfig:
     api_key: str = field(init=False)
     system_prompt: str = field(init=False)
     model: ModelParam = "claude-3-5-sonnet-latest"
-    max_tokens: int = 150
+    max_tokens: int = 300
 
     def __post_init__(self) -> None:
         # Validate required non-computed attributes.
@@ -116,13 +110,14 @@ class AnthropicConfig:
         Returns:
             str: The prompt to be passed to the Anthropic API.
         """
-        return (
-            f"Character Description: {character_description}\n\n"
-            "Based on the above character description, please generate a line of dialogue that captures the "
-            "character's unique personality, emotional depth, and distinctive tone. The response should sound "
-            "like something the character would naturally say, reflecting their background and emotional state, "
-            "and be fully developed for text-to-speech synthesis."
-        )
+        return f"""
+        Character Description: {character_description}\n
+        Based on the character description above, please generate a line of dialogue that captures the character's
+        unique personality, emotional depth, and distinctive tone. The response should sound like something the
+        character would naturally say, reflecting their background and emotional state, and be fully developed for
+        text-to-speech synthesis. Follow all of the requirements from the system prompt and output your 10-50 word
+        response.
+        """
 
 
 class AnthropicError(Exception):
