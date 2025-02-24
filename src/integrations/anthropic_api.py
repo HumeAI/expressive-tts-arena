@@ -33,10 +33,6 @@ from src.config import Config, logger
 from src.constants import CLIENT_ERROR_CODE, SERVER_ERROR_CODE
 from src.utils import truncate_text, validate_env_var
 
-# notes
-# smallest length that we can work with - long enough to show off, short enough to listen back to back
-# increase the max tokens to 200
-
 PROMPT_TEMPLATE: str = """
 <role>
 You are an expert at generating micro-content optimized for text-to-speech synthesis.
