@@ -2,7 +2,7 @@
 test_db.py
 
 This script verifies the database connection for the Expressive TTS Arena project.
-It attempts to connect to the PostgreSQL database using async SQLAlchemy and executes 
+It attempts to connect to the PostgreSQL database using async SQLAlchemy and executes
 a simple query to confirm connectivity.
 
 Functionality:

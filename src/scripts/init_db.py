@@ -38,7 +38,7 @@ def main():
     """
     Main entry point for the database initialization script.
 
-    This function creates the configuration, ensures the async engine is 
+    This function creates the configuration, ensures the async engine is
     initialized, and runs the async initialization function within an
     event loop.
 
