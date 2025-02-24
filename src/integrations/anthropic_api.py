@@ -1,21 +1,14 @@
 """
 anthropic_api.py
 
-This file defines the interaction with the Anthropic API, focusing on generating text using the Claude model.
-It includes functionality for input validation, API request handling, and processing API responses.
+This file defines the asynchronous interaction with the Anthropic API, focusing on generating text using the Claude
+model. It includes functionality for input validation, asynchronous API request handling, and processing API responses.
 
 Key Features:
 - Encapsulates all logic related to the Anthropic API.
-- Implements retry logic for handling transient API errors.
+- Implements asynchronous retry logic for handling transient API errors.
 - Validates the response content to ensure API compatibility.
 - Provides detailed logging for debugging and error tracking.
-
-Classes:
-- AnthropicConfig: Immutable configuration for interacting with the Anthropic API.
-- AnthropicError: Custom exception for Anthropic API-related errors.
-
-Functions:
-- generate_text_with_claude: Generates text using the Anthropic SDK with input validation and retry logic.
 """
 
 # Standard Library Imports
@@ -24,9 +17,9 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union, cast
 
 # Third-Party Library Imports
-from anthropic import Anthropic, APIError
+from anthropic import APIError
 from anthropic.types import Message, ModelParam, TextBlock, ToolUseBlock
-from tenacity import after_log, before_log, retry, stop_after_attempt, wait_fixed
+from tenacity import after_log, before_log, retry, retry_if_exception, stop_after_attempt, wait_fixed
 
 # Local Application Imports
 from src.config import Config, logger
@@ -57,11 +50,9 @@ Your absolute priority is delivering complete, untruncated responses within stri
 </requirements>
 """
 
-
 @dataclass(frozen=True)
 class AnthropicConfig:
-    """Immutable configuration for interacting with the Anthropic API."""
-
+    """Immutable configuration for interacting with the Anthropic API using the asynchronous client."""
     api_key: str = field(init=False)
     system_prompt: str = field(init=False)
     model: ModelParam = "claude-3-5-sonnet-latest"
@@ -83,18 +74,19 @@ class AnthropicConfig:
         object.__setattr__(self, "system_prompt", computed_prompt)
 
     @property
-    def client(self) -> Anthropic:
+    def client(self):
         """
-        Lazy initialization of the Anthropic client.
+        Lazy initialization of the asynchronous Anthropic client.
 
         Returns:
-            Anthropic: Configured client instance.
+            AsyncAnthropic: Configured asynchronous client instance.
         """
-        return Anthropic(api_key=self.api_key)
+        from anthropic import AsyncAnthropic  # Import the async client from Anthropic SDK
+        return AsyncAnthropic(api_key=self.api_key)
 
     def build_expressive_prompt(self, character_description: str) -> str:
         """
-        Constructs and returns a prompt based solely on the provided voice description.
+        Constructs and returns a prompt based solely on the provided character description.
         The returned prompt is intended to instruct Claude to generate expressive text from a character,
         capturing the character's personality and emotional nuance, without including the system prompt.
 
@@ -131,41 +123,39 @@ class UnretryableAnthropicError(AnthropicError):
 
 
 @retry(
+    retry=retry_if_exception(lambda e: not isinstance(e, UnretryableAnthropicError)),
     stop=stop_after_attempt(3),
     wait=wait_fixed(2),
     before=before_log(logger, logging.DEBUG),
     after=after_log(logger, logging.DEBUG),
     reraise=True,
 )
-def generate_text_with_claude(character_description: str, config: Config) -> str:
+async def generate_text_with_claude(character_description: str, config: Config) -> str:
     """
-    Generates text using Claude (Anthropic LLM) via the Anthropic SDK.
+    Asynchronously generates text using Claude (Anthropic LLM) via the asynchronous Anthropic SDK.
 
     This function includes retry logic and error translation. It raises a custom
-    UnretryableAnthropicError for API errors deemed unretryable and AnthropicError
-    for other errors.
+    UnretryableAnthropicError for unretryable API errors and AnthropicError for other errors.
 
     Args:
-        character_description (str): The input character description used to assist with generating text.
+        character_description (str): The input character description.
         config (Config): Application configuration including Anthropic settings.
 
     Returns:
         str: The generated text.
 
     Raises:
-        UnretryableAnthropicError: For errors that should not be retried.
+        UnretryableAnthropicError: For unretryable API errors.
         AnthropicError: For other errors communicating with the Anthropic API.
     """
-
     try:
         anthropic_config = config.anthropic_config
         prompt = anthropic_config.build_expressive_prompt(character_description)
         logger.debug(f"Generating text with Claude. Character description length: {len(prompt)} characters.")
 
-        # Ensure system_prompt is set (guaranteed by __post_init__)
         assert anthropic_config.system_prompt is not None, "system_prompt must be set."
 
-        response: Message = anthropic_config.client.messages.create(
+        response: Message = await anthropic_config.client.messages.create(
             model=anthropic_config.model,
             max_tokens=anthropic_config.max_tokens,
             system=anthropic_config.system_prompt,

@@ -48,7 +48,7 @@ class App:
         self.config = config
         self.db_session_maker = db_session_maker
 
-    def _generate_text(
+    async def _generate_text(
         self,
         character_description: str,
     ) -> Tuple[dict, str]:
@@ -73,7 +73,7 @@ class App:
             raise gr.Error(str(ve))
 
         try:
-            generated_text = generate_text_with_claude(character_description, self.config)
+            generated_text = await generate_text_with_claude(character_description, self.config)
             logger.info(f"Generated text ({len(generated_text)} characters).")
             return gr.update(value=generated_text), generated_text
         except AnthropicError as ae:
