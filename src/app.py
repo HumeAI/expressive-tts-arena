@@ -31,7 +31,6 @@ from src.integrations import (
     text_to_speech_with_elevenlabs,
     text_to_speech_with_hume,
 )
-from src.theme import CustomTheme
 from src.utils import (
     choose_providers,
     create_shuffled_tts_options,
@@ -384,10 +383,8 @@ class App:
         Returns:
             gr.Blocks: The fully constructed Gradio UI layout.
         """
-        custom_theme = CustomTheme()
         with gr.Blocks(
             title="Expressive TTS Arena",
-            theme=custom_theme,
             fill_width=True,
             css_paths="src/assets/styles.css",
         ) as demo:
