@@ -12,8 +12,8 @@ If no DATABASE_URL environment variable is set, then create a dummy database to 
 from typing import Callable, Optional
 
 # Third-Party Library Imports
-from sqlalchemy import Engine, create_engine
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import DeclarativeBase
 
 # Local Application Imports
 from src.config import Config
@@ -24,44 +24,44 @@ class Base(DeclarativeBase):
     pass
 
 
-engine: Optional[Engine] = None
+engine: Optional[AsyncEngine] = None
 
 
-class DummySession:
+class AsyncDummySession:
     is_dummy = True  # Flag to indicate this is a dummy session.
 
-    def __enter__(self):
+    async def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    async def __exit__(self, exc_type, exc_value, traceback):
         pass
 
-    def add(self, _instance, _warn=True):
+    async def add(self, _instance, _warn=True):
         # No-op: simply ignore adding the instance.
         pass
 
-    def commit(self):
+    async def commit(self):
         # Raise an exception to simulate failure when attempting a write.
         raise RuntimeError("DummySession does not support commit operations.")
 
-    def refresh(self, _instance):
+    async def refresh(self, _instance):
         # Raise an exception to simulate failure when attempting to refresh.
         raise RuntimeError("DummySession does not support refresh operations.")
 
-    def rollback(self):
+    async def rollback(self):
         # No-op: there's nothing to roll back.
         pass
 
-    def close(self):
+    async def close(self):
         # No-op: nothing to close.
         pass
 
 
-# DBSessionMaker is either a sessionmaker instance or a callable that returns a DummySession.
-DBSessionMaker = sessionmaker | Callable[[], DummySession]
+# AsyncDBSessionMaker is either a async_sessionmaker instance or a callable that returns a AsyncDummySession.
+AsyncDBSessionMaker = async_sessionmaker | Callable[[], AsyncDummySession]
 
 
-def init_db(config: Config) -> DBSessionMaker:
+def init_db(config: Config) -> AsyncDBSessionMaker:
     """
     Initialize the database engine and return a session factory based on the provided configuration.
 
@@ -72,27 +72,37 @@ def init_db(config: Config) -> DBSessionMaker:
         config (Config): The application configuration.
 
     Returns:
-        DBSessionMaker: A sessionmaker bound to the engine, or a dummy session factory.
+        AsyncDBSessionMaker: A sessionmaker bound to the engine, or a dummy session factory.
     """
     # ruff doesn't like setting global variables, but this is practical here
     global engine  # noqa
+
+    # Convert standard PostgreSQL URL to async format
+    def convert_to_async_url(url: str) -> str:
+        # Convert postgresql:// to postgresql+asyncpg://
+        if url.startswith('postgresql://'):
+            return url.replace('postgresql://', 'postgresql+asyncpg://', 1)
+        return url
 
     if config.app_env == "prod":
         # In production, a valid DATABASE_URL is required.
         if not config.database_url:
             raise ValueError("DATABASE_URL must be set in production!")
-        engine = create_engine(config.database_url)
-        return sessionmaker(bind=engine)
+        async_db_url = convert_to_async_url(config.database_url)
+        engine = create_async_engine(async_db_url)
+        return async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
 
     # In development, if a DATABASE_URL is provided, use it.
     if config.database_url:
-        engine = create_engine(config.database_url)
-        return sessionmaker(bind=engine)
+        async_db_url = convert_to_async_url(config.database_url)
+        engine = create_async_engine(async_db_url)
+        return async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
 
     # No DATABASE_URL is provided; use a DummySession that does nothing.
     engine = None
 
-    def dummy_session_factory() -> DummySession:
-        return DummySession()
+    def async_dummy_session_factory() -> AsyncDummySession:
+        return AsyncDummySession()
 
-    return dummy_session_factory
+    return async_dummy_session_factory
+

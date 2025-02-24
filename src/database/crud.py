@@ -6,19 +6,19 @@ Since vote records are never updated or deleted, only functions to create and re
 """
 
 # Third-Party Library Imports
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Local Application Imports
 from src.custom_types import VotingResults
 from src.database.models import VoteResult
 
 
-def create_vote(db: Session, vote_data: VotingResults) -> VoteResult:
+async def create_vote(db: AsyncSession, vote_data: VotingResults) -> VoteResult:
     """
     Create a new vote record in the database based on the given VotingResults data.
 
     Args:
-        db (Session): The SQLAlchemy database session.
+        db (AsyncSession): The SQLAlchemy async database session.
         vote_data (VotingResults): The vote data to persist.
 
     Returns:
@@ -38,9 +38,9 @@ def create_vote(db: Session, vote_data: VotingResults) -> VoteResult:
     )
     db.add(vote)
     try:
-        db.commit()
+        await db.commit()
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         raise e
-    db.refresh(vote)
+    await db.refresh(vote)
     return vote

@@ -14,7 +14,8 @@ import time
 from pathlib import Path
 from typing import Tuple, cast
 
-from sqlalchemy.orm import Session
+# Third-Party Library Imports
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Local Application Imports
 from src import constants
@@ -28,7 +29,7 @@ from src.custom_types import (
     VotingResults,
 )
 from src.database import crud
-from src.database.database import DBSessionMaker
+from src.database.database import AsyncDBSessionMaker
 
 
 def truncate_text(text: str, max_length: int = 50) -> str:
@@ -301,107 +302,98 @@ def _log_voting_results(voting_results: VotingResults) -> None:
     logger.info("Voting results:\n%s", json.dumps(voting_results, indent=4))
 
 
-def _handle_vote_failure(
-    e: Exception,
+async def _persist_vote(
+    db_session_maker: AsyncDBSessionMaker,
     voting_results: VotingResults,
-    is_dummy_db_session: bool,
-    config: Config,
+    config: Config
 ) -> None:
     """
-    Handles logging when creating a vote record fails.
-
-    In production (or in dev with a real session):
-      - Logs the error (with full traceback in prod) and the voting results.
-      - In production, re-raises the exception.
-
-    In development with a dummy session:
-      - Only logs the voting results.
-    """
-
-    if config.app_env == "prod" or (config.app_env == "dev" and not is_dummy_db_session):
-        logger.error("Failed to create vote record: %s", e, exc_info=(config.app_env == "prod"))
-        _log_voting_results(voting_results)
-        if config.app_env == "prod":
-            raise e
-    else:
-        # Dev mode with a dummy session: only log the voting results.
-        _log_voting_results(voting_results)
-
-
-def _persist_vote(db_session_maker: DBSessionMaker, voting_results: VotingResults, config: Config) -> None:
-    """
-    Persist a vote record in the database and handle potential failures.
-
-    This function obtains a database session using the provided session maker and attempts
-    to create a vote record using the specified voting results. If the session is identified
-    as a dummy session, it logs a success message and outputs the voting results. If an error
-    occurs during vote creation, the function delegates error handling to _handle_vote_failure.
-    On successful vote creation, it logs the success and, when running in a development environment,
-    logs the full voting results for debugging purposes. In all cases, the database session is
-    properly closed after the operation.
+    Asynchronously persist a vote record in the database and handle potential failures.
+    Designed to work safely in a background task context.
 
     Args:
-        db_session_maker (DBSessionMaker): A callable that returns a new database session.
+        db_session_maker (AsyncDBSessionMaker): A callable that returns a new async database session.
         voting_results (VotingResults): A dictionary containing the details of the vote to persist.
         config (Config): The application configuration, used to determine environment-specific behavior.
-    """
 
-    db = db_session_maker()
-    is_dummy_db_session = getattr(db, "is_dummy", False)
-    if is_dummy_db_session:
+    Returns:
+        None
+    """
+    # Create session
+    session = db_session_maker()
+    is_dummy_session = getattr(session, "is_dummy", False)
+
+    if is_dummy_session:
         logger.info("Vote record created successfully.")
         _log_voting_results(voting_results)
+        await session.close()
+        return
+
     try:
-        crud.create_vote(cast(Session, db), voting_results)
-    except Exception as e:
-        _handle_vote_failure(e, voting_results, is_dummy_db_session, config)
-    else:
+        await crud.create_vote(cast(AsyncSession, session), voting_results)
         logger.info("Vote record created successfully.")
         if config.app_env == "dev":
             _log_voting_results(voting_results)
+    except Exception as e:
+        # Log the error with traceback in production, without traceback in dev
+        logger.error(f"Failed to create vote record: {e}",
+                     exc_info=(config.app_env == "prod"))
+        _log_voting_results(voting_results)
     finally:
-        db.close()
+        # Always ensure the session is closed
+        await session.close()
 
 
-def submit_voting_results(
+async def submit_voting_results(
     option_map: OptionMap,
     selected_option: OptionKey,
     text_modified: bool,
     character_description: str,
     text: str,
-    db_session_maker: DBSessionMaker,
+    db_session_maker: AsyncDBSessionMaker,
     config: Config,
 ) -> None:
     """
-    Constructs the voting results dictionary from the provided inputs,
-    logs it, persists a new vote record in the database, and returns the record.
+    Asynchronously constructs the voting results dictionary and persists a new vote record.
+    Designed to run as a background task, handling all exceptions internally.
 
     Args:
         option_map (OptionMap): Mapping of comparison data and TTS options.
-        selected_option (str): The option selected by the user.
-        text_modified (bool): Indicates whether the text was modified.
-        character_description (str): Description of the voice/character.
-        text (str): The text associated with the TTS generation.
+        selected_option (OptionKey): The option selected by the user.
+        text_modified (bool): Indicates whether the text was modified from the original generated text.
+        character_description (str): Description of the voice/character used for TTS generation.
+        text (str): The text that was synthesized into speech.
+        db_session_maker (AsyncDBSessionMaker): Factory function for creating async database sessions.
+        config (Config): Application configuration containing environment settings.
+
+    Returns:
+        None
     """
+    try:
+        provider_a: TTSProviderName = option_map[constants.OPTION_A_KEY]["provider"]
+        provider_b: TTSProviderName = option_map[constants.OPTION_B_KEY]["provider"]
 
-    provider_a: TTSProviderName = option_map[constants.OPTION_A_KEY]["provider"]
-    provider_b: TTSProviderName = option_map[constants.OPTION_B_KEY]["provider"]
-    comparison_type: ComparisonType = _determine_comparison_type(provider_a, provider_b)
+        comparison_type: ComparisonType = _determine_comparison_type(provider_a, provider_b)
 
-    voting_results: VotingResults = {
-        "comparison_type": comparison_type,
-        "winning_provider": option_map[selected_option]["provider"],
-        "winning_option": selected_option,
-        "option_a_provider": provider_a,
-        "option_b_provider": provider_b,
-        "option_a_generation_id": option_map[constants.OPTION_A_KEY]["generation_id"],
-        "option_b_generation_id": option_map[constants.OPTION_B_KEY]["generation_id"],
-        "character_description": character_description,
-        "text": text,
-        "is_custom_text": text_modified,
-    }
+        voting_results: VotingResults = {
+            "comparison_type": comparison_type,
+            "winning_provider": option_map[selected_option]["provider"],
+            "winning_option": selected_option,
+            "option_a_provider": provider_a,
+            "option_b_provider": provider_b,
+            "option_a_generation_id": option_map[constants.OPTION_A_KEY]["generation_id"],
+            "option_b_generation_id": option_map[constants.OPTION_B_KEY]["generation_id"],
+            "character_description": character_description,
+            "text": text,
+            "is_custom_text": text_modified,
+        }
 
-    _persist_vote(db_session_maker, voting_results, config)
+        await _persist_vote(db_session_maker, voting_results, config)
+
+    except Exception as e:
+        # Catch all exceptions at the top level of the background task
+        # to prevent unhandled exceptions in background tasks
+        logger.error(f"Background task error in submit_voting_results: {e}", exc_info=True)
 
 
 def validate_env_var(var_name: str) -> str:

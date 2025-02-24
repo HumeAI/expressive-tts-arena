@@ -9,6 +9,8 @@ Users can compare the outputs and vote for their favorite in an interactive UI.
 """
 
 # Standard Library Imports
+import asyncio
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Tuple
@@ -20,7 +22,7 @@ import gradio as gr
 from src import constants
 from src.config import Config, logger
 from src.custom_types import Option, OptionMap
-from src.database.database import DBSessionMaker
+from src.database.database import AsyncDBSessionMaker
 from src.integrations import (
     AnthropicError,
     ElevenLabsError,
@@ -41,9 +43,9 @@ from src.utils import (
 
 class App:
     config: Config
-    db_session_maker: DBSessionMaker
+    db_session_maker: AsyncDBSessionMaker
 
-    def __init__(self, config: Config, db_session_maker: DBSessionMaker):
+    def __init__(self, config: Config, db_session_maker: AsyncDBSessionMaker):
         self.config = config
         self.db_session_maker = db_session_maker
 
@@ -188,6 +190,47 @@ class App:
             logger.error(f"Unexpected error during TTS generation: {e}")
             raise gr.Error("An unexpected error occurred. Please try again later.")
 
+
+    def _background_submit_vote(
+        self,
+        option_map: OptionMap,
+        selected_option: constants.OptionKey,
+        text_modified: bool,
+        character_description: str,
+        text: str,
+    ) -> None:
+        """
+        Runs the vote submission in a background thread.
+        Creates a new event loop and runs the async submit_voting_results function in it.
+
+        Args:
+            Same as submit_voting_results
+
+        Returns:
+            None
+        """
+        try:
+            # Create a new event loop for this thread
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            # Run the async function in the new loop
+            loop.run_until_complete(submit_voting_results(
+                option_map,
+                selected_option,
+                text_modified,
+                character_description,
+                text,
+                self.db_session_maker,
+                self.config,
+            ))
+        except Exception as e:
+            logger.error(f"Error in background vote submission thread: {e}", exc_info=True)
+        finally:
+            # Close the loop when done
+            loop.close()
+
+
     def _vote(
         self,
         vote_submitted: bool,
@@ -203,19 +246,14 @@ class App:
         Args:
             vote_submitted (bool): True if a vote was already submitted.
             option_map (OptionMap): A dictionary mapping option labels to their details.
-                Expected structure:
-                {
-                    'Option A': 'Hume AI',
-                    'Option B': 'ElevenLabs',
-                }
             clicked_option_button (str): The button that was clicked.
 
         Returns:
             A tuple of:
-             - A boolean indicating if the vote was accepted.
-             - A dict update for the selected vote button (showing provider and trophy emoji).
-             - A dict update for the unselected vote button (showing provider).
-             - A dict update for enabling vote interactions.
+            - A boolean indicating if the vote was accepted.
+            - A dict update for the selected vote button (showing provider and trophy emoji).
+            - A dict update for the unselected vote button (showing provider).
+            - A dict update for enabling vote interactions.
         """
         if not option_map or vote_submitted:
             return gr.skip(), gr.skip(), gr.skip(), gr.skip()
@@ -224,16 +262,19 @@ class App:
         selected_provider = option_map[selected_option]["provider"]
         other_provider = option_map[other_option]["provider"]
 
-        # Report voting results to be persisted to results DB.
-        submit_voting_results(
-            option_map,
-            selected_option,
-            text_modified,
-            character_description,
-            text,
-            self.db_session_maker,
-            self.config,
+        # Start a background thread for the database operation
+        thread = threading.Thread(
+            target=self._background_submit_vote,
+            args=(
+                option_map,
+                selected_option,
+                text_modified,
+                character_description,
+                text,
+            ),
+            daemon=True
         )
+        thread.start()
 
         # Build button text, displaying the provider and voice name, appending the trophy emoji to the selected option.
         selected_label = f"{selected_provider} {constants.TROPHY_EMOJI}"
