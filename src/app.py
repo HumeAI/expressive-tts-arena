@@ -187,7 +187,6 @@ class App:
             logger.error(f"Unexpected error during TTS generation: {e}")
             raise gr.Error("An unexpected error occurred. Please try again later.")
 
-
     async def _vote(
         self,
         vote_submitted: bool,
@@ -196,24 +195,29 @@ class App:
         text_modified: bool,
         character_description: str,
         text: str,
-    ) -> Tuple[bool, dict, dict, dict]:
+    ) -> Tuple[bool, dict, dict, dict, dict, dict]:
         """
-        Handles user voting.
+        Handles user voting and updates the UI to display vote results.
 
         Args:
             vote_submitted (bool): True if a vote was already submitted.
             option_map (OptionMap): A dictionary mapping option labels to their details.
             clicked_option_button (str): The button that was clicked.
+            text_modified (bool): Whether the text was modified by the user.
+            character_description (str): The character description.
+            text (str): The text used for synthesis.
 
         Returns:
             A tuple of:
             - A boolean indicating if the vote was accepted.
-            - A dict update for the selected vote button (showing provider and trophy emoji).
-            - A dict update for the unselected vote button (showing provider).
-            - A dict update for enabling vote interactions.
+            - A dict update for hiding vote button A.
+            - A dict update for hiding vote button B.
+            - A dict update for showing vote result A textbox.
+            - A dict update for showing vote result B textbox.
+            - A dict update for enabling the synthesize speech button.
         """
         if not option_map or vote_submitted:
-            return gr.skip(), gr.skip(), gr.skip(), gr.skip()
+            return gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip()
 
         selected_option, other_option = determine_selected_option(clicked_option_button)
         selected_provider = option_map[selected_option]["provider"]
@@ -238,20 +242,22 @@ class App:
 
         return (
             True,
+            gr.update(visible=False),
+            gr.update(visible=False),
             (
-                gr.update(value=selected_label, variant="primary")
+                gr.update(value=selected_label, visible=True, elem_classes="winner")
                 if selected_option == constants.OPTION_A_KEY
-                else gr.update(value=other_label, variant="secondary")
+                else gr.update(value=other_label, visible=True)
             ),
             (
-                gr.update(value=other_label, variant="secondary")
+                gr.update(value=other_label, visible=True)
                 if selected_option == constants.OPTION_A_KEY
-                else gr.update(value=selected_label, variant="primary")
+                else gr.update(value=selected_label, visible=True, elem_classes="winner")
             ),
             gr.update(interactive=True),
         )
 
-    def _reset_ui(self) -> Tuple[dict, dict, dict, dict, OptionMap, bool]:
+    def _reset_ui(self) -> Tuple[dict, dict, dict, dict, dict, dict, OptionMap, bool]:
         """
         Resets UI state before generating new text.
 
@@ -259,8 +265,10 @@ class App:
             A tuple of updates for:
              - option_a_audio_player (clear audio)
              - option_b_audio_player (clear audio)
-             - vote_button_a (disable and reset button text)
-             - vote_button_b (disable and reset button text)
+             - vote_button_a (show)
+             - vote_button_b (show)
+             - vote_result_a (hide)
+             - vote_result_b (hide)
              - option_map_state (reset option map state)
              - vote_submitted_state (reset submitted vote state)
         """
@@ -269,12 +277,14 @@ class App:
             "option_b": {"provider": constants.HUME_AI, "generation_id": None, "audio_file_path": ""},
         }
         return (
-            gr.update(value=None),
-            gr.update(value=None, autoplay=False),
-            gr.update(value=constants.SELECT_OPTION_A, variant="secondary", interactive=False),
-            gr.update(value=constants.SELECT_OPTION_B, variant="secondary", interactive=False),
+            gr.update(value=None),  # clear audio player A
+            gr.update(value=None, autoplay=False),  # clear audio player B
+            gr.update(visible=True, interactive=False),  # show vote button A
+            gr.update(visible=True, interactive=False),  # show vote button B
+            gr.update(visible=False, elem_classes=[]),  # hide vote result A
+            gr.update(visible=False, elem_classes=[]),  # hide vote result B
             default_option_map,  # Reset option_map_state as a default OptionMap
-            False,
+            False,  # Reset vote_submitted_state
         )
 
     def _build_input_section(self) -> Tuple[gr.Dropdown, gr.Textbox, gr.Button]:
@@ -304,9 +314,18 @@ class App:
             generate_text_button,
         )
 
-    def _build_output_section(self) -> Tuple[gr.Textbox, gr.Button, gr.Audio, gr.Audio, gr.Button, gr.Button]:
+    def _build_output_section(self) -> Tuple[
+        gr.Textbox,
+        gr.Button,
+        gr.Audio,
+        gr.Audio,
+        gr.Button,
+        gr.Button,
+        gr.Textbox,
+        gr.Textbox,
+    ]:
         """
-        Builds the output section including text input, audio players, and vote buttons.
+        Builds the output section including text input, audio players, vote buttons, and vote result displays.
         """
         with gr.Group():
             text_input = gr.Textbox(
@@ -333,6 +352,14 @@ class App:
                         constants.SELECT_OPTION_A,
                         interactive=False,
                     )
+                    vote_result_a = gr.Textbox(
+                        label="",
+                        interactive=False,
+                        visible=False,
+                        elem_id="vote-result-a",
+                        text_align="center",
+                        container=False,
+                    )
             with gr.Column():
                 with gr.Group():
                     option_b_audio_player = gr.Audio(
@@ -344,6 +371,14 @@ class App:
                         constants.SELECT_OPTION_B,
                         interactive=False,
                     )
+                    vote_result_b = gr.Textbox(
+                        label="",
+                        interactive=False,
+                        visible=False,
+                        elem_id="vote-result-b",
+                        text_align="center",
+                        container=False,
+                    )
 
         return (
             text_input,
@@ -352,6 +387,8 @@ class App:
             option_b_audio_player,
             vote_button_a,
             vote_button_b,
+            vote_result_a,
+            vote_result_b,
         )
 
     def build_gradio_interface(self) -> gr.Blocks:
@@ -361,10 +398,24 @@ class App:
         Returns:
             gr.Blocks: The fully constructed Gradio UI layout.
         """
+        custom_css = """
+        #vote-result-a textarea,
+        #vote-result-b textarea {
+            font-size: 16px !important;
+            font-weight: bold !important;
+        }
+
+        #vote-result-a.winner textarea,
+        #vote-result-b.winner textarea {
+            background: #EA580C;
+        }
+        """
+
         with gr.Blocks(
             title="Expressive TTS Arena",
             fill_width=True,
             css_paths="src/assets/styles.css",
+            css=custom_css,
         ) as demo:
             # --- UI components ---
             gr.Markdown("# Expressive TTS Arena")
@@ -409,6 +460,8 @@ class App:
                 option_b_audio_player,
                 vote_button_a,
                 vote_button_b,
+                vote_result_a,
+                vote_result_b,
             ) = self._build_output_section()
 
             # --- UI state components ---
@@ -472,6 +525,8 @@ class App:
                     option_b_audio_player,
                     vote_button_a,
                     vote_button_b,
+                    vote_result_a,
+                    vote_result_b,
                     option_map_state,
                     vote_submitted_state,
                 ],
@@ -518,6 +573,8 @@ class App:
                     vote_submitted_state,
                     vote_button_a,
                     vote_button_b,
+                    vote_result_a,
+                    vote_result_b,
                     synthesize_speech_button,
                 ],
             )
@@ -543,6 +600,8 @@ class App:
                     vote_submitted_state,
                     vote_button_a,
                     vote_button_b,
+                    vote_result_a,
+                    vote_result_b,
                     synthesize_speech_button,
                 ],
             )
