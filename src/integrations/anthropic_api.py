@@ -107,10 +107,13 @@ class AnthropicConfig:
         - Include appropriate speech patterns, pauses, and vocal mannerisms mentioned in the description
         - Feel authentic to the character's background and situational context
         - Express a complete thought with a clear beginning and end
-        - Sound natural when spoken aloud (avoid words that are difficult to pronounce)
-        - Use only standard punctuation (periods, commas, question marks, exclamation points, ellipses)
+        - Use only standard punctuation (periods, commas, Em dashes, exclamation points, ellipses, question marks)
         - Avoid quotation marks, parentheses, asterisks, or special formatting
         - Be at least 100 characters but not exceed 300 characters in length
+
+        Examples of matching speaking style:
+        - If the character is a pirate then use language like "arr," "ye," and other things pirates say.
+        - If the character is a surfer then use language like "far out," "righteous," and other things surfers say.
 
         Respond ONLY with the dialogue itself. Do not include any explanations, quotation marks,
         or additional context.
