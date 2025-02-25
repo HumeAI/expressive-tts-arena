@@ -288,15 +288,16 @@ class App:
             value=None,
             interactive=True,
         )
-        character_description_input = gr.Textbox(
-            label="Character Description",
-            placeholder="Enter a character description...",
-            lines=3,
-            max_lines=8,
-            max_length=constants.CHARACTER_DESCRIPTION_MAX_LENGTH,
-            show_copy_button=True,
-        )
-        generate_text_button = gr.Button("Generate Text", variant="secondary")
+        with gr.Group():
+            character_description_input = gr.Textbox(
+                label="Character Description",
+                placeholder="Enter a character description...",
+                lines=3,
+                max_lines=8,
+                max_length=constants.CHARACTER_DESCRIPTION_MAX_LENGTH,
+                show_copy_button=True,
+            )
+            generate_text_button = gr.Button("Generate Text", variant="secondary")
         return (
             sample_character_description_dropdown,
             character_description_input,
@@ -307,17 +308,18 @@ class App:
         """
         Builds the output section including text input, audio players, and vote buttons.
         """
-        text_input = gr.Textbox(
-            label="Input Text",
-            placeholder="Enter or generate text for synthesis...",
-            interactive=True,
-            autoscroll=False,
-            lines=3,
-            max_lines=8,
-            max_length=constants.CHARACTER_DESCRIPTION_MAX_LENGTH,
-            show_copy_button=True,
-        )
-        synthesize_speech_button = gr.Button("Synthesize Speech", variant="primary")
+        with gr.Group():
+            text_input = gr.Textbox(
+                label="Input Text",
+                placeholder="Enter or generate text for synthesis...",
+                interactive=True,
+                autoscroll=False,
+                lines=3,
+                max_lines=8,
+                max_length=constants.CHARACTER_DESCRIPTION_MAX_LENGTH,
+                show_copy_button=True,
+            )
+            synthesize_speech_button = gr.Button("Synthesize Speech", variant="primary")
 
         with gr.Row(equal_height=True):
             with gr.Column():
@@ -364,30 +366,42 @@ class App:
             fill_width=True,
             css_paths="src/assets/styles.css",
         ) as demo:
-            # Title & instructions
+            # --- UI components ---
             gr.Markdown("# Expressive TTS Arena")
-            gr.Markdown(
+
+            gr.HTML(
                 """
-                1. **Choose or enter a character description**: Select a sample from the list or enter your own to guide
-                text and voice generation.
-                2. **Generate text**: Click **"Generate Text"** to create dialogue based on the character. The generated
-                text will appear in the input field automatically—edit it if needed.
-                3. **Synthesize speech**: Click **"Synthesize Speech"** to send your text and character description to
-                two TTS APIs. Each API generates a voice and synthesizes speech in that voice.
-                4. **Listen & compare**: Play both audio options and assess their expressiveness.
-                5. **Vote for the best**: Click **"Select Option A"** or **"Select Option B"** to choose the most
-                expressive output.
+                <p><strong>Instructions</strong></p>
+                <ol style="margin-left: 8px;">
+                    <li>
+                        Choose or enter a character description by selecting a sample or typing your own to guide
+                        text generation and voice synthesis.
+                    </li>
+                    <li>
+                        Click the <strong>"Generate Text"</strong> button to create dialogue for the character;
+                        the text automatically populates the input field for further editing.
+                    </li>
+                    <li>
+                        Click the <strong>"Synthesize Speech"</strong> button to convert your text and character
+                        description into two synthesized speech options for direct comparison.
+                    </li>
+                    <li>
+                        Listen to both audio outputs to assess their expressiveness.
+                    </li>
+                    <li>
+                        Click <strong>"Select Option A"</strong> or <strong>"Select Option B"</strong> to vote for
+                        the most expressive result.
+                    </li>
+                </ol>
                 """
             )
 
-            # Build generate text section
             (
                 sample_character_description_dropdown,
                 character_description_input,
                 generate_text_button,
             ) = self._build_input_section()
 
-            # Build synthesize speech section
             (
                 text_input,
                 synthesize_speech_button,
@@ -412,7 +426,6 @@ class App:
             vote_submitted_state = gr.State(False)
 
             # --- Register event handlers ---
-
             # When a sample character description is chosen, update the character description textbox
             sample_character_description_dropdown.change(
                 fn=lambda choice: constants.SAMPLE_CHARACTER_DESCRIPTIONS.get(choice, ""),
