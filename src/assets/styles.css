@@ -2,3 +2,14 @@
 footer.svelte-sar7eh {
   display: none !important;
 }
+
+#vote-result-a textarea,
+#vote-result-b textarea {
+  font-size: 16px !important;
+  font-weight: bold !important;
+}
+
+#vote-result-a.winner textarea,
+#vote-result-b.winner textarea {
+  background: #EA580C;
+}

@@ -398,31 +398,18 @@ class App:
         Returns:
             gr.Blocks: The fully constructed Gradio UI layout.
         """
-        custom_css = """
-        #vote-result-a textarea,
-        #vote-result-b textarea {
-            font-size: 16px !important;
-            font-weight: bold !important;
-        }
-
-        #vote-result-a.winner textarea,
-        #vote-result-b.winner textarea {
-            background: #EA580C;
-        }
-        """
-
         with gr.Blocks(
             title="Expressive TTS Arena",
             fill_width=True,
             css_paths="src/assets/styles.css",
-            css=custom_css,
         ) as demo:
             # --- UI components ---
-            gr.Markdown("# Expressive TTS Arena")
-
+            gr.HTML("<h1>Expressive TTS Arena</h1>")
             gr.HTML(
                 """
-                <p><strong>Instructions</strong></p>
+                <p style="font-size: 16px; font-weight: bold;">
+                    <strong>Instructions</strong>
+                </p>
                 <ol style="margin-left: 8px;">
                     <li>
                         Choose or enter a character description by selecting a sample or typing your own to guide
@@ -446,13 +433,11 @@ class App:
                 </ol>
                 """
             )
-
             (
                 sample_character_description_dropdown,
                 character_description_input,
                 generate_text_button,
             ) = self._build_input_section()
-
             (
                 text_input,
                 synthesize_speech_button,
