@@ -2,13 +2,3 @@
 footer.svelte-sar7eh {
   display: none !important;
 }
-
-/* 
-  The copy buttons for Gradio Textinput components use the "button_secondary_text_color" 
-  theme color which is currently #FFFFFF (white). This makes the copy svg icon white, causing 
-  it to disappear background. Overriding the class color here to ensure it is visible 
-  in the UI.
-*/
-.copy-button {
-  color: #7E22CE;
-}
