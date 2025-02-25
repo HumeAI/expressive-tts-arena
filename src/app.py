@@ -476,7 +476,7 @@ class App:
             # 2. Generate text
             # 3. Enable the "Generate text" button
             generate_text_button.click(
-                fn=lambda: gr.update(interactive=False),
+                fn=lambda _=None: gr.update(interactive=False),
                 inputs=[],
                 outputs=[generate_text_button],
             ).then(
@@ -484,7 +484,7 @@ class App:
                 inputs=[character_description_input],
                 outputs=[text_input, generated_text_state],
             ).then(
-                fn=lambda: gr.update(interactive=True),
+                fn=lambda _=None: gr.update(interactive=True),
                 inputs=[],
                 outputs=[generate_text_button],
             )
@@ -495,7 +495,7 @@ class App:
             # 3. Synthesize speech, load audio players, and display vote button
             # 4. Enable the "Synthesize speech" button and display vote buttons
             synthesize_speech_button.click(
-                fn=lambda: (
+                fn=lambda _=None: (
                     gr.update(interactive=False),
                     gr.update(interactive=False),
                     gr.update(interactive=False),
@@ -527,7 +527,7 @@ class App:
                     character_description_state,
                 ],
             ).then(
-                fn=lambda: (
+                fn=lambda _=None: (
                     gr.update(interactive=True),
                     gr.update(interactive=True),
                     gr.update(interactive=True),
@@ -538,7 +538,7 @@ class App:
 
             # Vote button click event handlers
             vote_button_a.click(
-                fn=lambda: (
+                fn=lambda _=None: (
                     gr.update(interactive=False),
                     gr.update(interactive=False),
                 ),
@@ -565,7 +565,7 @@ class App:
             )
 
             vote_button_b.click(
-                fn=lambda: (
+                fn=lambda _=None: (
                     gr.update(interactive=False),
                     gr.update(interactive=False),
                 ),
@@ -603,7 +603,7 @@ class App:
 
             # Enable voting after second audio option playback finishes
             option_b_audio_player.stop(
-                fn=lambda _: gr.update(autoplay=False),
+                fn=lambda _=None: gr.update(autoplay=False),
                 inputs=[],
                 outputs=[option_b_audio_player],
             )
