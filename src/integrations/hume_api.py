@@ -13,12 +13,13 @@ Key Features:
 
 # Standard Library Imports
 import logging
+import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, Literal, Tuple, Union
 
 # Third-Party Library Imports
 import httpx
-from tenacity import after_log, before_log, retry, retry_if_exception, stop_after_attempt, wait_fixed
+from tenacity import after_log, before_log, retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 # Local Application Imports
 from src.config import Config, logger
@@ -37,6 +38,7 @@ class HumeConfig:
     headers: Dict[str, str] = field(init=False)
     url: str = "https://api.hume.ai/v0/tts/octave"
     file_format: HumeSupportedFileFormat = "mp3"
+    request_timeout: float = 60.0
 
     def __post_init__(self) -> None:
         # Validate required attributes.
@@ -75,7 +77,7 @@ class UnretryableHumeError(HumeError):
 @retry(
     retry=retry_if_exception(lambda e: not isinstance(e, UnretryableHumeError)),
     stop=stop_after_attempt(3),
-    wait=wait_fixed(2),
+    wait=wait_exponential(multiplier=1, min=2, max=5),
     before=before_log(logger, logging.DEBUG),
     after=after_log(logger, logging.DEBUG),
     reraise=True,
@@ -126,14 +128,17 @@ async def text_to_speech_with_hume(
         "num_generations": num_generations,
     }
 
+    start_time = time.time()
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 url=hume_config.url,
                 headers=hume_config.headers,
                 json=request_body,
-                timeout=30.0,
+                timeout=hume_config.request_timeout,
             )
+            elapsed_time = time.time() - start_time
+            logger.info(f"Hume API request completed in {elapsed_time:.2f} seconds")
             response.raise_for_status()
             response_data = response.json()
 
@@ -153,10 +158,10 @@ async def text_to_speech_with_hume(
         generation_b_id, audio_b_path = _parse_hume_tts_generation(generation_b, config)
         return (generation_a_id, audio_a_path, generation_b_id, audio_b_path)
 
-    except httpx.ReadTimeout as e:
-        # Handle timeout specifically
+    except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.ConnectError) as e:
+        logger.error(f"Hume API request failed after {elapsed_time:.2f} seconds: {e!s}")
         raise HumeError(
-            message="Request to Hume API timed out. Please try again later.",
+            message=f"Connection to Hume API failed: {e!s}. Please try again later.",
             original_exception=e,
         ) from e
 

@@ -129,37 +129,51 @@ class App:
         provider_a, provider_b = choose_providers(text_modified, character_description)
 
         try:
+            start_time = time.time()
+            logger.info(f"Starting speech synthesis with providers: {provider_a} and {provider_b}")
+
             if provider_b == constants.HUME_AI:
+                # If generating 2 Hume outputs, do so in a single API call to reduce overhead
+                logger.info("Using single Hume API call for both audio outputs")
                 num_generations = 2
-                # If generating 2 Hume outputs, do so in a single API call.
                 result = await text_to_speech_with_hume(character_description, text, num_generations, self.config)
+
                 # Enforce that 4 values are returned.
                 if not (isinstance(result, tuple) and len(result) == 4):
                     raise ValueError("Expected 4 values from Hume TTS call when generating 2 outputs")
+
                 generation_id_a, audio_a, generation_id_b, audio_b = result
+                logger.info(f"Completed dual Hume synthesis in {time.time() - start_time:.2f} seconds")
             else:
-                num_generations = 1
-                # Run both API calls concurrently using asyncio
-                tasks = []
+                # Process API calls sequentially to avoid resource contention
+                logger.info(f"Sequential processing: First generating audio with {provider_a}")
+
                 # Generate a single Hume output
-                tasks.append(text_to_speech_with_hume(character_description, text, num_generations, self.config))
-
-                # Generate a second TTS output from the second provider
-                match provider_b:
-                    case constants.ELEVENLABS:
-                        tasks.append(text_to_speech_with_elevenlabs(character_description, text, self.config))
-                    case _:
-                        # Additional TTS Providers can be added here.
-                        raise ValueError(f"Unsupported provider: {provider_b}")
-
-                # Await both tasks concurrently
-                result_a, result_b = await asyncio.gather(*tasks)
+                num_generations = 1
+                result_a = await text_to_speech_with_hume(character_description, text, num_generations, self.config)
 
                 if not isinstance(result_a, tuple) or len(result_a) != 2:
                     raise ValueError("Expected 2 values from Hume TTS call when generating 1 output")
 
                 generation_id_a, audio_a = result_a[0], result_a[1]
+                logger.info(f"First audio generated in {time.time() - start_time:.2f} seconds")
+
+                # Generate a second TTS output from the second provider
+                logger.info(f"Now generating audio with {provider_b}")
+                second_start = time.time()
+
+                match provider_b:
+                    case constants.ELEVENLABS:
+                        result_b = await text_to_speech_with_elevenlabs(character_description, text, self.config)
+                    case _:
+                        # Additional TTS Providers can be added here.
+                        raise ValueError(f"Unsupported provider: {provider_b}")
+
                 generation_id_b, audio_b = result_b[0], result_b[1]
+
+                logger.info(f"Second audio generated in {time.time() - second_start:.2f} seconds")
+                logger.info(f"Total synthesis time: {time.time() - start_time:.2f} seconds")
+
 
             # Shuffle options so that placement of options in the UI will always be random.
             option_a = Option(provider=provider_a, audio=audio_a, generation_id=generation_id_a)
