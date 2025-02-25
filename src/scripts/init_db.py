@@ -1,56 +1,44 @@
 """
-init_db.py
+init_db_direct.py
 
-This script initializes the database by creating all tables defined in the ORM models.
-It uses async SQLAlchemy operations to create tables in the PostgreSQL database.
-Run this script once to set up your database schema.
+A simplified script to initialize the database by creating all tables.
 """
 
 # Standard Library Imports
 import asyncio
+import sys
+
+# Third-Party Library Imports
+from sqlalchemy.ext.asyncio import create_async_engine
 
 # Local Application Imports
 from src.config import Config, logger
-from src.database.database import engine
 from src.database.models import Base
 
 
-async def init_db_async():
-    """
-    Asynchronously create all database tables defined in the ORM models.
+async def init_tables():
+    config = Config.get()
+    database_url = config.database_url
 
-    This function connects to the database using the configured async engine
-    and creates all tables that are mapped to SQLAlchemy models derived from
-    the Base class. It uses SQLAlchemy's create_all method with the async
-    engine context.
+    if not database_url:
+        logger.error("DATABASE_URL is not set in environment variables")
+        return False
 
-    Returns:
-        None
-    """
-    async with engine.begin() as conn:
-        # In SQLAlchemy 2.0 with async, we use the connection directly
-        await conn.run_sync(Base.metadata.create_all)
+    engine = create_async_engine(database_url, echo=config.debug)
 
-    logger.info("Database tables created successfully using async SQLAlchemy.")
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
-
-def main():
-    """
-    Main entry point for the database initialization script.
-
-    This function creates the configuration, ensures the async engine is
-    initialized, and runs the async initialization function within an
-    event loop.
-
-    Returns:
-        None
-    """
-    # Make sure config is loaded first to initialize the engine
-    Config.get()
-
-    # Run the async initialization function
-    asyncio.run(init_db_async())
+        logger.info("Database tables created successfully!")
+        return True
+    except Exception as e:
+        logger.error(f"Error creating tables: {e}")
+        return False
+    finally:
+        await engine.dispose()
 
 
 if __name__ == "__main__":
-    main()
+    success = asyncio.run(init_tables())
+    sys.exit(0 if success else 1)
