@@ -262,7 +262,6 @@ dependencies = [
     { name = "greenlet" },
     { name = "httpx" },
     { name = "python-dotenv" },
-    { name = "requests" },
     { name = "sqlalchemy" },
     { name = "tenacity" },
 ]
@@ -287,7 +286,6 @@ requires-dist = [
     { name = "greenlet", specifier = ">=2.0.0" },
     { name = "httpx", specifier = ">=0.24.1" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
-    { name = "requests", specifier = ">=2.32.3" },
     { name = "sqlalchemy", specifier = ">=2.0.0" },
     { name = "tenacity", specifier = ">=9.0.0" },
 ]

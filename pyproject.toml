@@ -12,7 +12,6 @@ dependencies = [
     "greenlet>=2.0.0",
     "httpx>=0.24.1",
     "python-dotenv>=1.0.1",
-    "requests>=2.32.3",
     "sqlalchemy>=2.0.0",
     "tenacity>=9.0.0",
 ]
@@ -45,6 +44,7 @@ ignore = [
     "PLR0912",
     "PLR0913",
     "PLR2004",
+    "RUF006",
     "TD002",
     "TD003",
 ]

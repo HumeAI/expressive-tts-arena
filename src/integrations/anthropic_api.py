@@ -84,7 +84,8 @@ class AnthropicConfig:
         from anthropic import AsyncAnthropic  # Import the async client from Anthropic SDK
         return AsyncAnthropic(api_key=self.api_key)
 
-    def build_expressive_prompt(self, character_description: str) -> str:
+    @staticmethod
+    def build_expressive_prompt(character_description: str) -> str:
         """
         Constructs and returns a prompt based solely on the provided character description.
         The returned prompt is intended to instruct Claude to generate expressive text from a character,
@@ -120,6 +121,8 @@ class UnretryableAnthropicError(AnthropicError):
 
     def __init__(self, message: str, original_exception: Optional[Exception] = None) -> None:
         super().__init__(message, original_exception)
+        self.original_exception = original_exception
+        self.message = message
 
 
 @retry(

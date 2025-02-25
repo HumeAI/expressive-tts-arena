@@ -9,25 +9,22 @@ If no DATABASE_URL environment variable is set, then create a dummy database to 
 """
 
 # Standard Library Imports
-from typing import Callable, Optional
+from typing import Callable, Optional, TypeAlias, Union
 
 # Third-Party Library Imports
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
 # Local Application Imports
-from src.config import Config
+from src.config import Config, logger
 
 
-# Define the SQLAlchemy Base using SQLAlchemy 2.0 style.
+# Define the SQLAlchemy Base
 class Base(DeclarativeBase):
     pass
 
 
-engine: Optional[AsyncEngine] = None
-
-
-class AsyncDummySession:
+class DummyAsyncSession:
     is_dummy = True  # Flag to indicate this is a dummy session.
 
     async def __enter__(self):
@@ -42,11 +39,11 @@ class AsyncDummySession:
 
     async def commit(self):
         # Raise an exception to simulate failure when attempting a write.
-        raise RuntimeError("DummySession does not support commit operations.")
+        raise RuntimeError("DummyAsyncSession does not support commit operations.")
 
     async def refresh(self, _instance):
         # Raise an exception to simulate failure when attempting to refresh.
-        raise RuntimeError("DummySession does not support refresh operations.")
+        raise RuntimeError("DummyAsyncSession does not support refresh operations.")
 
     async def rollback(self):
         # No-op: there's nothing to roll back.
@@ -57,8 +54,8 @@ class AsyncDummySession:
         pass
 
 
-# AsyncDBSessionMaker is either a async_sessionmaker instance or a callable that returns a AsyncDummySession.
-AsyncDBSessionMaker = async_sessionmaker | Callable[[], AsyncDummySession]
+AsyncDBSessionMaker: TypeAlias = Union[async_sessionmaker[AsyncSession], Callable[[], DummyAsyncSession]]
+engine: Optional[AsyncEngine] = None
 
 
 def init_db(config: Config) -> AsyncDBSessionMaker:
@@ -88,21 +85,25 @@ def init_db(config: Config) -> AsyncDBSessionMaker:
         # In production, a valid DATABASE_URL is required.
         if not config.database_url:
             raise ValueError("DATABASE_URL must be set in production!")
+
         async_db_url = convert_to_async_url(config.database_url)
         engine = create_async_engine(async_db_url)
+
         return async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
 
     # In development, if a DATABASE_URL is provided, use it.
     if config.database_url:
         async_db_url = convert_to_async_url(config.database_url)
         engine = create_async_engine(async_db_url)
+
         return async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
 
-    # No DATABASE_URL is provided; use a DummySession that does nothing.
+    # No DATABASE_URL is provided; use a DummyAsyncSession that does nothing.
     engine = None
+    logger.warning("No DATABASE_URL provided - database operations will use DummyAsyncSession")
 
-    def async_dummy_session_factory() -> AsyncDummySession:
-        return AsyncDummySession()
+    def async_dummy_session_factory() -> DummyAsyncSession:
+        return DummyAsyncSession()
 
     return async_dummy_session_factory
 

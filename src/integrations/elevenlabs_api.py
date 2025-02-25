@@ -10,13 +10,6 @@ Key Features:
 - Handles received audio and processes it for playback on the web.
 - Provides detailed logging for debugging and error tracking.
 - Utilizes robust error handling (EAFP) to validate API responses.
-
-Classes:
-- ElevenLabsConfig: Immutable configuration for interacting with ElevenLabs' TTS API.
-- ElevenLabsError: Custom exception for ElevenLabs API-related errors.
-
-Functions:
-- text_to_speech_with_elevenlabs: Synthesizes speech from text using ElevenLabs' TTS API.
 """
 
 # Standard Library Imports
@@ -26,9 +19,9 @@ from dataclasses import dataclass, field
 from typing import Optional, Tuple
 
 # Third-Party Library Imports
-from elevenlabs import ElevenLabs, TextToVoiceCreatePreviewsRequestOutputFormat
+from elevenlabs import AsyncElevenLabs, TextToVoiceCreatePreviewsRequestOutputFormat
 from elevenlabs.core import ApiError
-from tenacity import after_log, before_log, retry, stop_after_attempt, wait_fixed
+from tenacity import after_log, before_log, retry, retry_if_exception, stop_after_attempt, wait_fixed
 
 # Local Application Imports
 from src.config import Config, logger
@@ -48,19 +41,18 @@ class ElevenLabsConfig:
         if not self.output_format:
             raise ValueError("ElevenLabs TTS API output format is not set.")
 
-        # Compute the API key from the environment.
         computed_key = validate_env_var("ELEVENLABS_API_KEY")
         object.__setattr__(self, "api_key", computed_key)
 
     @property
-    def client(self) -> ElevenLabs:
+    def client(self) -> AsyncElevenLabs:
         """
-        Lazy initialization of the ElevenLabs client.
+        Lazy initialization of the asynchronous ElevenLabs client.
 
         Returns:
-            ElevenLabs: Configured client instance.
+            AsyncElevenLabs: Configured async client instance.
         """
-        return ElevenLabs(api_key=self.api_key)
+        return AsyncElevenLabs(api_key=self.api_key)
 
 
 class ElevenLabsError(Exception):
@@ -77,42 +69,43 @@ class UnretryableElevenLabsError(ElevenLabsError):
 
     def __init__(self, message: str, original_exception: Optional[Exception] = None):
         super().__init__(message, original_exception)
+        self.original_exception = original_exception
+        self.message = message
 
 
 @retry(
+    retry=retry_if_exception(lambda e: not isinstance(e, UnretryableElevenLabsError)),
     stop=stop_after_attempt(3),
     wait=wait_fixed(2),
     before=before_log(logger, logging.DEBUG),
     after=after_log(logger, logging.DEBUG),
     reraise=True,
 )
-def text_to_speech_with_elevenlabs(
+async def text_to_speech_with_elevenlabs(
     character_description: str, text: str, config: Config
 ) -> Tuple[None, str]:
     """
-    Synthesizes text to speech using the ElevenLabs TTS API, processes the audio data, and writes it to a file.
+    Asynchronously synthesizes speech using the ElevenLabs TTS API, processes the audio data, and writes it to a file.
 
     Args:
-        character_description (str): The character description used as the voice description.
+        character_description (str): The character description used for voice synthesis.
         text (str): The text to be synthesized into speech.
+        config (Config): Application configuration containing ElevenLabs API settings.
 
     Returns:
         Tuple[None, str]: A tuple containing:
-            - generation_id (None): We do not record the generation ID for ElevenLabs, but return None for uniformity
-                                    across TTS integrations.
-            - file_path (str): The relative file path to the audio file where the synthesized speech was saved.
+            - generation_id (None): A placeholder (no generation ID is returned).
+            - file_path (str): The relative file path to the saved audio file.
 
     Raises:
         ElevenLabsError: If there is an error communicating with the ElevenLabs API or processing the response.
     """
-
     logger.debug(f"Synthesizing speech with ElevenLabs. Text length: {len(text)} characters.")
-
     elevenlabs_config = config.elevenlabs_config
 
     try:
         # Synthesize speech using the ElevenLabs SDK
-        response = elevenlabs_config.client.text_to_voice.create_previews(
+        response = await elevenlabs_config.client.text_to_voice.create_previews(
             voice_description=character_description,
             text=text,
             output_format=elevenlabs_config.output_format,
@@ -129,9 +122,10 @@ def text_to_speech_with_elevenlabs(
         generated_voice_id = preview.generated_voice_id
         base64_audio = preview.audio_base_64
         filename = f"{generated_voice_id}.mp3"
-        audio_file_path = save_base64_audio_to_file(base64_audio, filename, config)
 
         # Write audio to file and return the relative path
+        audio_file_path = save_base64_audio_to_file(base64_audio, filename, config)
+
         return None, audio_file_path
 
     except Exception as e:

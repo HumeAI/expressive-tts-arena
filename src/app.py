@@ -10,9 +10,7 @@ Users can compare the outputs and vote for their favorite in an interactive UI.
 
 # Standard Library Imports
 import asyncio
-import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
 from typing import Tuple
 
 # Third-Party Library Imports
@@ -83,7 +81,7 @@ class App:
             logger.error(f"Unexpected error while generating text: {e}")
             raise gr.Error("Failed to generate text. Please try again later.")
 
-    def _synthesize_speech(
+    async def _synthesize_speech(
         self,
         character_description: str,
         text: str,
@@ -130,38 +128,34 @@ class App:
             if provider_b == constants.HUME_AI:
                 num_generations = 2
                 # If generating 2 Hume outputs, do so in a single API call.
-                result = text_to_speech_with_hume(character_description, text, num_generations, self.config)
+                result = await text_to_speech_with_hume(character_description, text, num_generations, self.config)
                 # Enforce that 4 values are returned.
                 if not (isinstance(result, tuple) and len(result) == 4):
                     raise ValueError("Expected 4 values from Hume TTS call when generating 2 outputs")
                 generation_id_a, audio_a, generation_id_b, audio_b = result
             else:
-                with ThreadPoolExecutor(max_workers=2) as executor:
-                    num_generations = 1
-                    # Generate a single Hume output.
-                    future_audio_a = executor.submit(
-                        text_to_speech_with_hume, character_description, text, num_generations, self.config
-                    )
-                    # Generate a second TTS output from the second provider.
-                    match provider_b:
-                        case constants.ELEVENLABS:
-                            future_audio_b = executor.submit(
-                                text_to_speech_with_elevenlabs, character_description, text, self.config
-                            )
-                        case _:
-                            # Additional TTS Providers can be added here.
-                            raise ValueError(f"Unsupported provider: {provider_b}")
+                num_generations = 1
+                # Run both API calls concurrently using asyncio
+                tasks = []
+                # Generate a single Hume output
+                tasks.append(text_to_speech_with_hume(character_description, text, num_generations, self.config))
 
-                    result_a = future_audio_a.result()
-                    result_b = future_audio_b.result()
-                    if isinstance(result_a, tuple) and len(result_a) >= 2:
-                        generation_id_a, audio_a = result_a[0], result_a[1]
-                    else:
-                        raise ValueError("Unexpected return from text_to_speech_with_hume")
-                    if isinstance(result_b, tuple) and len(result_b) >= 2:
-                        generation_id_b, audio_b = result_b[0], result_b[1] # type: ignore
-                    else:
-                        raise ValueError("Unexpected return from text_to_speech_with_elevenlabs")
+                # Generate a second TTS output from the second provider
+                match provider_b:
+                    case constants.ELEVENLABS:
+                        tasks.append(text_to_speech_with_elevenlabs(character_description, text, self.config))
+                    case _:
+                        # Additional TTS Providers can be added here.
+                        raise ValueError(f"Unsupported provider: {provider_b}")
+
+                # Await both tasks concurrently
+                result_a, result_b = await asyncio.gather(*tasks)
+
+                if not isinstance(result_a, tuple) or len(result_a) != 2:
+                    raise ValueError("Expected 2 values from Hume TTS call when generating 1 output")
+
+                generation_id_a, audio_a = result_a[0], result_a[1]
+                generation_id_b, audio_b = result_b[0], result_b[1]
 
             # Shuffle options so that placement of options in the UI will always be random.
             option_a = Option(provider=provider_a, audio=audio_a, generation_id=generation_id_a)
@@ -190,47 +184,7 @@ class App:
             raise gr.Error("An unexpected error occurred. Please try again later.")
 
 
-    def _background_submit_vote(
-        self,
-        option_map: OptionMap,
-        selected_option: constants.OptionKey,
-        text_modified: bool,
-        character_description: str,
-        text: str,
-    ) -> None:
-        """
-        Runs the vote submission in a background thread.
-        Creates a new event loop and runs the async submit_voting_results function in it.
-
-        Args:
-            Same as submit_voting_results
-
-        Returns:
-            None
-        """
-        try:
-            # Create a new event loop for this thread
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-            # Run the async function in the new loop
-            loop.run_until_complete(submit_voting_results(
-                option_map,
-                selected_option,
-                text_modified,
-                character_description,
-                text,
-                self.db_session_maker,
-                self.config,
-            ))
-        except Exception as e:
-            logger.error(f"Error in background vote submission thread: {e}", exc_info=True)
-        finally:
-            # Close the loop when done
-            loop.close()
-
-
-    def _vote(
+    async def _vote(
         self,
         vote_submitted: bool,
         option_map: OptionMap,
@@ -261,19 +215,18 @@ class App:
         selected_provider = option_map[selected_option]["provider"]
         other_provider = option_map[other_option]["provider"]
 
-        # Start a background thread for the database operation
-        thread = threading.Thread(
-            target=self._background_submit_vote,
-            args=(
+        # Process vote in the background without blocking the UI
+        asyncio.create_task(
+            submit_voting_results(
                 option_map,
                 selected_option,
                 text_modified,
                 character_description,
                 text,
-            ),
-            daemon=True
+                self.db_session_maker,
+                self.config,
+            )
         )
-        thread.start()
 
         # Build button text, displaying the provider and voice name, appending the trophy emoji to the selected option.
         selected_label = f"{selected_provider} {constants.TROPHY_EMOJI}"

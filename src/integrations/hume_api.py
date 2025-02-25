@@ -9,13 +9,6 @@ Key Features:
 - Implements retry logic for handling transient API errors.
 - Handles received audio and processes it for playback on the web.
 - Provides detailed logging for debugging and error tracking.
-
-Classes:
-- HumeConfig: Immutable configuration for interacting with Hume's TTS API.
-- HumeError: Custom exception for Hume API-related errors.
-
-Functions:
-- text_to_speech_with_hume: Synthesizes speech from text using Hume's TTS API.
 """
 
 # Standard Library Imports
@@ -24,9 +17,8 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Literal, Tuple, Union
 
 # Third-Party Library Imports
-import requests
-from requests.exceptions import HTTPError
-from tenacity import after_log, before_log, retry, stop_after_attempt, wait_fixed
+import httpx
+from tenacity import after_log, before_log, retry, retry_if_exception, stop_after_attempt, wait_fixed
 
 # Local Application Imports
 from src.config import Config, logger
@@ -41,12 +33,9 @@ HumeSupportedFileFormat = Literal["mp3", "pcm", "wav"]
 class HumeConfig:
     """Immutable configuration for interacting with the Hume TTS API."""
 
-    # Computed fields.
     api_key: str = field(init=False)
     headers: Dict[str, str] = field(init=False)
-
-    # Provided fields.
-    url: str = "https://test-api.hume.ai/v0/tts/octave"
+    url: str = "https://api.hume.ai/v0/tts/octave"
     file_format: HumeSupportedFileFormat = "mp3"
 
     def __post_init__(self) -> None:
@@ -56,11 +45,8 @@ class HumeConfig:
         if not self.file_format:
             raise ValueError("Hume TTS file format is not set.")
 
-        # Compute the API key from the environment.
         computed_api_key = validate_env_var("HUME_API_KEY")
         object.__setattr__(self, "api_key", computed_api_key)
-
-        # Compute the headers.
         computed_headers = {
             "X-Hume-Api-Key": f"{computed_api_key}",
             "Content-Type": "application/json",
@@ -83,38 +69,36 @@ class UnretryableHumeError(HumeError):
     def __init__(self, message: str, original_exception: Union[Exception, None] = None):
         super().__init__(message, original_exception)
         self.original_exception = original_exception
+        self.message = message
 
 
 @retry(
+    retry=retry_if_exception(lambda e: not isinstance(e, UnretryableHumeError)),
     stop=stop_after_attempt(3),
     wait=wait_fixed(2),
     before=before_log(logger, logging.DEBUG),
     after=after_log(logger, logging.DEBUG),
     reraise=True,
 )
-def text_to_speech_with_hume(
+async def text_to_speech_with_hume(
     character_description: str,
     text: str,
     num_generations: int,
     config: Config,
 ) -> Union[Tuple[str, str], Tuple[str, str, str, str]]:
     """
-    Synthesizes text to speech using the Hume TTS API, processes audio data, and writes audio to a file.
+    Asynchronously synthesizes speech using the Hume TTS API, processes audio data, and writes audio to a file.
 
-    This function sends a POST request to the Hume TTS API with a character description and text
-    to be converted to speech. Depending on the specified number of generations (allowed values: 1 or 2),
-    the API returns one or two generations. For each generation, the function extracts the base64-encoded
-    audio and the generation ID, saves the audio as an MP3 file via the `save_base64_audio_to_file` helper,
-    and returns the relevant details.
+    This function sends a POST request to the Hume TTS API with a character description and text to be converted to
+    speech. Depending on the specified number of generations (1 or 2), the API returns one or two generations.
+    For each generation, the function extracts the base64-encoded audio and generation ID, saves the audio as an MP3
+    file, and returns the relevant details.
 
     Args:
-        character_description (str): A description of the character, which is used as contextual input
-            for generating the voice.
-        text (str): The text to be converted to speech.
-        num_generations (int): The number of audio generations to request from the API.
-            Allowed values are 1 or 2. If 1, only a single generation is processed; if 2, a second
-            generation is expected in the API response.
-        config (Config): The application configuration containing Hume API settings.
+        character_description (str): Description used for voice synthesis.
+        text (str): Text to be converted to speech.
+        num_generations (int): Number of audio generations to request (1 or 2).
+        config (Config): Application configuration containing Hume API settings.
 
     Returns:
         Union[Tuple[str, str], Tuple[str, str, str, str]]:
@@ -123,15 +107,13 @@ def text_to_speech_with_hume(
 
     Raises:
         ValueError: If num_generations is not 1 or 2.
-        HumeError: If there is an error communicating with the Hume TTS API or parsing its response.
-        UnretryableHumeError: If a client-side HTTP error (status code in the 4xx range) is encountered.
-        Exception: Any other exceptions raised during the request or processing will be wrapped and
-                   re-raised as HumeError.
+        HumeError: For errors communicating with the Hume API.
+        UnretryableHumeError: For client-side HTTP errors (status code 4xx).
     """
-
     logger.debug(
-        f"Processing TTS with Hume. Prompt length: {len(character_description)} characters. "
-        f"Text length: {len(text)} characters."
+        "Processing TTS with Hume. "
+        f"Character description length: {len(character_description)}. "
+        f"Text length: {len(text)}."
     )
 
     if num_generations < 1 or num_generations > 2:
@@ -145,14 +127,15 @@ def text_to_speech_with_hume(
     }
 
     try:
-        # Synthesize speech using the Hume TTS API
-        response = requests.post(
-            url=hume_config.url,
-            headers=hume_config.headers,
-            json=request_body,
-        )
-        response.raise_for_status()
-        response_data = response.json()
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                url=hume_config.url,
+                headers=hume_config.headers,
+                json=request_body,
+                timeout=30.0,
+            )
+            response.raise_for_status()
+            response_data = response.json()
 
         generations = response_data.get("generations")
         if not generations:
@@ -160,7 +143,6 @@ def text_to_speech_with_hume(
             logger.error(msg)
             raise HumeError(msg)
 
-        # Extract the base64 encoded audio and generation ID from the generation.
         generation_a = generations[0]
         generation_a_id, audio_a_path = _parse_hume_tts_generation(generation_a, config)
 
@@ -171,48 +153,51 @@ def text_to_speech_with_hume(
         generation_b_id, audio_b_path = _parse_hume_tts_generation(generation_b, config)
         return (generation_a_id, audio_a_path, generation_b_id, audio_b_path)
 
-    except Exception as e:
-        if (
-            isinstance(e, HTTPError)
-            and e.response is not None
-            and CLIENT_ERROR_CODE <= e.response.status_code < SERVER_ERROR_CODE
-        ):
-            raise UnretryableHumeError(
-                message=f"{e.response.text}",
-                original_exception=e,
-            ) from e
-
+    except httpx.ReadTimeout as e:
+        # Handle timeout specifically
         raise HumeError(
-            message=f"{e}",
+            message="Request to Hume API timed out. Please try again later.",
             original_exception=e,
         ) from e
 
+    except httpx.HTTPStatusError as e:
+        if e.response is not None and CLIENT_ERROR_CODE <= e.response.status_code < SERVER_ERROR_CODE:
+            error_message = f"HTTP Error {e.response.status_code}: {e.response.text}"
+            logger.error(error_message)
+            raise UnretryableHumeError(
+                message=error_message,
+                original_exception=e,
+            ) from e
+        error_message = f"HTTP Error {e.response.status_code if e.response else 'unknown'}"
+        logger.error(error_message)
+        raise HumeError(
+            message=error_message,
+            original_exception=e,
+        ) from e
+
+    except Exception as e:
+        error_type = type(e).__name__
+        error_message = str(e) if str(e) else f"An error of type {error_type} occurred"
+        logger.error("Error during Hume API call: %s - %s", error_type, error_message)
+        raise HumeError(
+            message=error_message,
+            original_exception=e,
+        ) from e
 
 def _parse_hume_tts_generation(generation: Dict[str, Any], config: Config) -> Tuple[str, str]:
     """
-    Parse a Hume TTS generation response and save the decoded audio as an MP3 file.
-
-    This function extracts the generation ID and the base64-encoded audio from the provided
-    dictionary. It then decodes and saves the audio data to an MP3 file, naming the file using
-    the generation ID. Finally, it returns a tuple containing the generation ID and the file path
-    of the saved audio.
+    Parses a Hume TTS generation response and saves the decoded audio as an MP3 file.
 
     Args:
-        generation (Dict[str, Any]): A dictionary representing the TTS generation response from Hume.
-            Expected keys are:
-                - "generation_id" (str): A unique identifier for the generated audio.
-                - "audio" (str): A base64 encoded string of the audio data.
-        config (Config): The application configuration used for saving the audio file.
+        generation (Dict[str, Any]): TTS generation response containing 'generation_id' and 'audio'.
+        config (Config): Application configuration for saving the audio file.
 
     Returns:
-        Tuple[str, str]: A tuple containing:
-            - generation_id (str): The unique identifier for the audio generation.
-            - audio_path (str): The filesystem path where the audio file was saved.
+        Tuple[str, str]: (generation_id, audio_path)
 
     Raises:
-        KeyError: If the "generation_id" or "audio" key is missing from the generation dictionary.
-        Exception: Propagates any exceptions raised by save_base64_audio_to_file, such as errors during
-                   the decoding or file saving process.
+        KeyError: If expected keys are missing.
+        Exception: Propagates exceptions from saving the audio file.
     """
     generation_id = generation.get("generation_id")
     if generation_id is None:

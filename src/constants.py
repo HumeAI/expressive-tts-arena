@@ -59,7 +59,7 @@ SAMPLE_CHARACTER_DESCRIPTIONS: dict = {
         "building tension through perfectly timed pauses and haunting inflections."
     ),
     "🌿 British Naturalist": (
-        "A passionate nature documentarian with a voice that brings the wild to life—crisp, refined "
+        "A passionate, British nature documentarian with a voice that brings the wild to life—crisp, refined "
         "tones brimming with wonder and expertise. It shifts seamlessly from hushed observation to "
         "animated excitement, painting vivid pictures of the natural world's endless marvels."
     ),
