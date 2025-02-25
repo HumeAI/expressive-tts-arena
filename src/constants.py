@@ -42,43 +42,36 @@ SELECT_OPTION_B: str = "Select Option B"
 # inspiration for generating creative, expressive text inputs for TTS, and generating novel voices.
 SAMPLE_CHARACTER_DESCRIPTIONS: dict = {
     "🧘 Meditation Guru": (
-        "A serene meditation guide whose voice is a gentle stream of tranquility—soft, measured tones "
-        "that float like incense smoke. Each word emerges with mindful intention, creating a soothing "
-        "atmosphere of peace and present-moment awareness."
+        "A mindfulness instructor with a gentle, soothing voice that flows at a slow, measured pace with natural "
+        "pauses. Their consistently calm, low-pitched tone has minimal variation, creating a peaceful auditory "
+        "experience."
     ),
     "🚀 Stranded Astronaut": (
-        "A lone astronaut whose voice mirrors the silent vastness of space—a low, steady tone imbued "
-        "with isolation and quiet wonder. It carries the measured resolve of someone sending a final "
-        "transmission, with an undercurrent of wistful melancholy."
+        "An astronaut in deep space communicating with a clear, precise voice with subtle radio distortion. "
+        "Speaking with controlled emotion, technical accuracy, measured pacing and thoughtful silences."
     ),
-    "🎬 Noir Narrator": (
-        "A hardboiled detective whose voice cuts through darkness like neon on wet streets—sharp, "
-        "world-weary tones dripping with cynical wit. It paints pictures in shades of gray, each word "
-        "chosen with the precision of a private eye piecing together clues."
+    "🎬 Noir Detective": (
+        "A 1940s private investigator narrating with a low, gravelly voice and deliberate pacing. "
+        "Speaks with a cynical, world-weary tone that drops lower when delivering key observations."
     ),
     "🕯️ Victorian Ghost Storyteller": (
-        "A mysterious raconteur whose voice weaves shadows into stories—velvet-dark tones that dance "
-        "between whispers and dramatic flourishes. It draws listeners close with elegant phrasing, "
-        "building tension through perfectly timed pauses and haunting inflections."
+        "A Victorian-era raconteur speaking with a refined British accent and formal, precise diction. Voice "
+        "modulates between hushed, tense whispers and dramatic declarations when describing eerie occurrences."
     ),
     "🌿 British Naturalist": (
-        "A passionate, British nature documentarian with a voice that brings the wild to life—crisp, refined "
-        "tones brimming with wonder and expertise. It shifts seamlessly from hushed observation to "
-        "animated excitement, painting vivid pictures of the natural world's endless marvels."
+        "A wildlife documentarian speaking with a crisp, articulate British accent and clear enunciation. Voice "
+        "alternates between hushed, excited whispers and enthusiastic explanations filled with genuine wonder."
     ),
     "🌟 Texan Storyteller": (
-        "A warm-hearted Texan woman whose voice carries the spirit of wide-open skies—honeyed tones "
-        "rich with folksy wisdom and charm. It wraps around words like a comfortable quilt, sharing "
-        "tales with the unhurried grace of a front-porch conversation."
+        "A woman from rural Texas speaking with a warm voice and distinctive Southern drawl featuring elongated "
+        "vowels. Talks unhurriedly with a musical quality and occasional soft laughter."
     ),
     "🏴‍☠️ Pirate Captain": (
-        "A weathered sea captain whose voice rumbles like distant thunder—rich, commanding tones "
-        "seasoned by salt spray and adventure. It carries the weight of countless voyages, blending "
-        "gruff authority with the playful spirit of a born storyteller."
+        "A seafaring pirate captain commanding with a rough, weathered voice that varies from quiet growls to "
+        "authoritative shouts. Exaggerates consonants, particularly rolling Rs, when giving orders."
     ),
     "🏄 Surfer Dude": (
-        "A laid-back surfer with a voice that flows like ocean waves—a mellow, easygoing tone infused "
-        "with sun-soaked warmth. It carries the rhythmic cadence of breaking surf, punctuated by "
-        "carefree laughter and an infectious enthusiasm for life's simple pleasures."
+        "A California surfer talking with a casual, slightly nasal voice and laid-back rhythm. Uses rising "
+        "inflections at sentence ends and bursts into spontaneous laughter when excited."
     ),
 }

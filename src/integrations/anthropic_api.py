@@ -87,9 +87,9 @@ class AnthropicConfig:
     @staticmethod
     def build_expressive_prompt(character_description: str) -> str:
         """
-        Constructs and returns a prompt based solely on the provided character description.
-        The returned prompt is intended to instruct Claude to generate expressive text from a character,
-        capturing the character's personality and emotional nuance, without including the system prompt.
+        Constructs and returns a prompt based on the provided character description.
+        This prompt instructs Claude to generate expressive dialogue that aligns semantically
+        with the character's voice qualities and persona, optimized for TTS synthesis.
 
         Args:
             character_description (str): A description of the character's voice and persona.
@@ -98,12 +98,22 @@ class AnthropicConfig:
             str: The prompt to be passed to the Anthropic API.
         """
         return f"""
-        Character Description: {character_description}\n
-        Based on the character description above, please generate a line of dialogue that captures the character's
-        unique personality, emotional depth, and distinctive tone. The response should sound like something the
-        character would naturally say, reflecting their background and emotional state, and be fully developed for
-        text-to-speech synthesis. Follow all of the requirements from the system prompt and output your 10-50 word
-        response.
+        Character Description: {character_description}
+
+        Please generate a short monologue (100-300 characters) that this character would naturally say.
+        The dialogue should:
+
+        - Match the speaking style, vocabulary, and emotional tone described in the character description
+        - Include appropriate speech patterns, pauses, and vocal mannerisms mentioned in the description
+        - Feel authentic to the character's background and situational context
+        - Express a complete thought with a clear beginning and end
+        - Sound natural when spoken aloud (avoid words that are difficult to pronounce)
+        - Use only standard punctuation (periods, commas, question marks, exclamation points, ellipses)
+        - Avoid quotation marks, parentheses, asterisks, or special formatting
+        - Be at least 100 characters but not exceed 300 characters in length
+
+        Respond ONLY with the dialogue itself. Do not include any explanations, quotation marks,
+        or additional context.
         """
 
 
