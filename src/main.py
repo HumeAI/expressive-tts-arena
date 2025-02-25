@@ -22,7 +22,11 @@ async def main():
     db_session_maker = init_db(config)
     app = App(config, db_session_maker)
     demo = app.build_gradio_interface()
-    demo.launch(server_name="0.0.0.0", allowed_paths=[str(config.audio_dir)])
+    demo.launch(
+        server_name="0.0.0.0",
+        allowed_paths=[str(config.audio_dir)],
+        ssl_verify= False,
+    )
 
 
 if __name__ == "__main__":
