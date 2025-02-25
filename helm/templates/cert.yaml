@@ -1,0 +1,9 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: {{ include "expressive-tts-arena.fullname" . }}
+spec:
+  domains:
+    - arena.hume.ai
+{{- end -}}

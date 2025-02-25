@@ -1,0 +1,9 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: {{ include "expressive-tts-arena.fullname" . }}-backendconfig
+spec:
+  sessionAffinity:
+    affinityType: "CLIENT_IP"
+{{- end }}

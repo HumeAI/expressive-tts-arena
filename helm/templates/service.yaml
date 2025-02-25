@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "expressive-tts-arena.fullname" . }}
+  labels:
+    {{- include "expressive-tts-arena.labels" . | nindent 4 }}
+  annotations:
+    tailscale.com/expose: "true"
+    cloud.google.com/backend-config: '{"ports": {"80":"arena-expressive-tts-arena-backendconfig"}}'
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - targetPort: {{ .Values.service.targetPort }}
+      port: {{ .Values.service.port }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "expressive-tts-arena.selectorLabels" . | nindent 4 }}
