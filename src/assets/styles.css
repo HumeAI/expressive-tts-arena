@@ -12,4 +12,5 @@ footer.svelte-sar7eh {
 #vote-result-a.winner textarea,
 #vote-result-b.winner textarea {
   background: #EA580C;
+  color: #FFFFFF;
 }
