@@ -35,6 +35,7 @@ from src.utils import (
     determine_selected_option,
     submit_voting_results,
     validate_character_description_length,
+    validate_text_length,
 )
 
 
@@ -116,9 +117,12 @@ class App:
         Raises:
             gr.Error: If any API or unexpected errors occur during the TTS synthesis process.
         """
-        if not text:
-            logger.warning("Skipping text-to-speech due to empty text.")
-            raise gr.Error("Please generate or enter text to synthesize.")
+        try:
+            validate_character_description_length(character_description)
+            validate_text_length(text)
+        except ValueError as ve:
+            logger.warning(f"Validation error: {ve}")
+            raise gr.Error(str(ve))
 
         # Select 2 TTS providers based on whether the text has been modified.
         text_modified = text != generated_text_state
@@ -267,8 +271,8 @@ class App:
         return (
             gr.update(value=None),
             gr.update(value=None, autoplay=False),
-            gr.update(value=constants.SELECT_OPTION_A, variant="secondary"),
-            gr.update(value=constants.SELECT_OPTION_B, variant="secondary"),
+            gr.update(value=constants.SELECT_OPTION_A, variant="secondary", interactive=False),
+            gr.update(value=constants.SELECT_OPTION_B, variant="secondary", interactive=False),
             default_option_map,  # Reset option_map_state as a default OptionMap
             False,
         )
@@ -314,12 +318,31 @@ class App:
             show_copy_button=True,
         )
         synthesize_speech_button = gr.Button("Synthesize Speech", variant="primary")
+
         with gr.Row(equal_height=True):
-            option_a_audio_player = gr.Audio(label=constants.OPTION_A_LABEL, type="filepath", interactive=False)
-            option_b_audio_player = gr.Audio(label=constants.OPTION_B_LABEL, type="filepath", interactive=False)
-        with gr.Row(equal_height=True):
-            vote_button_a = gr.Button(constants.SELECT_OPTION_A, interactive=False)
-            vote_button_b = gr.Button(constants.SELECT_OPTION_B, interactive=False)
+            with gr.Column():
+                with gr.Group():
+                    option_a_audio_player = gr.Audio(
+                        label=constants.OPTION_A_LABEL,
+                        type="filepath",
+                        interactive=False,
+                    )
+                    vote_button_a = gr.Button(
+                        constants.SELECT_OPTION_A,
+                        interactive=False,
+                    )
+            with gr.Column():
+                with gr.Group():
+                    option_b_audio_player = gr.Audio(
+                        label=constants.OPTION_B_LABEL,
+                        type="filepath",
+                        interactive=False,
+                    )
+                    vote_button_b = gr.Button(
+                        constants.SELECT_OPTION_B,
+                        interactive=False,
+                    )
+
         return (
             text_input,
             synthesize_speech_button,

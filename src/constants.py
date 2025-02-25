@@ -23,7 +23,10 @@ HUME_TO_HUME: ComparisonType = "Hume AI - Hume AI"
 HUME_TO_ELEVENLABS: ComparisonType = "Hume AI - ElevenLabs"
 
 CHARACTER_DESCRIPTION_MIN_LENGTH: int = 20
-CHARACTER_DESCRIPTION_MAX_LENGTH: int = 800
+CHARACTER_DESCRIPTION_MAX_LENGTH: int = 1000
+
+TEXT_MIN_LENGTH: int = 100
+TEXT_MAX_LENGTH: int = 1000
 
 OPTION_A_KEY: OptionKey = "option_a"
 OPTION_B_KEY: OptionKey = "option_b"

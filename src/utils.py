@@ -71,13 +71,6 @@ def validate_character_description_length(character_description: str) -> None:
 
     Raises:
         ValueError: If the character description is empty, too short, or exceeds max length.
-
-    Example:
-        >>> validate_character_description_length("This is a character description.")
-        # Passes validation
-
-        >>> validate_character_description_length("")
-        # Raises ValueError: "Voice Description must be at least 20 characters long."
     """
     stripped_character_description = character_description.strip()
     character_description_length = len(stripped_character_description)
@@ -99,6 +92,38 @@ def validate_character_description_length(character_description: str) -> None:
 
     truncated_description = truncate_text(stripped_character_description)
     logger.debug(f"Character description length validation passed for character_description: {truncated_description}")
+
+
+def validate_text_length(text: str) -> None:
+    """
+    Validates that a text input is within specified minimum and maximum length limits.
+
+    Args:
+        text (str): The input text to validate.
+
+    Raises:
+        ValueError: If the text is empty, too short, or exceeds max length.
+    """
+    stripped_text = text.strip()
+    text_length = len(stripped_text)
+
+    logger.debug(f"Voice description length being validated: {text_length} characters")
+
+    if text_length < constants.TEXT_MIN_LENGTH:
+        raise ValueError(
+            f"Your text is too short. Please enter at least "
+            f"{constants.TEXT_MIN_LENGTH} characters. "
+            f"(Current length: {text_length})"
+        )
+    if text_length > constants.TEXT_MAX_LENGTH:
+        raise ValueError(
+            f"Your text is too long. Please limit it to "
+            f"{constants.TEXT_MAX_LENGTH} characters. "
+            f"(Current length: {text_length})"
+        )
+
+    truncated_text = truncate_text(stripped_text)
+    logger.debug(f"Character description length validation passed for text: {truncated_text}")
 
 
 def _delete_files_older_than(directory: Path, minutes: int = 30) -> None:
