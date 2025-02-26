@@ -50,7 +50,7 @@ class App:
     async def _generate_text(
         self,
         character_description: str,
-    ) -> Tuple[dict, str]:
+    ) -> Tuple[gr.Textbox, str]:
         """
         Validates the character_description and generates text using Anthropic API.
 
@@ -87,7 +87,7 @@ class App:
         character_description: str,
         text: str,
         generated_text_state: str,
-    ) -> Tuple[dict, dict, OptionMap, bool, str, str]:
+    ) -> Tuple[gr.Audio, gr.Audio, OptionMap, bool, str, str]:
         """
         Synthesizes two text-to-speech outputs, updates UI state components, and returns additional TTS metadata.
 
@@ -209,7 +209,14 @@ class App:
         text_modified: bool,
         character_description: str,
         text: str,
-    ) -> Tuple[bool, dict, dict, dict, dict, dict]:
+    ) -> Tuple[
+        bool,
+        gr.Button,
+        gr.Button,
+        gr.Textbox,
+        gr.Textbox,
+        gr.Button
+    ]:
         """
         Handles user voting and updates the UI to display vote results.
 
@@ -271,20 +278,88 @@ class App:
             gr.update(interactive=True),
         )
 
-    def _reset_ui(self) -> Tuple[dict, dict, dict, dict, dict, dict, OptionMap, bool]:
+    async def _randomize_character_description(self) -> Tuple[gr.Dropdown, gr.Textbox]:
         """
-        Resets UI state before generating new text.
+        Randomly selects a character description, generates text, and synthesizes speech.
 
         Returns:
-            A tuple of updates for:
-             - option_a_audio_player (clear audio)
-             - option_b_audio_player (clear audio)
-             - vote_button_a (show)
-             - vote_button_b (show)
-             - vote_result_a (hide)
-             - vote_result_b (hide)
-             - option_map_state (reset option map state)
-             - vote_submitted_state (reset submitted vote state)
+            Tuple containing updates for:
+            - sample_character_description_dropdown (select random)
+            - character_description_input (update value)
+        """
+        import random
+
+        sample_keys = list(constants.SAMPLE_CHARACTER_DESCRIPTIONS.keys())
+        random_sample = random.choice(sample_keys)
+        character_description = constants.SAMPLE_CHARACTER_DESCRIPTIONS[random_sample]
+
+        logger.info(f"Randomize All: Selected '{random_sample}'")
+
+        return (
+            gr.update(value=random_sample), # Update dropdown
+            gr.update(value=character_description), # Update character description
+        )
+
+    def _disable_ui(self) -> Tuple[
+        gr.Button,
+        gr.Dropdown,
+        gr.Textbox,
+        gr.Button,
+        gr.Textbox,
+        gr.Button,
+        gr.Button,
+        gr.Button
+    ]:
+        """
+        Disables all interactive components in the UI (except audio players)
+        """
+        return(
+            gr.update(interactive=False), # disable Randomize All button
+            gr.update(interactive=False), # disable Character Description dropdown
+            gr.update(interactive=False), # disable Character Description input
+            gr.update(interactive=False), # disable Generate Text button
+            gr.update(interactive=False), # disable Input Text input
+            gr.update(interactive=False), # disable Synthesize Speech Button
+            gr.update(interactive=False), # disable Choose Select A Button
+            gr.update(interactive=False), # disable Choose Select B Button
+        )
+
+    def _enable_ui(self) -> Tuple[
+        gr.Button,
+        gr.Dropdown,
+        gr.Textbox,
+        gr.Button,
+        gr.Textbox,
+        gr.Button,
+        gr.Button,
+        gr.Button
+    ]:
+        """
+        Enables all interactive components in the UI (except audio players)
+        """
+        return(
+            gr.update(interactive=True), # enable Randomize All button
+            gr.update(interactive=True), # enable Character Description dropdown
+            gr.update(interactive=True), # enable Character Description input
+            gr.update(interactive=True), # enable Generate Text button
+            gr.update(interactive=True), # enable Input Text input
+            gr.update(interactive=True), # enable Synthesize Speech Button
+            gr.update(interactive=True), # enable Choose Select A Button
+            gr.update(interactive=True), # enable Choose Select B Button
+        )
+
+    def _reset_voting_ui(self) -> Tuple[
+        gr.Audio,
+        gr.Audio,
+        gr.Button,
+        gr.Button,
+        gr.Textbox,
+        gr.Textbox,
+        OptionMap,
+        bool
+    ]:
+        """
+        Resets voting UI state and clear audio players
         """
         default_option_map: OptionMap = {
             "option_a": {"provider": constants.HUME_AI, "generation_id": None, "audio_file_path": ""},
@@ -295,11 +370,49 @@ class App:
             gr.update(value=None, autoplay=False),  # clear audio player B
             gr.update(visible=True, interactive=False),  # show vote button A
             gr.update(visible=True, interactive=False),  # show vote button B
-            gr.update(visible=False, elem_classes=[]),  # hide vote result A
-            gr.update(visible=False, elem_classes=[]),  # hide vote result B
+            gr.update(visible=False),  # hide vote result A
+            gr.update(visible=False),  # hide vote result B
             default_option_map,  # Reset option_map_state as a default OptionMap
             False,  # Reset vote_submitted_state
         )
+
+    def _build_heading_section(self) -> Tuple[gr.HTML, gr.Button, gr.HTML]:
+        """
+        Builds heading section including title, randomize all button, and instructions
+        """
+        with gr.Row():
+            with gr.Column(scale=5):
+                title = gr.HTML("<h1>Expressive TTS Arena</h1>")
+            randomize_all_button = gr.Button("🎲 Randomize All", variant="primary", scale=1)
+        instructions = gr.HTML(
+            """
+            <p style="font-size: 16px; font-weight: bold;">
+                <strong>Instructions</strong>
+            </p>
+            <ol style="margin-left: 8px;">
+                <li>
+                    Choose or enter a character description by selecting a sample or typing your own to guide
+                    text generation and voice synthesis.
+                </li>
+                <li>
+                    Click the <strong>"Generate Text"</strong> button to create dialogue for the character;
+                    the text automatically populates the input field for further editing.
+                </li>
+                <li>
+                    Click the <strong>"Synthesize Speech"</strong> button to convert your text and character
+                    description into two synthesized speech options for direct comparison.
+                </li>
+                <li>
+                    Listen to both audio outputs to assess their expressiveness.
+                </li>
+                <li>
+                    Click <strong>"Select Option A"</strong> or <strong>"Select Option B"</strong> to vote for
+                    the most expressive result.
+                </li>
+            </ol>
+            """
+        )
+        return (title, randomize_all_button, instructions)
 
     def _build_input_section(self) -> Tuple[gr.Dropdown, gr.Textbox, gr.Button]:
         """
@@ -418,35 +531,11 @@ class App:
             css_paths="src/assets/styles.css",
         ) as demo:
             # --- UI components ---
-            gr.HTML("<h1>Expressive TTS Arena</h1>")
-            gr.HTML(
-                """
-                <p style="font-size: 16px; font-weight: bold;">
-                    <strong>Instructions</strong>
-                </p>
-                <ol style="margin-left: 8px;">
-                    <li>
-                        Choose or enter a character description by selecting a sample or typing your own to guide
-                        text generation and voice synthesis.
-                    </li>
-                    <li>
-                        Click the <strong>"Generate Text"</strong> button to create dialogue for the character;
-                        the text automatically populates the input field for further editing.
-                    </li>
-                    <li>
-                        Click the <strong>"Synthesize Speech"</strong> button to convert your text and character
-                        description into two synthesized speech options for direct comparison.
-                    </li>
-                    <li>
-                        Listen to both audio outputs to assess their expressiveness.
-                    </li>
-                    <li>
-                        Click <strong>"Select Option A"</strong> or <strong>"Select Option B"</strong> to vote for
-                        the most expressive result.
-                    </li>
-                </ol>
-                """
-            )
+            (
+                title,
+                randomize_all_button,
+                instructions,
+            ) = self._build_heading_section()
             (
                 sample_character_description_dropdown,
                 character_description_input,
@@ -478,6 +567,79 @@ class App:
             vote_submitted_state = gr.State(False)
 
             # --- Register event handlers ---
+            # Select a character description, generate text, and synthesize speech with a single button click.
+            # 1. Select random character descriptions and disable buttons
+            # 2. Generate text
+            # 3. Reset UI state for audio players and voting results
+            # 4. Synthesize speech
+            # 5. Reenable buttons
+            randomize_all_button.click(
+                fn=self._randomize_character_description,
+                inputs=[],
+                outputs=[
+                    sample_character_description_dropdown,
+                    character_description_input,
+                ],
+            ).then(
+                fn=self._disable_ui,
+                inputs=[],
+                outputs=[
+                    randomize_all_button,
+                    sample_character_description_dropdown,
+                    character_description_input,
+                    generate_text_button,
+                    text_input,
+                    synthesize_speech_button,
+                    vote_button_a,
+                    vote_button_b,
+                ],
+            ).then(
+                fn=self._generate_text,
+                inputs=[character_description_input],
+                outputs=[text_input, generated_text_state],
+            ).then(
+                fn=self._reset_voting_ui,
+                inputs=[],
+                outputs=[
+                    option_a_audio_player,
+                    option_b_audio_player,
+                    vote_button_a,
+                    vote_button_b,
+                    vote_result_a,
+                    vote_result_b,
+                    option_map_state,
+                    vote_submitted_state,
+                ],
+            ).then(
+                fn=lambda _=None: gr.update(interactive=False),
+                inputs=[],
+                outputs=[text_input],
+            ).then(
+                fn=self._synthesize_speech,
+                inputs=[character_description_input, text_input, generated_text_state],
+                outputs=[
+                    option_a_audio_player,
+                    option_b_audio_player,
+                    option_map_state,
+                    text_modified_state,
+                    text_state,
+                    character_description_state,
+                ],
+            ).then(
+                fn=self._enable_ui,
+                inputs=[],
+                outputs=[
+                    randomize_all_button,
+                    sample_character_description_dropdown,
+                    character_description_input,
+                    generate_text_button,
+                    text_input,
+                    synthesize_speech_button,
+                    vote_button_a,
+                    vote_button_b,
+                ],
+            )
+
             # When a sample character description is chosen, update the character description textbox
             sample_character_description_dropdown.change(
                 fn=lambda choice: constants.SAMPLE_CHARACTER_DESCRIPTIONS.get(choice, ""),
@@ -490,34 +652,57 @@ class App:
             # 2. Generate text
             # 3. Enable the "Generate text" button
             generate_text_button.click(
-                fn=lambda _=None: gr.update(interactive=False),
+                fn=self._disable_ui,
                 inputs=[],
-                outputs=[generate_text_button],
+                outputs=[
+                    randomize_all_button,
+                    sample_character_description_dropdown,
+                    character_description_input,
+                    generate_text_button,
+                    text_input,
+                    synthesize_speech_button,
+                    vote_button_a,
+                    vote_button_b,
+                ],
             ).then(
                 fn=self._generate_text,
                 inputs=[character_description_input],
                 outputs=[text_input, generated_text_state],
             ).then(
-                fn=lambda _=None: gr.update(interactive=True),
+                fn=self._enable_ui,
                 inputs=[],
-                outputs=[generate_text_button],
+                outputs=[
+                    randomize_all_button,
+                    sample_character_description_dropdown,
+                    character_description_input,
+                    generate_text_button,
+                    text_input,
+                    synthesize_speech_button,
+                    vote_button_a,
+                    vote_button_b,
+                ],
             )
 
             # Synthesize speech button click event handler chain:
-            # 1. Disable the "Synthesize speech" button
-            # 2. Reset UI state
+            # 1. Disable UI
+            # 2. Reset UI state for audio players and voting results
             # 3. Synthesize speech, load audio players, and display vote button
             # 4. Enable the "Synthesize speech" button and display vote buttons
             synthesize_speech_button.click(
-                fn=lambda _=None: (
-                    gr.update(interactive=False),
-                    gr.update(interactive=False),
-                    gr.update(interactive=False),
-                ),
+                fn=self._disable_ui,
                 inputs=[],
-                outputs=[synthesize_speech_button, vote_button_a, vote_button_b],
+                outputs=[
+                    randomize_all_button,
+                    sample_character_description_dropdown,
+                    character_description_input,
+                    generate_text_button,
+                    text_input,
+                    synthesize_speech_button,
+                    vote_button_a,
+                    vote_button_b,
+                ],
             ).then(
-                fn=self._reset_ui,
+                fn=self._reset_voting_ui,
                 inputs=[],
                 outputs=[
                     option_a_audio_player,
@@ -541,13 +726,18 @@ class App:
                     character_description_state,
                 ],
             ).then(
-                fn=lambda _=None: (
-                    gr.update(interactive=True),
-                    gr.update(interactive=True),
-                    gr.update(interactive=True),
-                ),
+                fn=self._enable_ui,
                 inputs=[],
-                outputs=[synthesize_speech_button, vote_button_a, vote_button_b],
+                outputs=[
+                    randomize_all_button,
+                    sample_character_description_dropdown,
+                    character_description_input,
+                    generate_text_button,
+                    text_input,
+                    synthesize_speech_button,
+                    vote_button_a,
+                    vote_button_b,
+                ],
             )
 
             # Vote button click event handlers
