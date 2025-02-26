@@ -66,12 +66,20 @@ SAMPLE_CHARACTER_DESCRIPTIONS: dict = {
         "A woman from rural Texas speaking with a warm voice and distinctive Southern drawl featuring elongated "
         "vowels. Talks unhurriedly with a musical quality and occasional soft laughter."
     ),
-    "🏴‍☠️ Pirate Captain": (
-        "A seafaring pirate captain commanding with a rough, weathered voice that varies from quiet growls to "
-        "authoritative shouts. Exaggerates consonants, particularly rolling Rs, when giving orders."
-    ),
     "🏄 Surfer Dude": (
         "A California surfer talking with a casual, slightly nasal voice and laid-back rhythm. Uses rising "
         "inflections at sentence ends and bursts into spontaneous laughter when excited."
+    ),
+    "📢 Old-School Radio Announcer": (
+        "The speaker has the voice of a seasoned horse race announcer, with a booming, energetic voice, "
+        "a touch of old-school radio charm, and the enthusiastic delivery of a viral commentator."
+    ),
+    "👑 Obnoxious Prince": (
+        "A prince of England speaks in a smug and authoritative voice in an obnoxious, proper English accent. "
+        "He is insecure, arrogant, and prone to tantrums."
+    ),
+    "🏰 Medieval Peasant Man": (
+        "A film portrayal of a medieval peasant speaking with a thick cockney accent and a worn voice, "
+        "dripping with sarcasm and self-effacing humor."
     ),
 }
