@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional, Union, cast
 # Third-Party Library Imports
 from anthropic import APIError
 from anthropic.types import Message, ModelParam, TextBlock, ToolUseBlock
-from tenacity import after_log, before_log, retry, retry_if_exception, stop_after_attempt, wait_fixed
+from tenacity import after_log, before_log, retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 # Local Application Imports
 from src.config import Config, logger
@@ -116,18 +116,21 @@ class AnthropicConfig:
         - If the character is a pirate then use language like "arr," "ye," and other things pirates say.
         - If the character is a surfer then use language like "far out," "righteous," and other things surfers say.
 
-        Emotional text should be inserted where context-appropriate and in-character. Here are some examples of emotional text:
+        Emotional text should be inserted where context-appropriate and in-character. Here are some examples of
+        emotional text:
         - "Oh god... Malcolm, please come back to us!"
         = "Mmm... It's like candy... Oh my god, it's so good..."
         - "Ugh, she gets everything. I wish I could just, like, have her life for one day."
         - "My god... what have you done... How could you do this..."
         - "Woah... it's so beautiful... and I feel so small..."
-        - "I am so happy, woohoo, this is the greatest! I'm celebrating, and, like, so excited to be here with all of you. Yay!"
-        - "Oh gosh, um, I didn't mean for that to happen. I hope I didn't, like, make things too awkward. Sorry, I tend to be clumsy, y'know?"
+        - "I am so happy, woohoo, this is the greatest! I'm celebrating, and, like, so excited to be here with all of
+        you. Yay!"
+        - "Oh gosh, um, I didn't mean for that to happen. I hope I didn't, like, make things too awkward. Sorry, I
+        tend to be clumsy, y'know?"
         - "Oh god... oh no... get that away from me! Get it away!"
         - "I am beyond livid right now! Like someone actually thought this was an acceptable solution!"
         - "Oh, fantastic, another meeting that could've been an email... I'm just thrilled to be here."
-        - "OH, NAH, NOT ME, MATE—I’VE SEEN ENOUGH! GET IT AWAY! BLOODY ‘ELL, JESUS!"
+        - "OH, NAH, NOT ME, MATE—I'VE SEEN ENOUGH! GET IT AWAY! BLOODY 'ELL, JESUS!"
 
         Respond ONLY with the dialogue itself. Do not include any explanations, quotation marks,
         or additional context.
@@ -155,7 +158,7 @@ class UnretryableAnthropicError(AnthropicError):
 @retry(
     retry=retry_if_exception(lambda e: not isinstance(e, UnretryableAnthropicError)),
     stop=stop_after_attempt(3),
-    wait=wait_fixed(2),
+    wait=wait_exponential(multiplier=1, min=2, max=5),
     before=before_log(logger, logging.DEBUG),
     after=after_log(logger, logging.DEBUG),
     reraise=True,
