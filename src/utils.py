@@ -203,32 +203,31 @@ def save_base64_audio_to_file(base64_audio: str, filename: str, config: Config) 
     return str(relative_path)
 
 
-def choose_providers(
-    text_modified: bool,
-    character_description: str,
-) -> Tuple[TTSProviderName, TTSProviderName]:
+def choose_providers(text_modified: bool) -> Tuple[TTSProviderName, TTSProviderName]:
     """
     Select two TTS providers based on whether the text has been modified.
 
-    The first provider is always set to "Hume AI". For the second provider, the function
-    selects "Hume AI" if the text has been modified or if a character description was
-    not provided; otherwise, it randomly chooses one from the TTS_PROVIDERS list.
+    The first provider is always set to "Hume AI". For the second provider:
+    - If the text has been modified or no character description is provided, it will be "Hume AI"
+    - Otherwise, it will be "Hume AI" 30% of the time and "ElevenLabs" 70% of the time
 
     Args:
         text_modified (bool): A flag indicating whether the text has been modified.
-            - If True, both providers will be "Hume AI".
-            - If False, the second provider is randomly selected from TTS_PROVIDERS.
 
     Returns:
         Tuple[TTSProviderName, TTSProviderName]: A tuple containing two TTS provider names,
-        where the first is always "Hume AI" and the second is determined by the text_modified
-        flag and random selection.
+        where the first is always "Hume AI" and the second is determined by the conditions
+        and probability distribution described above.
     """
 
-    hume_comparison_only = text_modified or not character_description
+    hume_comparison_only = text_modified
 
     provider_a = constants.HUME_AI
-    provider_b = constants.HUME_AI if hume_comparison_only else random.choice(constants.TTS_PROVIDERS)
+
+    if hume_comparison_only:
+        provider_b = constants.HUME_AI
+    else:
+        provider_b = constants.HUME_AI if random.random() < 0.3 else constants.ELEVENLABS
 
     return provider_a, provider_b
 

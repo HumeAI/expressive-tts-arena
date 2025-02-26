@@ -126,7 +126,7 @@ class App:
 
         # Select 2 TTS providers based on whether the text has been modified.
         text_modified = text != generated_text_state
-        provider_a, provider_b = choose_providers(text_modified, character_description)
+        provider_a, provider_b = choose_providers(text_modified)
 
         try:
             start_time = time.time()
