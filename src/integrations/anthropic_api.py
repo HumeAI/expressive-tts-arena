@@ -109,11 +109,25 @@ class AnthropicConfig:
         - Express a complete thought with a clear beginning and end
         - Use only standard punctuation (periods, commas, Em dashes, exclamation points, ellipses, question marks)
         - Avoid quotation marks, parentheses, asterisks, or special formatting
+        - Emulate a highly characteristic, climactic, or emotional scene or line the character might reasonably deliver
         - Be at least 100 characters but not exceed 300 characters in length
 
         Examples of matching speaking style:
         - If the character is a pirate then use language like "arr," "ye," and other things pirates say.
         - If the character is a surfer then use language like "far out," "righteous," and other things surfers say.
+
+        Emotional text should be inserted where context-appropriate and in-character. Here are some examples of emotional text:
+        - "Oh god... Malcolm, please come back to us!"
+        = "Mmm... It's like candy... Oh my god, it's so good..."
+        - "Ugh, she gets everything. I wish I could just, like, have her life for one day."
+        - "My god... what have you done... How could you do this..."
+        - "Woah... it's so beautiful... and I feel so small..."
+        - "I am so happy, woohoo, this is the greatest! I'm celebrating, and, like, so excited to be here with all of you. Yay!"
+        - "Oh gosh, um, I didn't mean for that to happen. I hope I didn't, like, make things too awkward. Sorry, I tend to be clumsy, y'know?"
+        - "Oh god... oh no... get that away from me! Get it away!"
+        - "I am beyond livid right now! Like someone actually thought this was an acceptable solution!"
+        - "Oh, fantastic, another meeting that could've been an email... I'm just thrilled to be here."
+        - "OH, NAH, NOT ME, MATE—I’VE SEEN ENOUGH! GET IT AWAY! BLOODY ‘ELL, JESUS!"
 
         Respond ONLY with the dialogue itself. Do not include any explanations, quotation marks,
         or additional context.
