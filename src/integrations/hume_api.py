@@ -38,7 +38,7 @@ class HumeConfig:
     headers: Dict[str, str] = field(init=False)
     url: str = "https://api.hume.ai/v0/tts/octave"
     file_format: HumeSupportedFileFormat = "mp3"
-    request_timeout: float = 60.0
+    request_timeout: float = 40.0
 
     def __post_init__(self) -> None:
         # Validate required attributes.
