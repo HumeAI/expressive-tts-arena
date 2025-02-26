@@ -8,15 +8,16 @@ dependencies = [
     "anthropic>=0.45.2",
     "asyncpg>=0.28.0", 
     "elevenlabs>=1.50.7",
-    "gradio>=5.15.0",
+    "gradio>=5.18.0",
     "greenlet>=2.0.0",
-    "httpx>=0.24.1",
+    "hume>=0.7.8",
     "python-dotenv>=1.0.1",
     "sqlalchemy>=2.0.0",
     "tenacity>=9.0.0",
 ]
 
 [tool.uv]
+override-dependencies = ["aiofiles==24.1.0"]
 dev-dependencies = [
     "mypy>=1.15.0",
     "pre-commit>=4.1.0",
