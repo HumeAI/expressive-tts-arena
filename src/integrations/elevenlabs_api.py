@@ -128,18 +128,44 @@ async def text_to_speech_with_elevenlabs(
 
         return None, audio_file_path
 
-    except Exception as e:
-        if (
-            isinstance(e, ApiError)
-            and e.status_code is not None
-            and CLIENT_ERROR_CODE <= e.status_code < SERVER_ERROR_CODE
-        ):
-            raise UnretryableElevenLabsError(
-                message=f"{e.body['detail']['message']}",
-                original_exception=e,
-            ) from e
+    except ApiError as e:
+        logger.error(f"ElevenLabs API request failed: {e!s}")
+        clean_message = _extract_elevenlabs_error_message(e)
 
-        raise ElevenLabsError(
-            message=f"{e}",
-            original_exception=e,
-        ) from e
+        if e.status_code is not None and CLIENT_ERROR_CODE <= e.status_code < SERVER_ERROR_CODE:
+            raise UnretryableElevenLabsError(message=clean_message, original_exception=e) from e
+
+        raise ElevenLabsError(message=clean_message, original_exception=e) from e
+
+    except Exception as e:
+        error_type = type(e).__name__
+        error_message = str(e) if str(e) else f"An error of type {error_type} occurred"
+        logger.error(f"Error during ElevenLabs API call: {error_type} - {error_message}")
+        clean_message = "An unexpected error occurred while processing your speech request. Please try again later."
+
+        raise ElevenLabsError(message=error_message, original_exception=e) from e
+
+
+def _extract_elevenlabs_error_message(e: ApiError) -> str:
+    """
+    Extracts a clean, user-friendly error message from an ElevenLabs API error response.
+
+    Args:
+        e (ApiError): The ElevenLabs API error exception containing response information.
+
+    Returns:
+        str: A clean, user-friendly error message suitable for display to end users.
+    """
+    clean_message = "An unknown error has occurred. Please try again later."
+
+    if (
+        hasattr(e, 'body') and e.body
+        and isinstance(e.body, dict)
+        and 'detail' in e.body
+        and isinstance(e.body['detail'], dict)
+    ):
+        detail = e.body['detail']
+        if 'message' in detail:
+            clean_message = detail['message']
+
+    return clean_message
