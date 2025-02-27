@@ -21,8 +21,7 @@ from typing import Tuple, Union
 from hume import AsyncHumeClient
 from hume.core.api_error import ApiError
 from hume.tts import PostedUtterance
-from hume.tts.types import ReturnGeneration, ReturnTts
-from hume.tts.types.format import Format, FormatMp3
+from hume.tts.types import Format, FormatMp3, ReturnTts
 from tenacity import after_log, before_log, retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 # Local Application Imports
@@ -46,6 +45,19 @@ class HumeConfig:
 
         computed_api_key = validate_env_var("HUME_API_KEY")
         object.__setattr__(self, "api_key", computed_api_key)
+
+    @property
+    def client(self) -> AsyncHumeClient:
+        """
+        Lazy initialization of the asynchronous Hume client.
+
+        Returns:
+            AsyncHumeClient: Configured async client instance.
+        """
+        return AsyncHumeClient(
+            api_key=self.api_key,
+            timeout=self.request_timeout
+        )
 
 
 class HumeError(Exception):
@@ -100,27 +112,13 @@ async def text_to_speech_with_hume(
         HumeError: For errors communicating with the Hume API.
         UnretryableHumeError: For client-side HTTP errors (status code 4xx).
     """
-    logger.debug(
-        "Processing TTS with Hume. "
-        f"Character description length: {len(character_description)}. "
-        f"Text length: {len(text)}."
-    )
-
+    logger.debug(f"Synthesizing speech with Hume. Text length: {len(text)} characters.")
     hume_config = config.hume_config
-
+    client = hume_config.client
     start_time = time.time()
     try:
-        hume_client = AsyncHumeClient(
-            api_key=hume_config.api_key,
-            timeout=hume_config.request_timeout
-        )
-
-        utterance = PostedUtterance(
-            text=text,
-            description=character_description or None
-        )
-
-        response: ReturnTts = await hume_client.tts.synthesize_json(
+        utterance = PostedUtterance(text=text, description=character_description)
+        response: ReturnTts = await client.tts.synthesize_json(
             utterances=[utterance],
             format=hume_config.file_format,
         )
@@ -130,14 +128,15 @@ async def text_to_speech_with_hume(
 
         generations = response.generations
         if not generations:
-            msg = "No generations returned by Hume API."
-            logger.error(msg)
-            raise HumeError(msg)
+            raise HumeError("No generations returned by Hume API.")
 
-        generation_a = generations[0]
-        generation_a_id, audio_a_path = _parse_hume_tts_generation(generation_a, config)
+        generation = generations[0]
+        generation_id = generation.generation_id
+        base64_audio = generation.audio
+        filename = f"{generation_id}.mp3"
+        audio_file_path = save_base64_audio_to_file(base64_audio, filename, config)
 
-        return (generation_a_id, audio_a_path)
+        return generation_id, audio_file_path
 
     except ApiError as e:
         elapsed_time = time.time() - start_time
@@ -145,11 +144,7 @@ async def text_to_speech_with_hume(
         clean_message = _extract_hume_api_error_message(e)
         logger.error(f"Full Hume API error: {e!s}")
 
-        if (
-            hasattr(e, 'status_code')
-            and e.status_code is not None
-            and CLIENT_ERROR_CODE <= e.status_code < SERVER_ERROR_CODE
-        ):
+        if e.status_code is not None and CLIENT_ERROR_CODE <= e.status_code < SERVER_ERROR_CODE:
             raise UnretryableHumeError(message=clean_message, original_exception=e) from e
 
         raise HumeError(message=clean_message, original_exception=e) from e
@@ -158,33 +153,9 @@ async def text_to_speech_with_hume(
         error_type = type(e).__name__
         error_message = str(e) if str(e) else f"An error of type {error_type} occurred"
         logger.error("Error during Hume API call: %s - %s", error_type, error_message)
-        raise HumeError(message=error_message, original_exception=e) from e
+        clean_message = "An unexpected error occurred while processing your speech request. Please try again later."
 
-
-def _parse_hume_tts_generation(generation: ReturnGeneration, config: Config) -> Tuple[str, str]:
-    """
-    Parses a Hume TTS generation response and saves the decoded audio as an MP3 file.
-
-    Args:
-        generation (ReturnGeneration): TTS generation response containing generation_id and audio.
-        config (Config): Application configuration for saving the audio file.
-
-    Returns:
-        Tuple[str, str]: (generation_id, audio_path)
-
-    Raises:
-        KeyError: If expected attributes are missing.
-        Exception: Propagates exceptions from saving the audio file.
-    """
-    if not generation.generation_id:
-        raise KeyError("The generation is missing the generation_id.")
-
-    if not generation.audio:
-        raise KeyError("The generation is missing the audio data.")
-
-    filename = f"{generation.generation_id}.mp3"
-    audio_file_path = save_base64_audio_to_file(generation.audio, filename, config)
-    return generation.generation_id, audio_file_path
+        raise HumeError(message=clean_message, original_exception=e) from e
 
 
 def _extract_hume_api_error_message(e: ApiError) -> str:

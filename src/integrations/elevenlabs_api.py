@@ -15,6 +15,7 @@ Key Features:
 # Standard Library Imports
 import logging
 import random
+import time
 from dataclasses import dataclass, field
 from typing import Optional, Tuple
 
@@ -102,28 +103,26 @@ async def text_to_speech_with_elevenlabs(
     """
     logger.debug(f"Synthesizing speech with ElevenLabs. Text length: {len(text)} characters.")
     elevenlabs_config = config.elevenlabs_config
-
+    client = elevenlabs_config.client
+    start_time = time.time()
     try:
-        # Synthesize speech using the ElevenLabs SDK
-        response = await elevenlabs_config.client.text_to_voice.create_previews(
+        response = await client.text_to_voice.create_previews(
             voice_description=character_description,
             text=text,
             output_format=elevenlabs_config.output_format,
         )
 
+        elapsed_time = time.time() - start_time
+        logger.info(f"Elevenlabs API request completed in {elapsed_time:.2f} seconds")
+
         previews = response.previews
         if not previews:
-            msg = "No previews returned by ElevenLabs API."
-            logger.error(msg)
-            raise ElevenLabsError(message=msg)
+            raise ElevenLabsError(message="No previews returned by ElevenLabs API.")
 
-        # Extract the base64 encoded audio and generated voice ID from the preview
         preview = random.choice(previews)
         generated_voice_id = preview.generated_voice_id
         base64_audio = preview.audio_base_64
         filename = f"{generated_voice_id}.mp3"
-
-        # Write audio to file and return the relative path
         audio_file_path = save_base64_audio_to_file(base64_audio, filename, config)
 
         return None, audio_file_path
