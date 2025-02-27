@@ -203,33 +203,22 @@ def save_base64_audio_to_file(base64_audio: str, filename: str, config: Config) 
     return str(relative_path)
 
 
-def choose_providers(text_modified: bool) -> Tuple[TTSProviderName, TTSProviderName]:
+def get_random_provider(text_modified: bool) -> TTSProviderName:
     """
-    Select two TTS providers based on whether the text has been modified.
-
-    The first provider is always set to "Hume AI". For the second provider:
-    - If the text has been modified or no character description is provided, it will be "Hume AI"
-    - Otherwise, it will be "Hume AI" 30% of the time and "ElevenLabs" 70% of the time
+    Select a TTS provider based on whether the text has been modified.
 
     Args:
         text_modified (bool): A flag indicating whether the text has been modified.
 
     Returns:
-        Tuple[TTSProviderName, TTSProviderName]: A tuple containing two TTS provider names,
-        where the first is always "Hume AI" and the second is determined by the conditions
-        and probability distribution described above.
+        provider: A TTS provider selected based on the following criteria:
+            - If the text has been modified, it will be "Hume AI"
+            - Otherwise, it will be "Hume AI" 30% of the time and "ElevenLabs" 70% of the time
     """
+    if text_modified:
+        return constants.HUME_AI
 
-    hume_comparison_only = text_modified
-
-    provider_a = constants.HUME_AI
-
-    if hume_comparison_only:
-        provider_b = constants.HUME_AI
-    else:
-        provider_b = constants.HUME_AI if random.random() < 0.3 else constants.ELEVENLABS
-
-    return provider_a, provider_b
+    return constants.HUME_AI if random.random() < 0.3 else constants.ELEVENLABS
 
 
 def create_shuffled_tts_options(option_a: Option, option_b: Option) -> OptionMap:

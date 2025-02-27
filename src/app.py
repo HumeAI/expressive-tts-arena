@@ -30,9 +30,9 @@ from src.integrations import (
     text_to_speech_with_hume,
 )
 from src.utils import (
-    choose_providers,
     create_shuffled_tts_options,
     determine_selected_option,
+    get_random_provider,
     submit_voting_results,
     validate_character_description_length,
     validate_text_length,
@@ -124,68 +124,31 @@ class App:
             logger.warning(f"Validation error: {ve}")
             raise gr.Error(str(ve))
 
-        # Select 2 TTS providers based on whether the text has been modified.
         text_modified = text != generated_text_state
-        provider_a, provider_b = choose_providers(text_modified)
+        provider_a = constants.HUME_AI # always compare with Hume
+        provider_b = get_random_provider(text_modified)
 
         try:
-            start_time = time.time()
             logger.info(f"Starting speech synthesis with providers: {provider_a} and {provider_b}")
+            generation_id_a, audio_a = await text_to_speech_with_hume(character_description, text, self.config)
 
-            if provider_b == constants.HUME_AI:
-                # If generating 2 Hume outputs, do so in a single API call to reduce overhead
-                logger.info("Using single Hume API call for both audio outputs")
-                num_generations = 2
-                result = await text_to_speech_with_hume(character_description, text, num_generations, self.config)
+            tts_provider_funcs = {
+                constants.HUME_AI: text_to_speech_with_hume,
+                constants.ELEVENLABS: text_to_speech_with_elevenlabs,
+            }
 
-                # Enforce that 4 values are returned.
-                if not (isinstance(result, tuple) and len(result) == 4):
-                    raise ValueError("Expected 4 values from Hume TTS call when generating 2 outputs")
+            if provider_b not in tts_provider_funcs:
+                raise ValueError(f"Unsupported provider: {provider_b}")
 
-                generation_id_a, audio_a, generation_id_b, audio_b = result
-                logger.info(f"Completed dual Hume synthesis in {time.time() - start_time:.2f} seconds")
-            else:
-                # Process API calls sequentially to avoid resource contention
-                logger.info(f"Sequential processing: First generating audio with {provider_a}")
+            generation_id_b, audio_b = await tts_provider_funcs[provider_b](character_description, text, self.config)
 
-                # Generate a single Hume output
-                num_generations = 1
-                result_a = await text_to_speech_with_hume(character_description, text, num_generations, self.config)
-
-                if not isinstance(result_a, tuple) or len(result_a) != 2:
-                    raise ValueError("Expected 2 values from Hume TTS call when generating 1 output")
-
-                generation_id_a, audio_a = result_a[0], result_a[1]
-                logger.info(f"First audio generated in {time.time() - start_time:.2f} seconds")
-
-                # Generate a second TTS output from the second provider
-                logger.info(f"Now generating audio with {provider_b}")
-                second_start = time.time()
-
-                match provider_b:
-                    case constants.ELEVENLABS:
-                        result_b = await text_to_speech_with_elevenlabs(character_description, text, self.config)
-                    case _:
-                        # Additional TTS Providers can be added here.
-                        raise ValueError(f"Unsupported provider: {provider_b}")
-
-                generation_id_b, audio_b = result_b[0], result_b[1]
-
-                logger.info(f"Second audio generated in {time.time() - second_start:.2f} seconds")
-                logger.info(f"Total synthesis time: {time.time() - start_time:.2f} seconds")
-
-
-            # Shuffle options so that placement of options in the UI will always be random.
             option_a = Option(provider=provider_a, audio=audio_a, generation_id=generation_id_a)
             option_b = Option(provider=provider_b, audio=audio_b, generation_id=generation_id_b)
             options_map: OptionMap = create_shuffled_tts_options(option_a, option_b)
 
-            option_a_audio = options_map["option_a"]["audio_file_path"]
-            option_b_audio = options_map["option_b"]["audio_file_path"]
-
             return (
-                gr.update(value=option_a_audio, visible=True, autoplay=True),
-                gr.update(value=option_b_audio, visible=True),
+                gr.update(value=options_map["option_a"]["audio_file_path"], visible=True, autoplay=True),
+                gr.update(value=options_map["option_b"]["audio_file_path"], visible=True),
                 options_map,
                 text_modified,
                 text,
@@ -194,9 +157,11 @@ class App:
         except ElevenLabsError as ee:
             logger.error(f"ElevenLabsError while synthesizing speech from text: {ee!s}")
             raise gr.Error(f'There was an issue communicating with the Elevenlabs API: "{ee.message}"')
+
         except HumeError as he:
             logger.error(f"HumeError while synthesizing speech from text: {he!s}")
             raise gr.Error(f'There was an issue communicating with the Hume API: "{he.message}"')
+
         except Exception as e:
             logger.error(f"Unexpected error during TTS generation: {e}")
             raise gr.Error("An unexpected error occurred. Please try again later.")

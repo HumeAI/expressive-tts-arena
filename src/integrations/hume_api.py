@@ -20,8 +20,7 @@ from typing import Tuple, Union
 # Third-Party Library Imports
 from hume import AsyncHumeClient
 from hume.core.api_error import ApiError
-from hume.tts import PostedUtterance
-from hume.tts.types import Format, FormatMp3, ReturnTts
+from hume.tts.types import Format, FormatMp3, PostedUtterance, ReturnTts
 from tenacity import after_log, before_log, retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 # Local Application Imports
