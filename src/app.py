@@ -157,11 +157,9 @@ class App:
         except ElevenLabsError as ee:
             logger.error(f"ElevenLabsError while synthesizing speech from text: {ee!s}")
             raise gr.Error(f'There was an issue communicating with the Elevenlabs API: "{ee.message}"')
-
         except HumeError as he:
             logger.error(f"HumeError while synthesizing speech from text: {he!s}")
             raise gr.Error(f'There was an issue communicating with the Hume API: "{he.message}"')
-
         except Exception as e:
             logger.error(f"Unexpected error during TTS generation: {e}")
             raise gr.Error("An unexpected error occurred. Please try again later.")
@@ -222,7 +220,7 @@ class App:
             )
         )
 
-        # Build button text, displaying the provider and voice name, appending the trophy emoji to the selected option.
+        # Build button text to display results
         selected_label = f"{selected_provider} {constants.TROPHY_EMOJI}"
         other_label = f"{other_provider}"
 
@@ -249,8 +247,8 @@ class App:
 
         Returns:
             Tuple containing updates for:
-            - sample_character_description_dropdown (select random)
-            - character_description_input (update value)
+                - sample_character_description_dropdown (select random)
+                - character_description_input (update value)
         """
         import random
 
@@ -335,8 +333,8 @@ class App:
             gr.update(value=None, autoplay=False),  # clear audio player B
             gr.update(visible=True, interactive=False),  # show vote button A
             gr.update(visible=True, interactive=False),  # show vote button B
-            gr.update(visible=False),  # hide vote result A
-            gr.update(visible=False),  # hide vote result B
+            gr.update(visible=False, elem_classes=None),  # hide vote result A and clear custom styling
+            gr.update(visible=False, elem_classes=None),  # hide vote result B and clear custom styling
             default_option_map,  # Reset option_map_state as a default OptionMap
             False,  # Reset vote_submitted_state
         )
@@ -379,7 +377,7 @@ class App:
         )
         return (title, randomize_all_button, instructions)
 
-    def _build_input_section(self) -> Tuple[gr.Dropdown, gr.Textbox, gr.Button]:
+    def _build_input_section(self) -> Tuple[gr.Dropdown, gr.Textbox, gr.Button, gr.Textbox, gr.Button]:
         """
         Builds the input section including the sample character description dropdown, character
         description input, and generate text button.
@@ -400,25 +398,6 @@ class App:
                 show_copy_button=True,
             )
             generate_text_button = gr.Button("Generate Text", variant="secondary")
-        return (
-            sample_character_description_dropdown,
-            character_description_input,
-            generate_text_button,
-        )
-
-    def _build_output_section(self) -> Tuple[
-        gr.Textbox,
-        gr.Button,
-        gr.Audio,
-        gr.Audio,
-        gr.Button,
-        gr.Button,
-        gr.Textbox,
-        gr.Textbox,
-    ]:
-        """
-        Builds the output section including text input, audio players, vote buttons, and vote result displays.
-        """
         with gr.Group():
             text_input = gr.Textbox(
                 label="Input Text",
@@ -431,6 +410,18 @@ class App:
                 show_copy_button=True,
             )
             synthesize_speech_button = gr.Button("Synthesize Speech", variant="primary")
+        return (
+            text_input,
+            synthesize_speech_button,
+            sample_character_description_dropdown,
+            character_description_input,
+            generate_text_button,
+        )
+
+    def _build_output_section(self) -> Tuple[gr.Audio, gr.Audio, gr.Button, gr.Button, gr.Textbox, gr.Textbox]:
+        """
+        Builds the output section including text input, audio players, vote buttons, and vote result displays.
+        """
 
         with gr.Row(equal_height=True):
             with gr.Column():
@@ -440,12 +431,8 @@ class App:
                         type="filepath",
                         interactive=False,
                     )
-                    vote_button_a = gr.Button(
-                        constants.SELECT_OPTION_A,
-                        interactive=False,
-                    )
+                    vote_button_a = gr.Button(constants.SELECT_OPTION_A, interactive=False)
                     vote_result_a = gr.Textbox(
-                        label="",
                         interactive=False,
                         visible=False,
                         elem_id="vote-result-a",
@@ -459,22 +446,15 @@ class App:
                         type="filepath",
                         interactive=False,
                     )
-                    vote_button_b = gr.Button(
-                        constants.SELECT_OPTION_B,
-                        interactive=False,
-                    )
+                    vote_button_b = gr.Button(constants.SELECT_OPTION_B, interactive=False)
                     vote_result_b = gr.Textbox(
-                        label="",
                         interactive=False,
                         visible=False,
                         elem_id="vote-result-b",
                         text_align="center",
                         container=False,
                     )
-
         return (
-            text_input,
-            synthesize_speech_button,
             option_a_audio_player,
             option_b_audio_player,
             vote_button_a,
@@ -502,13 +482,13 @@ class App:
                 instructions,
             ) = self._build_heading_section()
             (
+                text_input,
+                synthesize_speech_button,
                 sample_character_description_dropdown,
                 character_description_input,
                 generate_text_button,
             ) = self._build_input_section()
             (
-                text_input,
-                synthesize_speech_button,
                 option_a_audio_player,
                 option_b_audio_player,
                 vote_button_a,
@@ -541,10 +521,7 @@ class App:
             randomize_all_button.click(
                 fn=self._randomize_character_description,
                 inputs=[],
-                outputs=[
-                    sample_character_description_dropdown,
-                    character_description_input,
-                ],
+                outputs=[sample_character_description_dropdown, character_description_input],
             ).then(
                 fn=self._disable_ui,
                 inputs=[],
@@ -705,12 +682,9 @@ class App:
                 ],
             )
 
-            # Vote button click event handlers
+            # Handle Option A vote
             vote_button_a.click(
-                fn=lambda _=None: (
-                    gr.update(interactive=False),
-                    gr.update(interactive=False),
-                ),
+                fn=lambda _=None: (gr.update(interactive=False), gr.update(interactive=False)),
                 inputs=[],
                 outputs=[vote_button_a, vote_button_b],
             ).then(
@@ -733,11 +707,9 @@ class App:
                 ],
             )
 
+            # Handle Option B vote
             vote_button_b.click(
-                fn=lambda _=None: (
-                    gr.update(interactive=False),
-                    gr.update(interactive=False),
-                ),
+                fn=lambda _=None: (gr.update(interactive=False), gr.update(interactive=False)),
                 inputs=[],
                 outputs=[vote_button_a, vote_button_b],
             ).then(
