@@ -345,7 +345,18 @@ class App:
         """
         with gr.Row():
             with gr.Column(scale=5):
-                title = gr.HTML("<h1>Expressive TTS Arena</h1>")
+                title_with_github_link = gr.HTML(
+                    """
+                    <div class="title-container">
+                        <h1>Expressive TTS Arena</h1>
+                        <a
+                            href="https://github.com/HumeAI/expressive-tts-arena"
+                            target="_blank"
+                            id="github-link"
+                        ></a>
+                    </div>
+                    """
+                )
             randomize_all_button = gr.Button("🎲 Randomize All", variant="primary", scale=1)
         instructions = gr.HTML(
             """
@@ -371,7 +382,7 @@ class App:
             </ol>
             """
         )
-        return (title, randomize_all_button, instructions)
+        return (title_with_github_link, randomize_all_button, instructions)
 
     def _build_input_section(self) -> Tuple[gr.Dropdown, gr.Textbox, gr.Button, gr.Textbox, gr.Button]:
         """
@@ -474,7 +485,7 @@ class App:
             # --- UI components ---
 
             (
-                title,
+                title_with_github_link,
                 randomize_all_button,
                 instructions,
             ) = self._build_heading_section()

@@ -3,6 +3,35 @@ footer.svelte-1byz9vf {
   display: none !important;
 }
 
+.html-container.svelte-phx28p.padding {
+  padding: 0px !important;
+}
+
+.title-container {
+  display: flex;
+  align-items: center;
+  height: 40px !important;
+}
+
+.title-container h1 {
+  margin: 0;
+  margin-right: auto;
+}
+
+#github-link {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  background-image: url('https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  transition: transform 0.2s ease-in-out;
+}
+
+#github-link:hover {
+  transform: scale(1.1);
+}
+
 #vote-result-a textarea,
 #vote-result-b textarea {
   font-size: 16px !important;
