@@ -67,7 +67,7 @@ SAMPLE_CHARACTER_DESCRIPTIONS: dict = {
         "rising inflections at sentence ends and bursts into spontaneous laughter when excited."
     ),
     "👑 Obnoxious Prince": (
-        "Speaker is a prince of England speaks in a smug and authoritative voice in an obnoxious, proper English "
+        "Speaker is a prince of England who speaks in a smug and authoritative voice in an obnoxious, proper English "
         "accent. He is insecure, arrogant, and prone to tantrums."
     ),
     "🏰 Medieval Peasant Man": (
