@@ -44,10 +44,10 @@ Expressive TTS Arena/
 │   ├── config.py               # Global config and logger setup
 │   ├── constants.py            # Global constants
 │   ├── custom_types.py         # Global custom types
-│   ├── theme.py                # Custom Gradio Theme
 │   └── utils.py                # Utility functions
 │── static/
 │   ├── audio/                  # Directory for storing generated audio files
+├── .dockerignore
 ├── .env.example
 ├── .gitignore
 ├── .pre-commit-config.yaml
