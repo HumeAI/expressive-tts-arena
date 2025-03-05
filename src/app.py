@@ -87,7 +87,7 @@ class App:
         character_description: str,
         text: str,
         generated_text_state: str,
-    ) -> Tuple[gr.Audio, gr.Audio, OptionMap, bool, str, str]:
+    ) -> Tuple[gr.Audio, gr.Audio, OptionMap, bool, str, str, bool]:
         """
         Synthesizes two text-to-speech outputs, updates UI state components, and returns additional TTS metadata.
 
@@ -113,6 +113,7 @@ class App:
                 - bool: Flag indicating whether the text was modified.
                 - str: The original text that was synthesized.
                 - str: The original character description.
+                - bool: Flag indicating whether the vote buttons should be enabled
 
         Raises:
             gr.Error: If any API or unexpected errors occur during the TTS synthesis process.
@@ -147,12 +148,13 @@ class App:
             options_map: OptionMap = create_shuffled_tts_options(option_a, option_b)
 
             return (
-                gr.update(value=options_map["option_a"]["audio_file_path"], visible=True, autoplay=True),
-                gr.update(value=options_map["option_b"]["audio_file_path"], visible=True),
+                gr.update(value=options_map["option_a"]["audio_file_path"], autoplay=True),
+                gr.update(value=options_map["option_b"]["audio_file_path"]),
                 options_map,
                 text_modified,
                 text,
                 character_description,
+                True,
             )
         except ElevenLabsError as ee:
             logger.error(f"ElevenLabsError while synthesizing speech from text: {ee!s}")
@@ -287,7 +289,7 @@ class App:
             gr.update(interactive=False), # disable Select B Button
         )
 
-    def _enable_ui(self) -> Tuple[
+    def _enable_ui(self, should_enable_vote_buttons) -> Tuple[
         gr.Button,
         gr.Dropdown,
         gr.Textbox,
@@ -307,8 +309,8 @@ class App:
             gr.update(interactive=True), # enable Generate Text button
             gr.update(interactive=True), # enable Input Text input
             gr.update(interactive=True), # enable Synthesize Speech Button
-            gr.update(interactive=True), # enable Select A Button
-            gr.update(interactive=True), # enable Select B Button
+            gr.update(interactive=should_enable_vote_buttons), # enable Select A Button
+            gr.update(interactive=should_enable_vote_buttons), # enable Select B Button
         )
 
     def _reset_voting_ui(self) -> Tuple[
@@ -319,7 +321,8 @@ class App:
         gr.Textbox,
         gr.Textbox,
         OptionMap,
-        bool
+        bool,
+        bool,
     ]:
         """
         Resets voting UI state and clear audio players
@@ -337,6 +340,7 @@ class App:
             gr.update(visible=False, elem_classes=[]), # hide vote result B and clear custom styling
             default_option_map, # Reset option_map_state as a default OptionMap
             False, # Reset vote_submitted_state
+            False, # Reset should_enable_vote_buttons state
         )
 
     def _build_heading_section(self) -> Tuple[gr.HTML, gr.Button, gr.HTML]:
@@ -345,15 +349,26 @@ class App:
         """
         with gr.Row():
             with gr.Column(scale=5):
-                title_with_github_link = gr.HTML(
+                title_with_social_links = gr.HTML(
                     """
                     <div class="title-container">
                         <h1>Expressive TTS Arena</h1>
-                        <a
-                            href="https://github.com/HumeAI/expressive-tts-arena"
-                            target="_blank"
-                            id="github-link"
-                        ></a>
+                        <div class="social-links">
+                            <a
+                                href="https://discord.com/invite/humeai"
+                                target="_blank"
+                                id="discord-link"
+                                title="Join our Discord"
+                                aria-label="Join our Discord server"
+                            ></a>
+                            <a
+                                href="https://github.com/HumeAI/expressive-tts-arena"
+                                target="_blank"
+                                id="github-link"
+                                title="View on GitHub"
+                                aria-label="View project on GitHub"
+                            ></a>
+                        </div>
                     </div>
                     """
                 )
@@ -382,7 +397,7 @@ class App:
             </ol>
             """
         )
-        return (title_with_github_link, randomize_all_button, instructions)
+        return (title_with_social_links, randomize_all_button, instructions)
 
     def _build_input_section(self) -> Tuple[gr.Dropdown, gr.Textbox, gr.Button, gr.Textbox, gr.Button]:
         """
@@ -485,7 +500,7 @@ class App:
             # --- UI components ---
 
             (
-                title_with_github_link,
+                title_with_social_links,
                 randomize_all_button,
                 instructions,
             ) = self._build_heading_section()
@@ -519,6 +534,8 @@ class App:
             option_map_state = gr.State({})  # OptionMap state as a dictionary
             # Track whether the user has voted for an option
             vote_submitted_state = gr.State(False)
+            # Track whether the vote buttons should be enabled
+            should_enable_vote_buttons = gr.State(False)
 
             # --- Register event handlers ---
 
@@ -554,6 +571,7 @@ class App:
                     vote_result_b,
                     option_map_state,
                     vote_submitted_state,
+                    should_enable_vote_buttons,
                 ],
             ).then(
                 fn=self._randomize_character_description,
@@ -573,10 +591,11 @@ class App:
                     text_modified_state,
                     text_state,
                     character_description_state,
+                    should_enable_vote_buttons,
                 ],
             ).then(
                 fn=self._enable_ui,
-                inputs=[],
+                inputs=[should_enable_vote_buttons],
                 outputs=[
                     randomize_all_button,
                     sample_character_description_dropdown,
@@ -617,7 +636,7 @@ class App:
                 outputs=[text_input, generated_text_state],
             ).then(
                 fn=self._enable_ui,
-                inputs=[],
+                inputs=[should_enable_vote_buttons],
                 outputs=[
                     randomize_all_button,
                     sample_character_description_dropdown,
@@ -653,7 +672,7 @@ class App:
                 outputs=[text_input, generated_text_state],
             ).then(
                 fn=self._enable_ui,
-                inputs=[],
+                inputs=[should_enable_vote_buttons],
                 outputs=[
                     randomize_all_button,
                     sample_character_description_dropdown,
@@ -696,6 +715,7 @@ class App:
                     vote_result_b,
                     option_map_state,
                     vote_submitted_state,
+                    should_enable_vote_buttons,
                 ],
             ).then(
                 fn=self._synthesize_speech,
@@ -707,10 +727,11 @@ class App:
                     text_modified_state,
                     text_state,
                     character_description_state,
+                    should_enable_vote_buttons,
                 ],
             ).then(
                 fn=self._enable_ui,
-                inputs=[],
+                inputs=[should_enable_vote_buttons],
                 outputs=[
                     randomize_all_button,
                     sample_character_description_dropdown,
