@@ -1,14 +1,78 @@
-/* Remove Gradio footer from UI */
+/* Remove Gradio footer */
 footer.svelte-1byz9vf {
   display: none !important;
 }
 
+/* Remove unnecessary padding from HTML containers */
+.html-container.svelte-phx28p.padding {
+  padding: 0px !important;
+}
+
+/* Title container styling */
+.title-container {
+  display: flex;
+  align-items: center;
+  height: 40px !important;
+  overflow: visible !important;
+}
+
+.title-container h1 {
+  margin: 0 !important;
+  margin-right: auto !important;
+}
+
+/* Social links container */
+.social-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 8px;
+  overflow: visible !important;
+}
+
+/* Social media icons common styles */
+#github-link, 
+#discord-link {
+  display: inline-block !important;
+  width: 30px !important;
+  height: 30px !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  transition: transform 0.2s ease-in-out !important;
+  border-radius: 50% !important;
+  flex-shrink: 0 !important;
+}
+
+/* Hover effect for social media icons */
+#github-link:hover, 
+#discord-link:hover {
+  transform: scale(1.1);
+}
+
+/* Discord icon specific styling */
+#discord-link {
+  background-image: url(
+    'https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a6a49cf127bf92de1e2_icon_clyde_blurple_RGB.png'
+  ) !important;
+  background-size: 90% !important;
+}
+
+/* GitHub icon specific styling */
+#github-link {
+  background-image: url(
+    'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png'
+  ) !important;
+}
+
+/* Vote result styling */
 #vote-result-a textarea,
 #vote-result-b textarea {
   font-size: 16px !important;
   font-weight: bold !important;
 }
 
+/* Winner styling */
 #vote-result-a.winner textarea,
 #vote-result-b.winner textarea {
   background: #EA580C;

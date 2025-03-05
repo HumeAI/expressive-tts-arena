@@ -47,8 +47,8 @@ SAMPLE_CHARACTER_DESCRIPTIONS: dict = {
         "auditory experience."
     ),
     "🎬 Noir Detective": (
-        "A film portrayal of a 1940s private investigator narrating with a low, gravelly voice and deliberate pacing. "
-        "Speaks with a cynical, world-weary tone that drops lower when delivering key observations."
+        "A noir film portrayal of a 1940s private investigator narrating with a low, gravelly voice and deliberate "
+        "pacing. Speaks with a cynical, world-weary tone that drops lower when delivering key observations."
     ),
     "🕯️ Victorian Ghost Storyteller": (
         "The speaker is a Victorian-era raconteur speaking with a refined British accent and formal, precise diction. "
