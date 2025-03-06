@@ -107,7 +107,7 @@ META_TAGS: List[Dict[str, str]] = [
     },
     {
         'property': 'og:image',
-        'content': 'https://opengraph.b-cdn.net/production/images/7990b8b3-f8ef-4ece-afce-70ca30795f5c.png?token=Ge7_YHHoQRRifYmbBOjex67tCoj3ZoPe_ty5ffWm-n8&height=630&width=1200&expires=33277213515'
+        'content': '/static/arena-opengraph-logo.png'
     },
     # Twitter Meta Tags
     {
@@ -136,6 +136,6 @@ META_TAGS: List[Dict[str, str]] = [
     },
     {
         'name': 'twitter:image',
-        'content': 'https://opengraph.b-cdn.net/production/images/7990b8b3-f8ef-4ece-afce-70ca30795f5c.png?token=Ge7_YHHoQRRifYmbBOjex67tCoj3ZoPe_ty5ffWm-n8&height=630&width=1200&expires=33277213515'
+        'content': '/static/arena-opengraph-logo.png'
     }
 ]

@@ -6,12 +6,14 @@ This module is the entry point for the app. It loads configuration and starts th
 
 # Standard Library Imports
 import asyncio
+from pathlib import Path
 from typing import Awaitable, Callable
 
 # Third-Party Library Imports
 import gradio as gr
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.config import Config, logger
@@ -89,11 +91,14 @@ async def main():
     app = FastAPI()
     app.add_middleware(ResponseModifierMiddleware)
 
+    assets_dir = Path("src/assets")
+    app.mount("/static", StaticFiles(directory=assets_dir), name="static")
+
     gr.mount_gradio_app(
         app=app,
         blocks=demo,
         path="/",
-        allowed_paths=[str(config.audio_dir)]
+        allowed_paths=[str(config.audio_dir), "src/assets"]
     )
 
     import uvicorn

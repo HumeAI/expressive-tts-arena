@@ -173,7 +173,7 @@ def _extract_hume_api_error_message(e: ApiError) -> str:
     """
     clean_message = GENERIC_API_ERROR_MESSAGE
 
-    if hasattr(e, 'body') and isinstance(e.body, dict) and 'message' in e.body:
-        clean_message = e.body['message']
+    if hasattr(e, "body") and isinstance(e.body, dict) and "message" in e.body:
+        clean_message = e.body["message"]
 
     return clean_message
