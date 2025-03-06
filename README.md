@@ -40,10 +40,11 @@ Expressive TTS Arena/
 │   │   ├── init_db.py          # Script for initializing database
 │   │   ├── test_db.py          # Script for testing database connection
 │   ├── __init__.py             # Makes src a package
-│   ├── app.py                  # Entry file
 │   ├── config.py               # Global config and logger setup
 │   ├── constants.py            # Global constants
 │   ├── custom_types.py         # Global custom types
+│   ├── frontend.py             # Gradio UI components
+│   ├── main.py                 # Entry file
 │   └── utils.py                # Utility functions
 │── static/
 │   ├── audio/                  # Directory for storing generated audio files
