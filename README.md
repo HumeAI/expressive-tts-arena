@@ -2,13 +2,15 @@
     <img src="https://storage.googleapis.com/hume-public-logos/hume/hume-banner.png">
     <h1>Expressive TTS Arena</h1>
     <p>
-        <strong> An web application for comparing and evaluating the expressiveness of different text-to-speech models </strong>
+        <strong> A web application for comparing and evaluating the expressiveness of different text-to-speech models </strong>
     </p>
 </div>
 
 ## Overview
 
-Expressive TTS Arena is an open-source web application that enables users to compare text-to-speech outputs with a focus on expressiveness rather than just audio quality. Built with [Gradio](https://www.gradio.app/), it provides a seamless interface for generating and comparing speech synthesis from different providers, including Hume AI and ElevenLabs.
+Expressive TTS Arena is an open-source web application for evaluating the expressiveness of voice generation and speech synthesis from different text-to-speech providers, including Hume AI and Elevenlabs.
+
+For support or to join the conversation, visit our [Discord](https://discord.com/invite/humeai).
 
 ## Prerequisites
 
@@ -87,18 +89,17 @@ Expressive TTS Arena/
 
 4. Test the application by navigating to the the localhost URL in your browser (e.g. `localhost:7860` or `http://127.0.0.1:7860`)
 
-5. (Optional) If contributing, install pre-commit hook for automatic file formatting:
+5. (Optional) If contributing, install pre-commit hook for automatic linting, formatting, and type-checking:
     ```sh
     uv run pre-commit install
     ```
 
 ## User Flow
 
-1. **Choose or enter a character description**: Select a sample from the list or enter your own to guide text and voice generation.
-2. **Generate text**: Click **"Generate Text"** to create dialogue based on the character. The generated text will appear in the input field automatically—edit it if needed.
-3. **Synthesize speech**: Click **"Synthesize Speech"** to send your text and character description to two TTS APIs. Each API generates a voice and synthesizes speech in that voice.
-4. **Listen & compare**: Play both audio options and assess their expressiveness.
-5. **Vote for the best**: Click **"Select Option A"** or **"Select Option B"** to choose the most expressive output.
+1. Select a sample character, or input a custom character description and click **"Generate Text"**, to generate your text input.
+2. Click the **"Synthesize Speech"** button to synthesize two TTS outputs based on your text and character description.
+3. Listen to both audio samples to compare their expressiveness.
+4. Vote for the most expressive result by clicking either **"Select Option A"** or **"Select Option B"**.
 
 ## License
 
