@@ -21,7 +21,7 @@ from typing import Tuple, Union
 from hume import AsyncHumeClient
 from hume.core.api_error import ApiError
 from hume.tts.types import Format, FormatMp3, PostedUtterance, ReturnTts
-from tenacity import after_log, before_log, retry, retry_if_exception, stop_after_attempt, wait_exponential
+from tenacity import after_log, before_log, retry, retry_if_exception, stop_after_attempt, wait_fixed
 
 # Local Application Imports
 from src.config import Config, logger
@@ -79,8 +79,8 @@ class UnretryableHumeError(HumeError):
 
 @retry(
     retry=retry_if_exception(lambda e: not isinstance(e, UnretryableHumeError)),
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=5),
+    stop=stop_after_attempt(2),
+    wait=wait_fixed(2),
     before=before_log(logger, logging.DEBUG),
     after=after_log(logger, logging.DEBUG),
     reraise=True,
