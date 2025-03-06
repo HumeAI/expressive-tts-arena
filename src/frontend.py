@@ -126,19 +126,23 @@ class Frontend:
         provider_a = constants.HUME_AI # always compare with Hume
         provider_b = get_random_provider(text_modified)
 
+        tts_provider_funcs = {
+            constants.HUME_AI: text_to_speech_with_hume,
+            constants.ELEVENLABS: text_to_speech_with_elevenlabs,
+        }
+
+        if provider_b not in tts_provider_funcs:
+            raise ValueError(f"Unsupported provider: {provider_b}")
+
         try:
             logger.info(f"Starting speech synthesis with providers: {provider_a} and {provider_b}")
-            generation_id_a, audio_a = await text_to_speech_with_hume(character_description, text, self.config)
 
-            tts_provider_funcs = {
-                constants.HUME_AI: text_to_speech_with_hume,
-                constants.ELEVENLABS: text_to_speech_with_elevenlabs,
-            }
+            # Create two tasks for concurrent execution
+            task_a = text_to_speech_with_hume(character_description, text, self.config)
+            task_b = tts_provider_funcs[provider_b](character_description, text, self.config)
 
-            if provider_b not in tts_provider_funcs:
-                raise ValueError(f"Unsupported provider: {provider_b}")
-
-            generation_id_b, audio_b = await tts_provider_funcs[provider_b](character_description, text, self.config)
+            # Await both tasks concurrently using asyncio.gather()
+            (generation_id_a, audio_a), (generation_id_b, audio_b) = await asyncio.gather(task_a, task_b)
 
             option_a = Option(provider=provider_a, audio=audio_a, generation_id=generation_id_a)
             option_b = Option(provider=provider_b, audio=audio_b, generation_id=generation_id_b)
