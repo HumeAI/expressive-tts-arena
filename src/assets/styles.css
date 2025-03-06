@@ -26,7 +26,7 @@ footer.svelte-1byz9vf {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-right: 8px;
+  margin: 0px 8px;
   overflow: visible !important;
 }
 
@@ -34,8 +34,8 @@ footer.svelte-1byz9vf {
 #github-link, 
 #discord-link {
   display: inline-block !important;
-  width: 30px !important;
-  height: 30px !important;
+  width: 32px !important;
+  height: 32px !important;
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
@@ -47,7 +47,7 @@ footer.svelte-1byz9vf {
 /* Hover effect for social media icons */
 #github-link:hover, 
 #discord-link:hover {
-  transform: scale(1.1);
+  transform: scale(1.15);
 }
 
 /* Discord icon specific styling */
