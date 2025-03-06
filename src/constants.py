@@ -12,6 +12,7 @@ from src.custom_types import ComparisonType, OptionKey, OptionLabel, TTSProvider
 
 CLIENT_ERROR_CODE = 400
 SERVER_ERROR_CODE = 500
+RATE_LIMIT_ERROR_CODE = 429
 
 
 # UI constants

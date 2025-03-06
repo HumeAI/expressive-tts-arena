@@ -25,7 +25,7 @@ from tenacity import after_log, before_log, retry, retry_if_exception, stop_afte
 
 # Local Application Imports
 from src.config import Config, logger
-from src.constants import CLIENT_ERROR_CODE, GENERIC_API_ERROR_MESSAGE, SERVER_ERROR_CODE
+from src.constants import CLIENT_ERROR_CODE, GENERIC_API_ERROR_MESSAGE, RATE_LIMIT_ERROR_CODE, SERVER_ERROR_CODE
 from src.utils import save_base64_audio_to_file, validate_env_var
 
 
@@ -143,8 +143,12 @@ async def text_to_speech_with_hume(
         clean_message = _extract_hume_api_error_message(e)
         logger.error(f"Full Hume API error: {e!s}")
 
-        if e.status_code is not None and CLIENT_ERROR_CODE <= e.status_code < SERVER_ERROR_CODE:
-            raise UnretryableHumeError(message=clean_message, original_exception=e) from e
+        if e.status_code is not None:
+            if e.status_code == RATE_LIMIT_ERROR_CODE:
+                rate_limit_error_message = "We're working on scaling capacity. Please try again in a few seconds."
+                raise HumeError(message=rate_limit_error_message, original_exception=e) from e
+            if CLIENT_ERROR_CODE <= e.status_code < SERVER_ERROR_CODE:
+                raise UnretryableHumeError(message=clean_message, original_exception=e) from e
 
         raise HumeError(message=clean_message, original_exception=e) from e
 
