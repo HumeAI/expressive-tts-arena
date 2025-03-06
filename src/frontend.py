@@ -73,11 +73,11 @@ class Frontend:
             logger.info(f"Generated text ({len(generated_text)} characters).")
             return gr.update(value=generated_text), generated_text
         except AnthropicError as ae:
-            logger.error(f"AnthropicError while generating text: {ae!s}")
+            logger.error(f"Text Generation Failed: AnthropicError while generating text: {ae!s}")
             raise gr.Error(f'There was an issue communicating with the Anthropic API: "{ae.message}"')
         except Exception as e:
-            logger.error(f"Unexpected error while generating text: {e}")
-            raise gr.Error("Failed to generate text. Please try again later.")
+            logger.error(f"Text Generation Failed: Unexpected error while generating text: {e!s}")
+            raise gr.Error("Failed to generate text. Please try again shortly.")
 
     async def _synthesize_speech(
         self,
@@ -143,6 +143,7 @@ class Frontend:
 
             # Await both tasks concurrently using asyncio.gather()
             (generation_id_a, audio_a), (generation_id_b, audio_b) = await asyncio.gather(task_a, task_b)
+            logger.info(f"Synthesis Succeed for providers: {provider_a} and {provider_b}")
 
             option_a = Option(provider=provider_a, audio=audio_a, generation_id=generation_id_a)
             option_b = Option(provider=provider_b, audio=audio_b, generation_id=generation_id_b)
@@ -158,14 +159,14 @@ class Frontend:
                 True,
             )
         except ElevenLabsError as ee:
-            logger.error(f"ElevenLabsError while synthesizing speech from text: {ee!s}")
+            logger.error(f"Synthesis Failed with ElevenLabsError during TTS generation: {ee!s}")
             raise gr.Error(f'There was an issue communicating with the Elevenlabs API: "{ee.message}"')
         except HumeError as he:
-            logger.error(f"HumeError while synthesizing speech from text: {he!s}")
+            logger.error(f"Synthesis Failed with HumeError during TTS generation: {he!s}")
             raise gr.Error(f'There was an issue communicating with the Hume API: "{he.message}"')
         except Exception as e:
-            logger.error(f"Unexpected error during TTS generation: {e}")
-            raise gr.Error("An unexpected error occurred. Please try again later.")
+            logger.error(f"Synthesis Failed with an unexpected error during TTS generation: {e!s}")
+            raise gr.Error("An unexpected error occurred. Please try again shortly.")
 
     async def _vote(
         self,
