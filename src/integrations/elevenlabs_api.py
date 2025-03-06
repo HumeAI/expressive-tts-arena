@@ -26,7 +26,7 @@ from tenacity import after_log, before_log, retry, retry_if_exception, stop_afte
 
 # Local Application Imports
 from src.config import Config, logger
-from src.constants import CLIENT_ERROR_CODE, SERVER_ERROR_CODE
+from src.constants import CLIENT_ERROR_CODE, GENERIC_API_ERROR_MESSAGE, SERVER_ERROR_CODE
 from src.utils import save_base64_audio_to_file, validate_env_var
 
 
@@ -140,7 +140,7 @@ async def text_to_speech_with_elevenlabs(
         error_type = type(e).__name__
         error_message = str(e) if str(e) else f"An error of type {error_type} occurred"
         logger.error(f"Error during ElevenLabs API call: {error_type} - {error_message}")
-        clean_message = "An unexpected error occurred while processing your speech request. Please try again later."
+        clean_message = GENERIC_API_ERROR_MESSAGE
 
         raise ElevenLabsError(message=error_message, original_exception=e) from e
 
@@ -155,7 +155,7 @@ def _extract_elevenlabs_error_message(e: ApiError) -> str:
     Returns:
         str: A clean, user-friendly error message suitable for display to end users.
     """
-    clean_message = "An unknown error has occurred. Please try again later."
+    clean_message = GENERIC_API_ERROR_MESSAGE
 
     if (
         hasattr(e, 'body') and e.body

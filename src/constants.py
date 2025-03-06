@@ -38,6 +38,8 @@ TROPHY_EMOJI: str = "🏆"
 SELECT_OPTION_A: str = "Select Option A"
 SELECT_OPTION_B: str = "Select Option B"
 
+GENERIC_API_ERROR_MESSAGE: str = "An unexpected error occurred while processing your request. Please try again shortly."
+
 # A collection of pre-defined character descriptions categorized by theme, used to provide users with
 # inspiration for generating creative, expressive text inputs for TTS, and generating novel voices.
 SAMPLE_CHARACTER_DESCRIPTIONS: dict = {

@@ -25,7 +25,7 @@ from tenacity import after_log, before_log, retry, retry_if_exception, stop_afte
 
 # Local Application Imports
 from src.config import Config, logger
-from src.constants import CLIENT_ERROR_CODE, SERVER_ERROR_CODE
+from src.constants import CLIENT_ERROR_CODE, GENERIC_API_ERROR_MESSAGE, SERVER_ERROR_CODE
 from src.utils import save_base64_audio_to_file, validate_env_var
 
 
@@ -152,7 +152,7 @@ async def text_to_speech_with_hume(
         error_type = type(e).__name__
         error_message = str(e) if str(e) else f"An error of type {error_type} occurred"
         logger.error("Error during Hume API call: %s - %s", error_type, error_message)
-        clean_message = "An unexpected error occurred while processing your speech request. Please try again later."
+        clean_message = GENERIC_API_ERROR_MESSAGE
 
         raise HumeError(message=clean_message, original_exception=e) from e
 
@@ -167,9 +167,9 @@ def _extract_hume_api_error_message(e: ApiError) -> str:
     Returns:
         str: A clean, user-friendly error message suitable for display to end users.
     """
-    clean_message = "An unknown error has occurred. Please try again later."
+    clean_message = GENERIC_API_ERROR_MESSAGE
 
     if hasattr(e, 'body') and isinstance(e.body, dict) and 'message' in e.body:
-            clean_message = e.body['message']
+        clean_message = e.body['message']
 
     return clean_message
