@@ -1,5 +1,5 @@
 """
-app.py
+frontend.py
 
 Gradio UI for interacting with the Anthropic API, Hume TTS API, and ElevenLabs TTS API.
 
@@ -39,7 +39,7 @@ from src.utils import (
 )
 
 
-class App:
+class Frontend:
     config: Config
     db_session_maker: AsyncDBSessionMaker
 
@@ -47,10 +47,7 @@ class App:
         self.config = config
         self.db_session_maker = db_session_maker
 
-    async def _generate_text(
-        self,
-        character_description: str,
-    ) -> Tuple[gr.Textbox, str]:
+    async def _generate_text(self, character_description: str) -> Tuple[gr.Textbox, str]:
         """
         Validates the character_description and generates text using Anthropic API.
 
@@ -343,7 +340,7 @@ class App:
             False, # Reset should_enable_vote_buttons state
         )
 
-    def _build_heading_section(self) -> Tuple[gr.HTML, gr.Button, gr.HTML]:
+    def _build_heading_section(self) -> Tuple[gr.HTML, gr.HTML]:
         """
         Builds heading section including title, randomize all button, and instructions
         """
@@ -372,12 +369,9 @@ class App:
                     </div>
                     """
                 )
-            randomize_all_button = gr.Button("🎲 Randomize All", variant="primary", scale=1)
         instructions = gr.HTML(
             """
-            <p style="font-size: 16px; font-weight: bold;">
-                <strong>Instructions</strong>
-            </p>
+            <h2 style="font-size: 16px;">Instructions</h2>
             <ol style="margin-left: 12px;">
                 <li>
                     Select a sample character, or input a custom character description and click
@@ -397,20 +391,22 @@ class App:
             </ol>
             """
         )
-        return (title_with_social_links, randomize_all_button, instructions)
+        return (title_with_social_links, instructions)
 
-    def _build_input_section(self) -> Tuple[gr.Dropdown, gr.Textbox, gr.Button, gr.Textbox, gr.Button]:
+    def _build_input_section(self) -> Tuple[gr.Button, gr.Dropdown, gr.Textbox, gr.Button, gr.Textbox, gr.Button]:
         """
         Builds the input section including the sample character description dropdown, character
         description input, and generate text button.
         """
-        sample_character_description_dropdown = gr.Dropdown(
-            choices=list(constants.SAMPLE_CHARACTER_DESCRIPTIONS.keys()),
-            label="Sample Characters",
-            info="Generate text with a sample character description.",
-            value=None,
-            interactive=True,
-        )
+        with gr.Group():
+            randomize_all_button = gr.Button("🎲 Randomize All", variant="primary")
+            sample_character_description_dropdown = gr.Dropdown(
+                choices=list(constants.SAMPLE_CHARACTER_DESCRIPTIONS.keys()),
+                label="Sample Characters",
+                info="Generate text with a sample character description.",
+                value=None,
+                interactive=True,
+            )
         with gr.Group():
             character_description_input = gr.Textbox(
                 label="Character Description",
@@ -434,11 +430,12 @@ class App:
             )
             synthesize_speech_button = gr.Button("Synthesize Speech", variant="primary")
         return (
-            text_input,
-            synthesize_speech_button,
+            randomize_all_button,
             sample_character_description_dropdown,
             character_description_input,
             generate_text_button,
+            text_input,
+            synthesize_speech_button,
         )
 
     def _build_output_section(self) -> Tuple[gr.Audio, gr.Audio, gr.Button, gr.Button, gr.Textbox, gr.Textbox]:
@@ -501,15 +498,15 @@ class App:
 
             (
                 title_with_social_links,
-                randomize_all_button,
                 instructions,
             ) = self._build_heading_section()
             (
-                text_input,
-                synthesize_speech_button,
+                randomize_all_button,
                 sample_character_description_dropdown,
                 character_description_input,
                 generate_text_button,
+                text_input,
+                synthesize_speech_button,
             ) = self._build_input_section()
             (
                 option_a_audio_player,

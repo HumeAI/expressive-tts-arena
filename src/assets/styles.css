@@ -25,8 +25,8 @@ footer.svelte-1byz9vf {
 .social-links {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-right: 8px;
+  gap: 12px;
+  margin: 0px 8px;
   overflow: visible !important;
 }
 
@@ -47,7 +47,7 @@ footer.svelte-1byz9vf {
 /* Hover effect for social media icons */
 #github-link:hover, 
 #discord-link:hover {
-  transform: scale(1.1);
+  transform: scale(1.15);
 }
 
 /* Discord icon specific styling */
