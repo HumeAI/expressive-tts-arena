@@ -24,7 +24,7 @@ from dotenv import load_dotenv
 if TYPE_CHECKING:
     from src.integrations import AnthropicConfig, ElevenLabsConfig, HumeConfig
 
-logger: logging.Logger = logging.getLogger("tts_arena")
+logger: logging.Logger = logging.getLogger("expressive_tts_arena")
 
 
 @dataclass(frozen=True)
@@ -40,11 +40,12 @@ class Config:
 
     @classmethod
     def get(cls) -> "Config":
-        if cls._config is None:
-            _config = Config._init()
-            cls._config = _config
-            return _config
-        return cls._config
+        if cls._config:
+            return cls._config
+
+        _config = Config._init()
+        cls._config = _config
+        return _config
 
     @staticmethod
     def _init():

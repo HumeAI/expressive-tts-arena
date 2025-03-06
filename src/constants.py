@@ -5,7 +5,7 @@ This module defines global constants used throughout the project.
 """
 
 # Standard Library Imports
-from typing import List
+from typing import Dict, List
 
 # Third-Party Library Imports
 from src.custom_types import ComparisonType, OptionKey, OptionLabel, TTSProviderName
@@ -75,3 +75,64 @@ SAMPLE_CHARACTER_DESCRIPTIONS: dict = {
         "sarcasm and self-effacing humor."
     ),
 }
+
+
+# HTML and social media metadata for the Gradio application
+# These tags define SEO-friendly content and provide rich previews when shared on social platforms
+META_TAGS: List[Dict[str, str]] = [
+    # HTML Meta Tags (description)
+    {
+        'name': 'description',
+        'content': 'An open-source web application for comparing and evaluating the expressiveness of different text-to-speech models, including Hume AI and ElevenLabs.'
+    },
+    # Facebook Meta Tags
+    {
+        'property': 'og:url',
+        'content': 'https://hume.ai'
+    },
+    {
+        'property': 'og:type',
+        'content': 'website'
+    },
+    {
+        'property': 'og:title',
+        'content': 'Expressive TTS Arena'
+    },
+    {
+        'property': 'og:description',
+        'content': 'An open-source web application for comparing and evaluating the expressiveness of different text-to-speech models, including Hume AI and ElevenLabs.'
+    },
+    {
+        'property': 'og:image',
+        'content': 'https://opengraph.b-cdn.net/production/images/7990b8b3-f8ef-4ece-afce-70ca30795f5c.png?token=Ge7_YHHoQRRifYmbBOjex67tCoj3ZoPe_ty5ffWm-n8&height=630&width=1200&expires=33277213515'
+    },
+    # Twitter Meta Tags
+    {
+        'name': 'twitter:card',
+        'content': 'summary_large_image'
+    },
+    {
+        'property': 'twitter:domain',
+        'content': 'hume.ai'
+    },
+    {
+        'property': 'twitter:url',
+        'content': 'https://hume.ai'
+    },
+    {
+        'name': 'twitter:creator',
+        'content': '@hume_ai'
+    },
+    {
+        'name': 'twitter:title',
+        'content': 'Expressive TTS Arena'
+    },
+    {
+        'name': 'twitter:description',
+        'content': 'An open-source web application for comparing and evaluating the expressiveness of different text-to-speech models, including Hume AI and ElevenLabs.'
+    },
+    {
+        'name': 'twitter:image',
+        'content': 'https://opengraph.b-cdn.net/production/images/7990b8b3-f8ef-4ece-afce-70ca30795f5c.png?token=Ge7_YHHoQRRifYmbBOjex67tCoj3ZoPe_ty5ffWm-n8&height=630&width=1200&expires=33277213515'
+    }
+]

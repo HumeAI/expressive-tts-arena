@@ -12,9 +12,10 @@ import os
 import random
 import time
 from pathlib import Path
-from typing import Tuple, cast
+from typing import Dict, List, Tuple, cast
 
 # Third-Party Library Imports
+from bs4 import BeautifulSoup
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Local Application Imports
@@ -256,9 +257,7 @@ def create_shuffled_tts_options(option_a: Option, option_b: Option) -> OptionMap
     }
 
 
-def determine_selected_option(
-    selected_option_button: str,
-) -> Tuple[OptionKey, OptionKey]:
+def determine_selected_option(selected_option_button: str) -> Tuple[OptionKey, OptionKey]:
     """
     Determines the selected option and the alternative option based on the user's selection.
 
@@ -315,11 +314,7 @@ def _log_voting_results(voting_results: VotingResults) -> None:
     logger.info("Voting results:\n%s", json.dumps(voting_results, indent=4))
 
 
-async def _persist_vote(
-    db_session_maker: AsyncDBSessionMaker,
-    voting_results: VotingResults,
-    config: Config
-) -> None:
+async def _persist_vote(db_session_maker: AsyncDBSessionMaker, voting_results: VotingResults, config: Config) -> None:
     """
     Asynchronously persist a vote record in the database and handle potential failures.
     Designed to work safely in a background task context.
@@ -349,8 +344,7 @@ async def _persist_vote(
             _log_voting_results(voting_results)
     except Exception as e:
         # Log the error with traceback in production, without traceback in dev
-        logger.error(f"Failed to create vote record: {e}",
-                     exc_info=(config.app_env == "prod"))
+        logger.error(f"Failed to create vote record: {e}", exc_info=(config.app_env == "prod"))
         _log_voting_results(voting_results)
     finally:
         # Always ensure the session is closed
@@ -403,9 +397,8 @@ async def submit_voting_results(
 
         await _persist_vote(db_session_maker, voting_results, config)
 
+    # Catch exceptions at the top level of the background task to prevent unhandled exceptions in background tasks
     except Exception as e:
-        # Catch all exceptions at the top level of the background task
-        # to prevent unhandled exceptions in background tasks
         logger.error(f"Background task error in submit_voting_results: {e}", exc_info=True)
 
 
@@ -421,19 +414,45 @@ def validate_env_var(var_name: str) -> str:
 
     Raises:
         ValueError: If the environment variable is not set.
-
-    Examples:
-        >>> import os
-        >>> os.environ["EXAMPLE_VAR"] = "example_value"
-        >>> validate_env_var("EXAMPLE_VAR")
-        'example_value'
-
-        >>> validate_env_var("MISSING_VAR")
-        Traceback (most recent call last):
-          ...
-        ValueError: MISSING_VAR is not set. Please ensure it is defined in your environment variables.
     """
     value = os.environ.get(var_name, "")
     if not value:
         raise ValueError(f"{var_name} is not set. Please ensure it is defined in your environment variables.")
     return value
+
+
+def update_meta_tags(html_content: str, meta_tags: List[Dict[str, str]]) -> str:
+    """
+    Safely updates the HTML content by adding or replacing meta tags in the head section
+    without affecting other elements, especially scripts and event handlers.
+
+    Args:
+        html_content: The original HTML content as a string
+        meta_tags: A list of dictionaries with meta tag attributes to add
+
+    Returns:
+        The modified HTML content with updated meta tags
+    """
+    # Parse the HTML
+    soup = BeautifulSoup(html_content, 'html.parser')
+    head = soup.head
+
+    # Remove existing meta tags that would conflict with our new ones
+    for meta_tag in meta_tags:
+        # Determine if we're looking for 'name' or 'property' attribute
+        attr_type = 'name' if 'name' in meta_tag else 'property'
+        attr_value = meta_tag.get(attr_type)
+
+        # Find and remove existing meta tags with the same name/property
+        existing_tags = head.find_all('meta', attrs={attr_type: attr_value})
+        for tag in existing_tags:
+            tag.decompose()
+
+    # Add the new meta tags to the head section
+    for meta_info in meta_tags:
+        new_meta = soup.new_tag('meta')
+        for attr, value in meta_info.items():
+            new_meta[attr] = value
+        head.append(new_meta)
+
+    return str(soup)
