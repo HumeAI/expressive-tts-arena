@@ -455,6 +455,7 @@ class Frontend:
                         label=constants.OPTION_A_LABEL,
                         type="filepath",
                         interactive=False,
+                        show_download_button=False,
                     )
                     vote_button_a = gr.Button(constants.SELECT_OPTION_A, interactive=False)
                     vote_result_a = gr.Textbox(
@@ -470,6 +471,7 @@ class Frontend:
                         label=constants.OPTION_B_LABEL,
                         type="filepath",
                         interactive=False,
+                        show_download_button=False,
                     )
                     vote_button_b = gr.Button(constants.SELECT_OPTION_B, interactive=False)
                     vote_result_b = gr.Textbox(
