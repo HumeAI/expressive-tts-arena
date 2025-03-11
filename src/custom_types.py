@@ -90,14 +90,16 @@ class LeaderboardEntry(NamedTuple):
 
     Attributes:
         rank (int): Rank position on the leaderboard.
-        provider (TTSProviderName): TTS provider's name.
+        provider (str): TTS provider's name.
+        model (str): The provider's TTS model.
         win_rate (str): The provider's win rate as a percentage (e.g., "90%").
         votes (int): The total number of votes cast for the provider (e.g., 90).
     """
-    rank: int
-    provider: TTSProviderName
+    rank: str
+    provider: str
+    model: str
     win_rate: str
-    votes: int
+    votes: str
 
 
 LeaderboardTableEntries = List[LeaderboardEntry]
