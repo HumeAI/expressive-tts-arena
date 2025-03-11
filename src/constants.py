@@ -41,6 +41,10 @@ SELECT_OPTION_B: str = "Select Option B"
 # A collection of pre-defined character descriptions categorized by theme, used to provide users with
 # inspiration for generating creative, expressive text inputs for TTS, and generating novel voices.
 SAMPLE_CHARACTER_DESCRIPTIONS: dict = {
+    "🦘 Australian Naturalist": (
+        "The speaker has a contagiously enthusiastic Australian accent, with the relaxed, sun-kissed vibe of a "
+        "wildlife expert fresh off the outback, delivering an amazing, laid-back narration."
+    ),
     "🧘 Meditation Guru": (
         "A mindfulness instructor with a gentle, soothing voice that flows at a slow, measured pace with natural "
         "pauses. Their consistently calm, low-pitched tone has minimal variation, creating a peaceful auditory "
