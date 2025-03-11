@@ -22,14 +22,19 @@ RATE_LIMIT_ERROR_CODE = 429
 
 # UI constants
 HUME_AI: TTSProviderName = "Hume AI"
-HUME_AI_LINK_URL: str = "https://hume.ai/"
-HUME_AI_OCTAVE_LINK_URL: str = "https://www.hume.ai/blog/octave-the-first-text-to-speech-model-that-understands-what-its-saying"
-
 ELEVENLABS: TTSProviderName = "ElevenLabs"
-ELEVENLABS_LINK_URL: str = "https://elevenlabs.io/"
-ELEVENLABS_VOICE_DESIGN_LINK_URL: str = "https://elevenlabs.io/blog/rvg"
 
 TTS_PROVIDERS: List[TTSProviderName] = ["Hume AI", "ElevenLabs"]
+TTS_PROVIDER_LINKS = {
+    "Hume AI": {
+        "provider_link": "https://hume.ai/",
+        "model_link": "https://www.hume.ai/blog/octave-the-first-text-to-speech-model-that-understands-what-its-saying"
+    },
+    "ElevenLabs": {
+        "provider_link": "https://elevenlabs.io/",
+        "model_link": "https://elevenlabs.io/blog/rvg",
+    }
+}
 
 HUME_TO_HUME: ComparisonType = "Hume AI - Hume AI"
 HUME_TO_ELEVENLABS: ComparisonType = "Hume AI - ElevenLabs"

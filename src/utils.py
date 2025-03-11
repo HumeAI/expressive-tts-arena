@@ -314,7 +314,30 @@ def _log_voting_results(voting_results: VotingResults) -> None:
     logger.info("Voting results:\n%s", json.dumps(voting_results, indent=4))
 
 
-async def _persist_vote(db_session_maker: AsyncDBSessionMaker, voting_results: VotingResults, config: Config) -> None:
+async def _create_db_session(db_session_maker: AsyncDBSessionMaker) -> AsyncSession:
+    """
+    Creates a new database session using the provided session maker and checks if it's a dummy session.
+
+    A dummy session might be used in development or testing environments where database operations
+    should be simulated but not actually performed.
+
+    Args:
+        db_session_maker (AsyncDBSessionMaker): A callable that returns a new async database session.
+
+    Returns:
+        AsyncSession: A newly created database session that can be used for database operations.
+    """
+    session = db_session_maker()
+    is_dummy_session = getattr(session, "is_dummy", False)
+
+    if is_dummy_session:
+        await session.close()
+        return None
+
+    return session
+
+
+async def _persist_vote(db_session_maker: AsyncDBSessionMaker, voting_results: VotingResults) -> None:
     """
     Asynchronously persist a vote record in the database and handle potential failures.
     Designed to work safely in a background task context.
@@ -328,27 +351,17 @@ async def _persist_vote(db_session_maker: AsyncDBSessionMaker, voting_results: V
         None
     """
     # Create session
-    session = db_session_maker()
-    is_dummy_session = getattr(session, "is_dummy", False)
-
-    if is_dummy_session:
-        logger.info("Vote record created successfully.")
-        _log_voting_results(voting_results)
-        await session.close()
-        return
-
+    session = await _create_db_session(db_session_maker)
+    _log_voting_results(voting_results)
     try:
         await crud.create_vote(cast(AsyncSession, session), voting_results)
-        logger.info("Vote record created successfully.")
-        if config.app_env == "dev":
-            _log_voting_results(voting_results)
     except Exception as e:
-        # Log the error with traceback in production, without traceback in dev
-        logger.error(f"Failed to create vote record: {e}", exc_info=(config.app_env == "prod"))
-        _log_voting_results(voting_results)
+        # Log the error with traceback
+        logger.error(f"Failed to create vote record: {e}", exc_info=True)
     finally:
         # Always ensure the session is closed
-        await session.close()
+        if session is not None:
+            await session.close()
 
 
 async def submit_voting_results(
@@ -358,7 +371,6 @@ async def submit_voting_results(
     character_description: str,
     text: str,
     db_session_maker: AsyncDBSessionMaker,
-    config: Config,
 ) -> None:
     """
     Asynchronously constructs the voting results dictionary and persists a new vote record.
@@ -395,11 +407,55 @@ async def submit_voting_results(
             "is_custom_text": text_modified,
         }
 
-        await _persist_vote(db_session_maker, voting_results, config)
+        await _persist_vote(db_session_maker, voting_results)
 
     # Catch exceptions at the top level of the background task to prevent unhandled exceptions in background tasks
     except Exception as e:
         logger.error(f"Background task error in submit_voting_results: {e}", exc_info=True)
+
+
+async def get_leaderboard_data(db_session_maker: AsyncDBSessionMaker) -> List[List[str]]:
+    """
+    Fetches leaderboard data from voting results database
+
+    Returns:
+        LeaderboardTableEntries: A list of LeaderboardEntry objects containing rank, provider name anchor tag, model
+                                name anchor tag, win rate, and total votes.
+    """
+    # Create session
+    session = await _create_db_session(db_session_maker)
+    try:
+        leaderboard_data = await crud.get_leaderboard_stats(cast(AsyncSession, session))
+        logger.info("Fetched leaderboard data successfully.")
+        # return data formatted for the UI (adds links and styling)
+        return [
+            [
+                f'<p style="text-align: center;">{row[0]}</p>',
+                f"""
+                <a
+                    href="{constants.TTS_PROVIDER_LINKS[row[1]]["provider_link"]}"
+                    target="_blank"
+                    class="provider-link"
+                >{row[1]}</a>
+                """,
+                f"""<a
+                    href="{constants.TTS_PROVIDER_LINKS[row[1]]["model_link"]}"
+                    target="_blank"
+                    class="provider-link"
+                >{row[2]}</a>
+                """,
+                f'<p style="text-align: center;">{row[3]}</p>',
+                f'<p style="text-align: center;">{row[4]}</p>',
+            ] for row in leaderboard_data
+        ]
+    except Exception as e:
+        # Log the error with traceback
+        logger.error(f"Failed to fetch leaderboard data: {e}", exc_info=True)
+        return []
+    finally:
+        # Always ensure the session is closed
+        if session is not None:
+            await session.close()
 
 
 def validate_env_var(var_name: str) -> str:
