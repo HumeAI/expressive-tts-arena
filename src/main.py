@@ -86,7 +86,7 @@ async def main():
     db_session_maker = init_db(config)
 
     frontend = Frontend(config, db_session_maker)
-    demo = frontend.build_gradio_interface()
+    demo = await frontend.build_gradio_interface()
 
     app = FastAPI()
     app.add_middleware(ResponseModifierMiddleware)

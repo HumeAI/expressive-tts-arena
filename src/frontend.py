@@ -32,6 +32,7 @@ from src.integrations import (
 from src.utils import (
     create_shuffled_tts_options,
     determine_selected_option,
+    get_leaderboard_data,
     get_random_provider,
     submit_voting_results,
     validate_character_description_length,
@@ -220,7 +221,6 @@ class Frontend:
                 character_description,
                 text,
                 self.db_session_maker,
-                self.config,
             )
         )
 
@@ -266,6 +266,12 @@ class Frontend:
             gr.update(value=random_sample), # Update dropdown
             gr.update(value=character_description), # Update character description
         )
+
+    async def _refresh_leaderboard(self) -> gr.DataFrame:
+        leaderboard_data = await get_leaderboard_data(self.db_session_maker)
+        if not leaderboard_data:
+            raise gr.Error("Unable to retrieve leaderboard data. Please refresh the page or try again shortly.")
+        return gr.update(value=leaderboard_data)
 
     def _disable_ui(self) -> Tuple[
         gr.Button,
@@ -540,16 +546,17 @@ class Frontend:
             )
         return refresh_button
 
-    def _build_leaderboard_results_table(self) -> gr.DataFrame:
+    async def _build_leaderboard_results_table(self) -> gr.DataFrame:
         """
         Build the leaderboard table containing the win rate data based on voting results
         """
+        leaderboard_data = await get_leaderboard_data(self.db_session_maker)
         with gr.Column(elem_id="leaderboard-table-container"):
             results_table = gr.DataFrame(
                 headers=["Rank", "Provider", "Model", "Win Rate", "Votes"],
                 datatype=["html", "html", "html", "html", "html"],
                 column_widths=[80, 300, 180, 120, 116],
-                value=constants.DEFAULT_TABLE_DATA,
+                value=leaderboard_data,
                 min_width=680,
                 interactive=False,
                 render=True,
@@ -557,7 +564,7 @@ class Frontend:
             )
         return results_table
 
-    def build_gradio_interface(self) -> gr.Blocks:
+    async def build_gradio_interface(self) -> gr.Blocks:
         """
         Builds and configures the fully constructed Gradio UI layout.
         """
@@ -588,8 +595,8 @@ class Frontend:
                 ) = self._build_arena_output_section()
 
             with gr.Tab("Leaderboard"):
-                self._build_leaderboard_heading_section()
-                self._build_leaderboard_results_table()
+                refresh_button = self._build_leaderboard_heading_section()
+                results_table = await self._build_leaderboard_results_table()
 
             # --- UI state components ---
 
@@ -874,6 +881,20 @@ class Frontend:
                 ),
                 inputs=[option_map_state],
                 outputs=[option_b_audio_player],
+            )
+
+            refresh_button.click(
+                fn=lambda _=None: (gr.update(interactive=False)),
+                inputs=[],
+                outputs=[refresh_button],
+            ).then(
+                fn=self._refresh_leaderboard,
+                inputs=[],
+                outputs=[results_table]
+            ).then(
+                fn=lambda _=None: (gr.update(interactive=True)),
+                inputs=[],
+                outputs=[refresh_button],
             )
 
         logger.debug("Gradio interface built successfully")
