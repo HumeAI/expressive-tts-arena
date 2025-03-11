@@ -8,7 +8,12 @@ This module defines global constants used throughout the project.
 from typing import Dict, List
 
 # Third-Party Library Imports
-from src.custom_types import ComparisonType, OptionKey, OptionLabel, TTSProviderName
+from src.custom_types import (
+    ComparisonType,
+    OptionKey,
+    OptionLabel,
+    TTSProviderName,
+)
 
 CLIENT_ERROR_CODE = 400
 SERVER_ERROR_CODE = 500
@@ -17,7 +22,13 @@ RATE_LIMIT_ERROR_CODE = 429
 
 # UI constants
 HUME_AI: TTSProviderName = "Hume AI"
+HUME_AI_LINK_URL: str = "https://hume.ai/"
+HUME_AI_OCTAVE_LINK_URL: str = "https://www.hume.ai/blog/octave-the-first-text-to-speech-model-that-understands-what-its-saying"
+
 ELEVENLABS: TTSProviderName = "ElevenLabs"
+ELEVENLABS_LINK_URL: str = "https://elevenlabs.io/"
+ELEVENLABS_VOICE_DESIGN_LINK_URL: str = "https://elevenlabs.io/blog/rvg"
+
 TTS_PROVIDERS: List[TTSProviderName] = ["Hume AI", "ElevenLabs"]
 
 HUME_TO_HUME: ComparisonType = "Hume AI - Hume AI"
@@ -33,8 +44,6 @@ OPTION_A_KEY: OptionKey = "option_a"
 OPTION_B_KEY: OptionKey = "option_b"
 OPTION_A_LABEL: OptionLabel = "Option A"
 OPTION_B_LABEL: OptionLabel = "Option B"
-
-TROPHY_EMOJI: str = "🏆"
 
 SELECT_OPTION_A: str = "Select Option A"
 SELECT_OPTION_B: str = "Select Option B"
@@ -138,4 +147,22 @@ META_TAGS: List[Dict[str, str]] = [
         'name': 'twitter:image',
         'content': '/static/arena-opengraph-logo.png'
     }
+]
+
+
+DEFAULT_TABLE_DATA: List[List[str]] = [
+    [
+        '<p style="text-align: center;">1</p>',
+        '<a href="" target="_blank" class="provider-link">Provider A</a>',
+        '<a href="" target="_blank" class="provider-link">Model A</a>',
+        '<p style="text-align: center;">0%</p>',
+        '<p style="text-align: center;">0</p>',
+    ],
+    [
+        '<p style="text-align: center;">2</p>',
+        '<a href="" target="_blank" class="provider-link">Provider B</a>',
+        '<a href="" target="_blank" class="provider-link">Model B</a>',
+        '<p style="text-align: center;">0%</p>',
+        '<p style="text-align: center;">0</p>',
+    ],
 ]

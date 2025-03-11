@@ -1,3 +1,15 @@
+/* Override Gradio vertical scroll bar styling */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none !important;
+}
+
+html,
+body {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
 /* Remove Gradio footer */
 footer.svelte-1byz9vf {
   display: none !important;
@@ -8,6 +20,11 @@ footer.svelte-1byz9vf {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+
+.excerpt-container {
+  margin: 8px 0;
 }
 
 /* Social links container */
@@ -43,12 +60,16 @@ footer.svelte-1byz9vf {
   );
   background-size: 90%;
 }
-
+  
 /* GitHub icon specific styling */
 #github-link {
   background-image: url(
     'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png'
-  );
+    );
+}
+
+.tab-header {
+  font-size: 18px;
 }
 
 /* Vote result styling */
@@ -61,6 +82,15 @@ footer.svelte-1byz9vf {
 /* Winner styling */
 #vote-result-a.winner textarea,
 #vote-result-b.winner textarea {
-  background: #EA580C;
+  background: #F97316;
   color: #FFFFFF;
+}
+    
+.provider-link {
+  color: #F97316;
+  text-decoration: underline;
+}
+
+.provider-link:hover {
+  color: #EA580C;
 }

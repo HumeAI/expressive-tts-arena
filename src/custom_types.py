@@ -5,7 +5,7 @@ This module defines custom types for the application.
 """
 
 # Standard Library Imports
-from typing import Literal, NamedTuple, Optional, TypedDict
+from typing import List, Literal, NamedTuple, Optional, TypedDict
 
 TTSProviderName = Literal["Hume AI", "ElevenLabs"]
 """TTSProviderName represents the allowed provider names for TTS services."""
@@ -83,3 +83,22 @@ class OptionMap(TypedDict):
 
     option_a: OptionDetail
     option_b: OptionDetail
+
+
+class LeaderboardEntry(NamedTuple):
+    """A leaderboard entry representing rank, TTS provider, and scores.
+
+    Attributes:
+        rank (int): Rank position on the leaderboard.
+        provider (TTSProviderName): TTS provider's name.
+        win_rate (str): The provider's win rate as a percentage (e.g., "90%").
+        votes (int): The total number of votes cast for the provider (e.g., 90).
+    """
+    rank: int
+    provider: TTSProviderName
+    win_rate: str
+    votes: int
+
+
+LeaderboardTableEntries = List[LeaderboardEntry]
+"""List of multiple leaderboard entries."""

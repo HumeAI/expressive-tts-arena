@@ -225,7 +225,7 @@ class Frontend:
         )
 
         # Build button text to display results
-        selected_label = f"{selected_provider} {constants.TROPHY_EMOJI}"
+        selected_label = f"{selected_provider} 🏆"
         other_label = f"{other_provider}"
 
         return (
@@ -345,66 +345,83 @@ class Frontend:
             False, # Reset should_enable_vote_buttons state
         )
 
-    def _build_heading_section(self) -> Tuple[gr.HTML, gr.HTML]:
+    def _build_title_section(self) -> None:
         """
         Builds heading section including title, randomize all button, and instructions
         """
-        with gr.Row():
-            with gr.Column(scale=5):
-                title_with_social_links = gr.HTML(
-                    """
-                    <div class="title-container">
-                        <h1>Expressive TTS Arena</h1>
-                        <div class="social-links">
-                            <a
-                                href="https://discord.com/invite/humeai"
-                                target="_blank"
-                                id="discord-link"
-                                title="Join our Discord"
-                                aria-label="Join our Discord server"
-                            ></a>
-                            <a
-                                href="https://github.com/HumeAI/expressive-tts-arena"
-                                target="_blank"
-                                id="github-link"
-                                title="View on GitHub"
-                                aria-label="View project on GitHub"
-                            ></a>
-                        </div>
-                    </div>
-                    """
-                )
-        instructions = gr.HTML(
+        gr.HTML(
             """
-            <h2 style="font-size: 16px;">Instructions</h2>
-            <ol style="margin-left: 12px;">
-                <li>
-                    Select a sample character, or input a custom character description and click
-                    <strong>"Generate Text"</strong>, to generate your text input.
-                </li>
-                <li>
-                    Click the <strong>"Synthesize Speech"</strong> button to synthesize two TTS outputs based on
-                    your text and character description.
-                </li>
-                <li>
-                    Listen to both audio samples to compare their expressiveness.
-                </li>
-                <li>
-                    Vote for the most expressive result by clicking either <strong>"Select Option A"</strong> or
-                    <strong>"Select Option B"</strong>.
-                </li>
-            </ol>
+            <div class="title-container">
+                <h1>Expressive TTS Arena</h1>
+                <div class="social-links">
+                    <a
+                        href="https://discord.com/invite/humeai"
+                        target="_blank"
+                        id="discord-link"
+                        title="Join our Discord"
+                        aria-label="Join our Discord server"
+                    ></a>
+                    <a
+                        href="https://github.com/HumeAI/expressive-tts-arena"
+                        target="_blank"
+                        id="github-link"
+                        title="View on GitHub"
+                        aria-label="View project on GitHub"
+                    ></a>
+                </div>
+            </div>
+            <div class="excerpt-container">
+                <p>
+                    Join the community in evaluating text-to-speech models, and vote for the AI voice that best
+                    captures the emotion, nuance, and expressiveness of human speech.
+                </p>
+            </div>
             """
         )
-        return (title_with_social_links, instructions)
 
-    def _build_input_section(self) -> Tuple[gr.Button, gr.Dropdown, gr.Textbox, gr.Button, gr.Textbox, gr.Button]:
+    def _build_arena_input_section(self) -> Tuple[
+        gr.Button,
+        gr.Dropdown,
+        gr.Textbox,
+        gr.Button,
+        gr.Textbox,
+        gr.Button
+    ]:
         """
         Builds the input section including the sample character description dropdown, character
         description input, and generate text button.
         """
+        with gr.Row():
+            with gr.Column(scale=5):
+                gr.HTML(
+                    """
+                    <h2 class="tab-header">📋 Instructions</h2>
+                    <ol>
+                        <li>
+                            Select a sample character, or input a custom character description and click
+                            <strong>"Generate Text"</strong>, to generate your text input.
+                        </li>
+                        <li>
+                            Click the <strong>"Synthesize Speech"</strong> button to synthesize two TTS outputs based on
+                            your text and character description.
+                        </li>
+                        <li>
+                            Listen to both audio samples to compare their expressiveness.
+                        </li>
+                        <li>
+                            Vote for the most expressive result by clicking either <strong>"Select Option A"</strong> or
+                            <strong>"Select Option B"</strong>.
+                        </li>
+                    </ol>
+                    """
+                )
+            randomize_all_button = gr.Button(
+                "🎲 Randomize All",
+                variant="primary",
+                elem_classes="randomize-btn",
+                scale=1,
+            )
         with gr.Group():
-            randomize_all_button = gr.Button("🎲 Randomize All", variant="primary")
             sample_character_description_dropdown = gr.Dropdown(
                 choices=list(constants.SAMPLE_CHARACTER_DESCRIPTIONS.keys()),
                 label="Sample Characters",
@@ -443,7 +460,14 @@ class Frontend:
             synthesize_speech_button,
         )
 
-    def _build_output_section(self) -> Tuple[gr.Audio, gr.Audio, gr.Button, gr.Button, gr.Textbox, gr.Textbox]:
+    def _build_arena_output_section(self) -> Tuple[
+        gr.Audio,
+        gr.Audio,
+        gr.Button,
+        gr.Button,
+        gr.Textbox,
+        gr.Textbox
+    ]:
         """
         Builds the output section including text input, audio players, vote buttons, and vote result displays.
         """
@@ -490,12 +514,52 @@ class Frontend:
             vote_result_b,
         )
 
+    def _build_leaderboard_heading_section(self) -> gr.Button:
+        """
+        Build the leaderboard tab heading section
+        """
+        with gr.Row():
+            with gr.Column(scale=5):
+                gr.HTML(
+                    """
+                    <h2 class="tab-header">🏆 Leaderboard</h2>
+                    <p>
+                        This leaderboard presents community voting results for different TTS providers, showing which
+                        ones users found more expressive and natural-sounding. The win rate reflects how often each
+                        provider was selected as the preferred option in head-to-head comparisons. Use the filter to
+                        see performance for specific character types or view overall results across all voice styles.
+                        Click the refresh button to see the most up-to-date voting results.
+                    </p>
+                    """
+                )
+            refresh_button = gr.Button(
+                "↻ Refresh",
+                variant="primary",
+                elem_classes="refresh-btn",
+                scale=1,
+            )
+        return refresh_button
+
+    def _build_leaderboard_results_table(self) -> gr.DataFrame:
+        """
+        Build the leaderboard table containing the win rate data based on voting results
+        """
+        with gr.Column(elem_id="leaderboard-table-container"):
+            results_table = gr.DataFrame(
+                headers=["Rank", "Provider", "Model", "Win Rate", "Votes"],
+                datatype=["html", "html", "html", "html", "html"],
+                column_widths=[80, 300, 180, 120, 116],
+                value=constants.DEFAULT_TABLE_DATA,
+                min_width=680,
+                interactive=False,
+                render=True,
+                elem_id="leaderboard-table"
+            )
+        return results_table
+
     def build_gradio_interface(self) -> gr.Blocks:
         """
-        Builds and configures the Gradio user interface.
-
-        Returns:
-            gr.Blocks: The fully constructed Gradio UI layout.
+        Builds and configures the fully constructed Gradio UI layout.
         """
         with gr.Blocks(
             title="Expressive TTS Arena",
@@ -503,26 +567,29 @@ class Frontend:
         ) as demo:
             # --- UI components ---
 
-            (
-                title_with_social_links,
-                instructions,
-            ) = self._build_heading_section()
-            (
-                randomize_all_button,
-                sample_character_description_dropdown,
-                character_description_input,
-                generate_text_button,
-                text_input,
-                synthesize_speech_button,
-            ) = self._build_input_section()
-            (
-                option_a_audio_player,
-                option_b_audio_player,
-                vote_button_a,
-                vote_button_b,
-                vote_result_a,
-                vote_result_b,
-            ) = self._build_output_section()
+            self._build_title_section()
+
+            with gr.Tab("Arena"):
+                (
+                    randomize_all_button,
+                    sample_character_description_dropdown,
+                    character_description_input,
+                    generate_text_button,
+                    text_input,
+                    synthesize_speech_button,
+                ) = self._build_arena_input_section()
+                (
+                    option_a_audio_player,
+                    option_b_audio_player,
+                    vote_button_a,
+                    vote_button_b,
+                    vote_result_a,
+                    vote_result_b,
+                ) = self._build_arena_output_section()
+
+            with gr.Tab("Leaderboard"):
+                self._build_leaderboard_heading_section()
+                self._build_leaderboard_results_table()
 
             # --- UI state components ---
 
