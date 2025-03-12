@@ -801,9 +801,8 @@ class Frontend:
                     <p>
                         This leaderboard presents community voting results for different TTS providers, showing which
                         ones users found more expressive and natural-sounding. The win rate reflects how often each
-                        provider was selected as the preferred option in head-to-head comparisons. Use the filter to
-                        see performance for specific character types or view overall results across all voice styles.
-                        Click the refresh button to see the most up-to-date voting results.
+                        provider was selected as the preferred option in head-to-head comparisons. Click the refresh
+                        button to see the most up-to-date voting results.
                     </p>
                     """
                 )
