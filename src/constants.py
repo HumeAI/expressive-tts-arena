@@ -158,20 +158,3 @@ META_TAGS: List[Dict[str, str]] = [
     }
 ]
 
-
-DEFAULT_TABLE_DATA: List[List[str]] = [
-    [
-        '<p style="text-align: center;">1</p>',
-        '<a href="" target="_blank" class="provider-link">Provider A</a>',
-        '<a href="" target="_blank" class="provider-link">Model A</a>',
-        '<p style="text-align: center;">0%</p>',
-        '<p style="text-align: center;">0</p>',
-    ],
-    [
-        '<p style="text-align: center;">2</p>',
-        '<a href="" target="_blank" class="provider-link">Provider B</a>',
-        '<a href="" target="_blank" class="provider-link">Model B</a>',
-        '<p style="text-align: center;">0%</p>',
-        '<p style="text-align: center;">0</p>',
-    ],
-]

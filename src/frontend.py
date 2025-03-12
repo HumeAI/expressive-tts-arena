@@ -11,7 +11,7 @@ Users can compare the outputs and vote for their favorite in an interactive UI.
 # Standard Library Imports
 import asyncio
 import time
-from typing import Tuple
+from typing import List, Tuple
 
 # Third-Party Library Imports
 import gradio as gr
@@ -43,10 +43,18 @@ from src.utils import (
 class Frontend:
     config: Config
     db_session_maker: AsyncDBSessionMaker
+    _leaderboard_data: List[List[str]]
 
     def __init__(self, config: Config, db_session_maker: AsyncDBSessionMaker):
         self.config = config
         self.db_session_maker = db_session_maker
+
+    async def _update_leaderboard_data(self) -> None:
+        """
+        Fetches the latest leaderboard data
+        """
+        latest_leaderboard_data = await get_leaderboard_data(self.db_session_maker)
+        self._leaderboard_data = latest_leaderboard_data
 
     async def _generate_text(self, character_description: str) -> Tuple[gr.Textbox, str]:
         """
@@ -268,10 +276,19 @@ class Frontend:
         )
 
     async def _refresh_leaderboard(self) -> gr.DataFrame:
-        leaderboard_data = await get_leaderboard_data(self.db_session_maker)
-        if not leaderboard_data:
+        """
+        Asynchronously fetches and formats the latest leaderboard data.
+
+        Returns:
+            gr.DataFrame: A Gradio DataFrame update object containing the formatted leaderboard data,
+                        including rank, provider, model, win rate, and total votes.
+        Raises:
+            gr.Error: If the leaderboard data cannot be retrieved.
+        """
+        await self._update_leaderboard_data()
+        if not self._leaderboard_data:
             raise gr.Error("Unable to retrieve leaderboard data. Please refresh the page or try again shortly.")
-        return gr.update(value=leaderboard_data)
+        return gr.update(value=self._leaderboard_data)
 
     def _disable_ui(self) -> Tuple[
         gr.Button,
@@ -353,7 +370,7 @@ class Frontend:
 
     def _build_title_section(self) -> None:
         """
-        Builds heading section including title, randomize all button, and instructions
+        Builds the Title section
         """
         gr.HTML(
             """
@@ -385,18 +402,11 @@ class Frontend:
             """
         )
 
-    def _build_arena_input_section(self) -> Tuple[
-        gr.Button,
-        gr.Dropdown,
-        gr.Textbox,
-        gr.Button,
-        gr.Textbox,
-        gr.Button
-    ]:
+    def _build_arena_section(self) -> None:
         """
-        Builds the input section including the sample character description dropdown, character
-        description input, and generate text button.
+        Builds the Arena section
         """
+        # --- UI components ---
         with gr.Row():
             with gr.Column(scale=5):
                 gr.HTML(
@@ -427,14 +437,15 @@ class Frontend:
                 elem_classes="randomize-btn",
                 scale=1,
             )
-        with gr.Group():
-            sample_character_description_dropdown = gr.Dropdown(
-                choices=list(constants.SAMPLE_CHARACTER_DESCRIPTIONS.keys()),
-                label="Sample Characters",
-                info="Generate text with a sample character description.",
-                value=None,
-                interactive=True,
-            )
+
+        sample_character_description_dropdown = gr.Dropdown(
+            choices=list(constants.SAMPLE_CHARACTER_DESCRIPTIONS.keys()),
+            label="Sample Characters",
+            info="Generate text with a sample character description.",
+            value=None,
+            interactive=True,
+        )
+
         with gr.Group():
             character_description_input = gr.Textbox(
                 label="Character Description",
@@ -445,6 +456,7 @@ class Frontend:
                 show_copy_button=True,
             )
             generate_text_button = gr.Button("Generate Text", variant="secondary")
+
         with gr.Group():
             text_input = gr.Textbox(
                 label="Input Text",
@@ -456,27 +468,8 @@ class Frontend:
                 max_length=constants.CHARACTER_DESCRIPTION_MAX_LENGTH,
                 show_copy_button=True,
             )
-            synthesize_speech_button = gr.Button("Synthesize Speech", variant="primary")
-        return (
-            randomize_all_button,
-            sample_character_description_dropdown,
-            character_description_input,
-            generate_text_button,
-            text_input,
-            synthesize_speech_button,
-        )
 
-    def _build_arena_output_section(self) -> Tuple[
-        gr.Audio,
-        gr.Audio,
-        gr.Button,
-        gr.Button,
-        gr.Textbox,
-        gr.Textbox
-    ]:
-        """
-        Builds the output section including text input, audio players, vote buttons, and vote result displays.
-        """
+        synthesize_speech_button = gr.Button("Synthesize Speech", variant="primary")
 
         with gr.Row(equal_height=True):
             with gr.Column():
@@ -511,19 +504,295 @@ class Frontend:
                         text_align="center",
                         container=False,
                     )
-        return (
-            option_a_audio_player,
-            option_b_audio_player,
-            vote_button_a,
-            vote_button_b,
-            vote_result_a,
-            vote_result_b,
+
+        # --- UI state components ---
+        # Track character description used for text and voice generation
+        character_description_state = gr.State("")
+        # Track text used for speech synthesis
+        text_state = gr.State("")
+        # Track generated text state
+        generated_text_state = gr.State("")
+        # Track whether text that was used was generated or modified/custom
+        text_modified_state = gr.State()
+        # Track option map (option A and option B are randomized)
+        option_map_state = gr.State({})  # OptionMap state as a dictionary
+        # Track whether the user has voted for an option
+        vote_submitted_state = gr.State(False)
+        # Track whether the vote buttons should be enabled
+        should_enable_vote_buttons = gr.State(False)
+
+        # --- Register event handlers ---
+        # "Randomize All" button click event handler chain
+        # 1. Disable interactive UI components
+        # 2. Reset UI state for audio players and voting results
+        # 3. Select random sample character description
+        # 4. Generate text
+        # 5. Synthesize speech
+        # 6. Enable interactive UI components
+        randomize_all_button.click(
+            fn=self._disable_ui,
+            inputs=[],
+            outputs=[
+                randomize_all_button,
+                sample_character_description_dropdown,
+                character_description_input,
+                generate_text_button,
+                text_input,
+                synthesize_speech_button,
+                vote_button_a,
+                vote_button_b,
+            ],
+        ).then(
+            fn=self._reset_voting_ui,
+            inputs=[],
+            outputs=[
+                option_a_audio_player,
+                option_b_audio_player,
+                vote_button_a,
+                vote_button_b,
+                vote_result_a,
+                vote_result_b,
+                option_map_state,
+                vote_submitted_state,
+                should_enable_vote_buttons,
+            ],
+        ).then(
+            fn=self._randomize_character_description,
+            inputs=[],
+            outputs=[sample_character_description_dropdown, character_description_input],
+        ).then(
+            fn=self._generate_text,
+            inputs=[character_description_input],
+            outputs=[text_input, generated_text_state],
+        ).then(
+            fn=self._synthesize_speech,
+            inputs=[character_description_input, text_input, generated_text_state],
+            outputs=[
+                option_a_audio_player,
+                option_b_audio_player,
+                option_map_state,
+                text_modified_state,
+                text_state,
+                character_description_state,
+                should_enable_vote_buttons,
+            ],
+        ).then(
+            fn=self._enable_ui,
+            inputs=[should_enable_vote_buttons],
+            outputs=[
+                randomize_all_button,
+                sample_character_description_dropdown,
+                character_description_input,
+                generate_text_button,
+                text_input,
+                synthesize_speech_button,
+                vote_button_a,
+                vote_button_b,
+            ],
         )
 
-    def _build_leaderboard_heading_section(self) -> gr.Button:
+        # "Sample Characters" dropdown select event handler chain:
+        # 1. Update Character Description field with sample
+        # 2. Disable interactive UI components
+        # 3. Generate text
+        # 4. Enable interactive UI components
+        sample_character_description_dropdown.select(
+            fn=lambda choice: constants.SAMPLE_CHARACTER_DESCRIPTIONS.get(choice, ""),
+            inputs=[sample_character_description_dropdown],
+            outputs=[character_description_input],
+        ).then(
+            fn=self._disable_ui,
+            inputs=[],
+            outputs=[
+                randomize_all_button,
+                sample_character_description_dropdown,
+                character_description_input,
+                generate_text_button,
+                text_input,
+                synthesize_speech_button,
+                vote_button_a,
+                vote_button_b,
+            ],
+        ).then(
+            fn=self._generate_text,
+            inputs=[character_description_input],
+            outputs=[text_input, generated_text_state],
+        ).then(
+            fn=self._enable_ui,
+            inputs=[should_enable_vote_buttons],
+            outputs=[
+                randomize_all_button,
+                sample_character_description_dropdown,
+                character_description_input,
+                generate_text_button,
+                text_input,
+                synthesize_speech_button,
+                vote_button_a,
+                vote_button_b,
+            ],
+        )
+
+        # "Generate Text" button click event handler chain:
+        # 1. Disable interactive UI components
+        # 2. Generate text
+        # 3. Enable interactive UI components
+        generate_text_button.click(
+            fn=self._disable_ui,
+            inputs=[],
+            outputs=[
+                randomize_all_button,
+                sample_character_description_dropdown,
+                character_description_input,
+                generate_text_button,
+                text_input,
+                synthesize_speech_button,
+                vote_button_a,
+                vote_button_b,
+            ],
+        ).then(
+            fn=self._generate_text,
+            inputs=[character_description_input],
+            outputs=[text_input, generated_text_state],
+        ).then(
+            fn=self._enable_ui,
+            inputs=[should_enable_vote_buttons],
+            outputs=[
+                randomize_all_button,
+                sample_character_description_dropdown,
+                character_description_input,
+                generate_text_button,
+                text_input,
+                synthesize_speech_button,
+                vote_button_a,
+                vote_button_b,
+            ],
+        )
+
+        # "Synthesize Speech" button click event handler chain:
+        # 1. Disable components in the UI
+        # 2. Reset UI state for audio players and voting results
+        # 3. Synthesize speech, load audio players, and display vote button
+        # 4. Enable interactive components in the UI
+        synthesize_speech_button.click(
+            fn=self._disable_ui,
+            inputs=[],
+            outputs=[
+                randomize_all_button,
+                sample_character_description_dropdown,
+                character_description_input,
+                generate_text_button,
+                text_input,
+                synthesize_speech_button,
+                vote_button_a,
+                vote_button_b,
+            ],
+        ).then(
+            fn=self._reset_voting_ui,
+            inputs=[],
+            outputs=[
+                option_a_audio_player,
+                option_b_audio_player,
+                vote_button_a,
+                vote_button_b,
+                vote_result_a,
+                vote_result_b,
+                option_map_state,
+                vote_submitted_state,
+                should_enable_vote_buttons,
+            ],
+        ).then(
+            fn=self._synthesize_speech,
+            inputs=[character_description_input, text_input, generated_text_state],
+            outputs=[
+                option_a_audio_player,
+                option_b_audio_player,
+                option_map_state,
+                text_modified_state,
+                text_state,
+                character_description_state,
+                should_enable_vote_buttons,
+            ],
+        ).then(
+            fn=self._enable_ui,
+            inputs=[should_enable_vote_buttons],
+            outputs=[
+                randomize_all_button,
+                sample_character_description_dropdown,
+                character_description_input,
+                generate_text_button,
+                text_input,
+                synthesize_speech_button,
+                vote_button_a,
+                vote_button_b,
+            ],
+        )
+
+        # "Select Option A"  button click event handler chain:
+        vote_button_a.click(
+            fn=lambda _=None: (gr.update(interactive=False), gr.update(interactive=False)),
+            inputs=[],
+            outputs=[vote_button_a, vote_button_b],
+        ).then(
+            fn=self._vote,
+            inputs=[
+                vote_submitted_state,
+                option_map_state,
+                vote_button_a,
+                text_modified_state,
+                character_description_state,
+                text_state,
+            ],
+            outputs=[
+                vote_submitted_state,
+                vote_button_a,
+                vote_button_b,
+                vote_result_a,
+                vote_result_b,
+                synthesize_speech_button,
+            ],
+        )
+
+        # "Select Option B"  button click event handler chain:
+        vote_button_b.click(
+            fn=lambda _=None: (gr.update(interactive=False), gr.update(interactive=False)),
+            inputs=[],
+            outputs=[vote_button_a, vote_button_b],
+        ).then(
+            fn=self._vote,
+            inputs=[
+                vote_submitted_state,
+                option_map_state,
+                vote_button_b,
+                text_modified_state,
+                character_description_state,
+                text_state,
+            ],
+            outputs=[
+                vote_submitted_state,
+                vote_button_a,
+                vote_button_b,
+                vote_result_a,
+                vote_result_b,
+                synthesize_speech_button,
+            ],
+        )
+
+        # Audio Player A stop event handler
+        option_a_audio_player.stop(
+            # Workaround to play both audio samples back-to-back
+            fn=lambda option_map: gr.update(
+                value=f"{option_map['option_b']['audio_file_path']}?t={int(time.time())}",
+                autoplay=True,
+            ),
+            inputs=[option_map_state],
+            outputs=[option_b_audio_player],
+        )
+
+    def _build_leaderboard_section(self) -> None:
         """
-        Build the leaderboard tab heading section
+        Builds the Leaderboard section
         """
+        # --- UI components ---
         with gr.Row():
             with gr.Column(scale=5):
                 gr.HTML(
@@ -544,25 +813,34 @@ class Frontend:
                 elem_classes="refresh-btn",
                 scale=1,
             )
-        return refresh_button
 
-    async def _build_leaderboard_results_table(self) -> gr.DataFrame:
-        """
-        Build the leaderboard table containing the win rate data based on voting results
-        """
-        leaderboard_data = await get_leaderboard_data(self.db_session_maker)
         with gr.Column(elem_id="leaderboard-table-container"):
-            results_table = gr.DataFrame(
+            leaderboard_table = gr.DataFrame(
                 headers=["Rank", "Provider", "Model", "Win Rate", "Votes"],
                 datatype=["html", "html", "html", "html", "html"],
                 column_widths=[80, 300, 180, 120, 116],
-                value=leaderboard_data,
+                value=self._leaderboard_data,
                 min_width=680,
                 interactive=False,
                 render=True,
                 elem_id="leaderboard-table"
             )
-        return results_table
+
+        # --- Register event handlers ---
+        # Refresh button click event handler
+        refresh_button.click(
+            fn=lambda _=None: (gr.update(interactive=False)),
+            inputs=[],
+            outputs=[refresh_button],
+        ).then(
+            fn=self._refresh_leaderboard,
+            inputs=[],
+            outputs=[leaderboard_table]
+        ).then(
+            fn=lambda _=None: (gr.update(interactive=True)),
+            inputs=[],
+            outputs=[refresh_button],
+        )
 
     async def build_gradio_interface(self) -> gr.Blocks:
         """
@@ -572,330 +850,14 @@ class Frontend:
             title="Expressive TTS Arena",
             css_paths="src/assets/styles.css",
         ) as demo:
-            # --- UI components ---
-
+            await self._update_leaderboard_data()
             self._build_title_section()
 
-            with gr.Tab("Arena"):
-                (
-                    randomize_all_button,
-                    sample_character_description_dropdown,
-                    character_description_input,
-                    generate_text_button,
-                    text_input,
-                    synthesize_speech_button,
-                ) = self._build_arena_input_section()
-                (
-                    option_a_audio_player,
-                    option_b_audio_player,
-                    vote_button_a,
-                    vote_button_b,
-                    vote_result_a,
-                    vote_result_b,
-                ) = self._build_arena_output_section()
-
-            with gr.Tab("Leaderboard"):
-                refresh_button = self._build_leaderboard_heading_section()
-                results_table = await self._build_leaderboard_results_table()
-
-            # --- UI state components ---
-
-            # Track character description used for text and voice generation
-            character_description_state = gr.State("")
-            # Track text used for speech synthesis
-            text_state = gr.State("")
-            # Track generated text state
-            generated_text_state = gr.State("")
-            # Track whether text that was used was generated or modified/custom
-            text_modified_state = gr.State()
-            # Track option map (option A and option B are randomized)
-            option_map_state = gr.State({})  # OptionMap state as a dictionary
-            # Track whether the user has voted for an option
-            vote_submitted_state = gr.State(False)
-            # Track whether the vote buttons should be enabled
-            should_enable_vote_buttons = gr.State(False)
-
-            # --- Register event handlers ---
-
-            # "Randomize All" button click event handler chain
-            # 1. Disable interactive UI components
-            # 2. Reset UI state for audio players and voting results
-            # 3. Select random sample character description
-            # 4. Generate text
-            # 5. Synthesize speech
-            # 6. Enable interactive UI components
-            randomize_all_button.click(
-                fn=self._disable_ui,
-                inputs=[],
-                outputs=[
-                    randomize_all_button,
-                    sample_character_description_dropdown,
-                    character_description_input,
-                    generate_text_button,
-                    text_input,
-                    synthesize_speech_button,
-                    vote_button_a,
-                    vote_button_b,
-                ],
-            ).then(
-                fn=self._reset_voting_ui,
-                inputs=[],
-                outputs=[
-                    option_a_audio_player,
-                    option_b_audio_player,
-                    vote_button_a,
-                    vote_button_b,
-                    vote_result_a,
-                    vote_result_b,
-                    option_map_state,
-                    vote_submitted_state,
-                    should_enable_vote_buttons,
-                ],
-            ).then(
-                fn=self._randomize_character_description,
-                inputs=[],
-                outputs=[sample_character_description_dropdown, character_description_input],
-            ).then(
-                fn=self._generate_text,
-                inputs=[character_description_input],
-                outputs=[text_input, generated_text_state],
-            ).then(
-                fn=self._synthesize_speech,
-                inputs=[character_description_input, text_input, generated_text_state],
-                outputs=[
-                    option_a_audio_player,
-                    option_b_audio_player,
-                    option_map_state,
-                    text_modified_state,
-                    text_state,
-                    character_description_state,
-                    should_enable_vote_buttons,
-                ],
-            ).then(
-                fn=self._enable_ui,
-                inputs=[should_enable_vote_buttons],
-                outputs=[
-                    randomize_all_button,
-                    sample_character_description_dropdown,
-                    character_description_input,
-                    generate_text_button,
-                    text_input,
-                    synthesize_speech_button,
-                    vote_button_a,
-                    vote_button_b,
-                ],
-            )
-
-            # "Sample Characters" dropdown select event handler chain:
-            # 1. Update Character Description field with sample
-            # 2. Disable interactive UI components
-            # 3. Generate text
-            # 4. Enable interactive UI components
-            sample_character_description_dropdown.select(
-                fn=lambda choice: constants.SAMPLE_CHARACTER_DESCRIPTIONS.get(choice, ""),
-                inputs=[sample_character_description_dropdown],
-                outputs=[character_description_input],
-            ).then(
-                fn=self._disable_ui,
-                inputs=[],
-                outputs=[
-                    randomize_all_button,
-                    sample_character_description_dropdown,
-                    character_description_input,
-                    generate_text_button,
-                    text_input,
-                    synthesize_speech_button,
-                    vote_button_a,
-                    vote_button_b,
-                ],
-            ).then(
-                fn=self._generate_text,
-                inputs=[character_description_input],
-                outputs=[text_input, generated_text_state],
-            ).then(
-                fn=self._enable_ui,
-                inputs=[should_enable_vote_buttons],
-                outputs=[
-                    randomize_all_button,
-                    sample_character_description_dropdown,
-                    character_description_input,
-                    generate_text_button,
-                    text_input,
-                    synthesize_speech_button,
-                    vote_button_a,
-                    vote_button_b,
-                ],
-            )
-
-            # "Generate Text" button click event handler chain:
-            # 1. Disable interactive UI components
-            # 2. Generate text
-            # 3. Enable interactive UI components
-            generate_text_button.click(
-                fn=self._disable_ui,
-                inputs=[],
-                outputs=[
-                    randomize_all_button,
-                    sample_character_description_dropdown,
-                    character_description_input,
-                    generate_text_button,
-                    text_input,
-                    synthesize_speech_button,
-                    vote_button_a,
-                    vote_button_b,
-                ],
-            ).then(
-                fn=self._generate_text,
-                inputs=[character_description_input],
-                outputs=[text_input, generated_text_state],
-            ).then(
-                fn=self._enable_ui,
-                inputs=[should_enable_vote_buttons],
-                outputs=[
-                    randomize_all_button,
-                    sample_character_description_dropdown,
-                    character_description_input,
-                    generate_text_button,
-                    text_input,
-                    synthesize_speech_button,
-                    vote_button_a,
-                    vote_button_b,
-                ],
-            )
-
-            # "Synthesize Speech" button click event handler chain:
-            # 1. Disable components in the UI
-            # 2. Reset UI state for audio players and voting results
-            # 3. Synthesize speech, load audio players, and display vote button
-            # 4. Enable interactive components in the UI
-            synthesize_speech_button.click(
-                fn=self._disable_ui,
-                inputs=[],
-                outputs=[
-                    randomize_all_button,
-                    sample_character_description_dropdown,
-                    character_description_input,
-                    generate_text_button,
-                    text_input,
-                    synthesize_speech_button,
-                    vote_button_a,
-                    vote_button_b,
-                ],
-            ).then(
-                fn=self._reset_voting_ui,
-                inputs=[],
-                outputs=[
-                    option_a_audio_player,
-                    option_b_audio_player,
-                    vote_button_a,
-                    vote_button_b,
-                    vote_result_a,
-                    vote_result_b,
-                    option_map_state,
-                    vote_submitted_state,
-                    should_enable_vote_buttons,
-                ],
-            ).then(
-                fn=self._synthesize_speech,
-                inputs=[character_description_input, text_input, generated_text_state],
-                outputs=[
-                    option_a_audio_player,
-                    option_b_audio_player,
-                    option_map_state,
-                    text_modified_state,
-                    text_state,
-                    character_description_state,
-                    should_enable_vote_buttons,
-                ],
-            ).then(
-                fn=self._enable_ui,
-                inputs=[should_enable_vote_buttons],
-                outputs=[
-                    randomize_all_button,
-                    sample_character_description_dropdown,
-                    character_description_input,
-                    generate_text_button,
-                    text_input,
-                    synthesize_speech_button,
-                    vote_button_a,
-                    vote_button_b,
-                ],
-            )
-
-            # "Select Option A"  button click event handler chain:
-            vote_button_a.click(
-                fn=lambda _=None: (gr.update(interactive=False), gr.update(interactive=False)),
-                inputs=[],
-                outputs=[vote_button_a, vote_button_b],
-            ).then(
-                fn=self._vote,
-                inputs=[
-                    vote_submitted_state,
-                    option_map_state,
-                    vote_button_a,
-                    text_modified_state,
-                    character_description_state,
-                    text_state,
-                ],
-                outputs=[
-                    vote_submitted_state,
-                    vote_button_a,
-                    vote_button_b,
-                    vote_result_a,
-                    vote_result_b,
-                    synthesize_speech_button,
-                ],
-            )
-
-            # "Select Option B"  button click event handler chain:
-            vote_button_b.click(
-                fn=lambda _=None: (gr.update(interactive=False), gr.update(interactive=False)),
-                inputs=[],
-                outputs=[vote_button_a, vote_button_b],
-            ).then(
-                fn=self._vote,
-                inputs=[
-                    vote_submitted_state,
-                    option_map_state,
-                    vote_button_b,
-                    text_modified_state,
-                    character_description_state,
-                    text_state,
-                ],
-                outputs=[
-                    vote_submitted_state,
-                    vote_button_a,
-                    vote_button_b,
-                    vote_result_a,
-                    vote_result_b,
-                    synthesize_speech_button,
-                ],
-            )
-
-            # Audio Player A stop event handler
-            option_a_audio_player.stop(
-                # Workaround to play both audio samples back-to-back
-                fn=lambda option_map: gr.update(
-                    value=f"{option_map['option_b']['audio_file_path']}?t={int(time.time())}",
-                    autoplay=True,
-                ),
-                inputs=[option_map_state],
-                outputs=[option_b_audio_player],
-            )
-
-            refresh_button.click(
-                fn=lambda _=None: (gr.update(interactive=False)),
-                inputs=[],
-                outputs=[refresh_button],
-            ).then(
-                fn=self._refresh_leaderboard,
-                inputs=[],
-                outputs=[results_table]
-            ).then(
-                fn=lambda _=None: (gr.update(interactive=True)),
-                inputs=[],
-                outputs=[refresh_button],
-            )
+            with gr.Tabs():
+                with gr.TabItem("Arena"):
+                    self._build_arena_section()
+                with gr.TabItem("Leaderboard"):
+                    self._build_leaderboard_section()
 
         logger.debug("Gradio interface built successfully")
         return demo
