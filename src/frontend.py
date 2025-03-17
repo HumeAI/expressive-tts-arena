@@ -847,7 +847,7 @@ class Frontend:
         """
         with gr.Blocks(
             title="Expressive TTS Arena",
-            css_paths="src/assets/styles.css",
+            css_paths="static/css/styles.css",
         ) as demo:
             await self._update_leaderboard_data()
             self._build_title_section()
