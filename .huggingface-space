@@ -5,5 +5,5 @@ colorTo: orange
 sdk: docker
 app_file: src/main.py
 python_version: "3.11"
-pinned: true
+pinned: false
 license: mit
