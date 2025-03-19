@@ -1,6 +1,19 @@
 # Use the official lightweight Python 3.11 slim image as the base
 FROM python:3.11-slim
 
+# Set up a new user named "user" with user ID 1000
+RUN useradd -m -u 1000 user
+
+# Switch to the "user" user
+USER user
+
+# Set home to the user's home directory
+ENV HOME=/home/user \
+	PATH=/root/.local/bin:/home/user/.local/bin:$PATH
+
+# Set the working directory to the user's home directory
+WORKDIR $HOME/app
+
 # Install uv and required system dependencies
 #   - `apt-get update` fetches the latest package lists
 #   - `apt-get install -y --no-install-recommends curl libpq-dev gcc build-essential` installs:
@@ -15,12 +28,6 @@ RUN apt-get update && \
     curl -LsSf https://astral.sh/uv/install.sh | sh && \
     apt-get remove -y curl && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Add uv to the system PATH so it can be run globally
-ENV PATH="/root/.local/bin:$PATH"
-
-# Set the working directory in the container
-WORKDIR /app
 
 # Copy dependency files first (pyproject.toml & uv.lock) to leverage Docker’s build cache
 #   - Ensures that if only the application code changes, dependencies do not need to be reinstalled
