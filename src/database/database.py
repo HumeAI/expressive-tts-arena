@@ -74,26 +74,19 @@ def init_db(config: Config) -> AsyncDBSessionMaker:
     # ruff doesn't like setting global variables, but this is practical here
     global engine  # noqa
 
-    # Convert standard PostgreSQL URL to async format
-    def convert_to_async_url(url: str) -> str:
-        # Convert postgresql:// to postgresql+asyncpg://
-        if url.startswith('postgresql://'):
-            return url.replace('postgresql://', 'postgresql+asyncpg://', 1)
-        return url
-
     if config.app_env == "prod":
         # In production, a valid DATABASE_URL is required.
         if not config.database_url:
             raise ValueError("DATABASE_URL must be set in production!")
 
-        async_db_url = convert_to_async_url(config.database_url)
+        async_db_url = config.database_url
         engine = create_async_engine(async_db_url)
 
         return async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
 
     # In development, if a DATABASE_URL is provided, use it.
     if config.database_url:
-        async_db_url = convert_to_async_url(config.database_url)
+        async_db_url = config.database_url
         engine = create_async_engine(async_db_url)
 
         return async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)

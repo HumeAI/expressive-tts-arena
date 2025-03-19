@@ -86,19 +86,19 @@ async def main():
     db_session_maker = init_db(config)
 
     frontend = Frontend(config, db_session_maker)
-    demo = frontend.build_gradio_interface()
+    demo = await frontend.build_gradio_interface()
 
     app = FastAPI()
     app.add_middleware(ResponseModifierMiddleware)
 
-    assets_dir = Path("src/assets")
-    app.mount("/static", StaticFiles(directory=assets_dir), name="static")
+    public_dir = Path("public")
+    app.mount("/static", StaticFiles(directory=public_dir), name="static")
 
     gr.mount_gradio_app(
         app=app,
         blocks=demo,
         path="/",
-        allowed_paths=[str(config.audio_dir), "src/assets"]
+        allowed_paths=["static"]
     )
 
     import uvicorn

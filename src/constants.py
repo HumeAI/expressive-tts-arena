@@ -8,7 +8,12 @@ This module defines global constants used throughout the project.
 from typing import Dict, List
 
 # Third-Party Library Imports
-from src.custom_types import ComparisonType, OptionKey, OptionLabel, TTSProviderName
+from src.custom_types import (
+    ComparisonType,
+    OptionKey,
+    OptionLabel,
+    TTSProviderName,
+)
 
 CLIENT_ERROR_CODE = 400
 SERVER_ERROR_CODE = 500
@@ -18,7 +23,18 @@ RATE_LIMIT_ERROR_CODE = 429
 # UI constants
 HUME_AI: TTSProviderName = "Hume AI"
 ELEVENLABS: TTSProviderName = "ElevenLabs"
+
 TTS_PROVIDERS: List[TTSProviderName] = ["Hume AI", "ElevenLabs"]
+TTS_PROVIDER_LINKS = {
+    "Hume AI": {
+        "provider_link": "https://hume.ai/",
+        "model_link": "https://www.hume.ai/blog/octave-the-first-text-to-speech-model-that-understands-what-its-saying"
+    },
+    "ElevenLabs": {
+        "provider_link": "https://elevenlabs.io/",
+        "model_link": "https://elevenlabs.io/blog/rvg",
+    }
+}
 
 HUME_TO_HUME: ComparisonType = "Hume AI - Hume AI"
 HUME_TO_ELEVENLABS: ComparisonType = "Hume AI - ElevenLabs"
@@ -33,8 +49,6 @@ OPTION_A_KEY: OptionKey = "option_a"
 OPTION_B_KEY: OptionKey = "option_b"
 OPTION_A_LABEL: OptionLabel = "Option A"
 OPTION_B_LABEL: OptionLabel = "Option B"
-
-TROPHY_EMOJI: str = "🏆"
 
 SELECT_OPTION_A: str = "Select Option A"
 SELECT_OPTION_B: str = "Select Option B"
@@ -143,3 +157,4 @@ META_TAGS: List[Dict[str, str]] = [
         'content': '/static/arena-opengraph-logo.png'
     }
 ]
+

@@ -24,9 +24,8 @@ For support or to join the conversation, visit our [Discord](https://discord.com
 
 ```
 Expressive TTS Arena/
-├── src/
-│   ├── assets/
-│   │   ├── styles.css          # Defines custom css
+├── public/                     # Directory for public assets
+├── src/                        
 │   ├── database/
 │   │   ├── __init__.py         # Makes database a package; expose ORM methods
 │   │   ├── crud.py             # Defines operations for interacting with database
@@ -50,9 +49,12 @@ Expressive TTS Arena/
 │   └── utils.py                # Utility functions
 │── static/
 │   ├── audio/                  # Directory for storing generated audio files
+│   ├── css/
+│   │   ├── styles.css          # Defines custom css
 ├── .dockerignore
 ├── .env.example
 ├── .gitignore
+├── .huggingface-space
 ├── .pre-commit-config.yaml
 ├── Dockerfile
 ├── LICENSE.txt
