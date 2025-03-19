@@ -1,9 +1,0 @@
-title: Expressive TTS Arena
-emoji: 🎤
-colorFrom: indigo
-colorTo: orange
-sdk: docker
-app_file: src/main.py
-python_version: "3.11"
-pinned: false
-license: mit
