@@ -66,7 +66,6 @@ Expressive TTS Arena/
 ├── .dockerignore
 ├── .env.example
 ├── .gitignore
-├── .huggingface-space
 ├── .pre-commit-config.yaml
 ├── Dockerfile
 ├── LICENSE.txt
