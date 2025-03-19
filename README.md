@@ -1,3 +1,15 @@
+---
+title: Expressive TTS Arena
+emoji: 🎤
+colorFrom: indigo
+colorTo: orange
+sdk: docker
+app_file: src/main.py
+python_version: "3.11"
+pinned: true
+license: mit
+---
+
 <div align="center">
     <img src="https://storage.googleapis.com/hume-public-logos/hume/hume-banner.png">
     <h1>Expressive TTS Arena</h1>
