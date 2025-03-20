@@ -43,7 +43,7 @@ from src.utils import (
 class Frontend:
     config: Config
     db_session_maker: AsyncDBSessionMaker
-    _leaderboard_data: List[List[str]]
+    _leaderboard_data: List[List[str]] = [[]]
 
     def __init__(self, config: Config, db_session_maker: AsyncDBSessionMaker):
         self.config = config
@@ -289,6 +289,21 @@ class Frontend:
         if not self._leaderboard_data:
             raise gr.Error("Unable to retrieve leaderboard data. Please refresh the page or try again shortly.")
         return gr.update(value=self._leaderboard_data)
+
+    async def _handle_tab_select(self, evt: gr.SelectData):
+        """
+        Handles tab selection events and refreshes the leaderboard if the Leaderboard tab is selected.
+        
+        Args:
+            evt (gr.SelectData): Event data containing information about the selected tab
+            
+        Returns:
+            gr.update: Update for the leaderboard table if the Leaderboard tab is selected
+        """
+        # Check if the selected tab is "Leaderboard" by name
+        if evt.value == "Leaderboard":
+            return await self._refresh_leaderboard()
+        return gr.skip()
 
     def _disable_ui(self) -> Tuple[
         gr.Button,
@@ -788,7 +803,7 @@ class Frontend:
             outputs=[option_b_audio_player],
         )
 
-    def _build_leaderboard_section(self) -> None:
+    def _build_leaderboard_section(self) -> gr.DataFrame:
         """
         Builds the Leaderboard section
         """
@@ -841,6 +856,8 @@ class Frontend:
             outputs=[refresh_button],
         )
 
+        return leaderboard_table
+
     async def build_gradio_interface(self) -> gr.Blocks:
         """
         Builds and configures the fully constructed Gradio UI layout.
@@ -852,11 +869,17 @@ class Frontend:
             await self._update_leaderboard_data()
             self._build_title_section()
 
-            with gr.Tabs():
+            with gr.Tabs() as tabs:
                 with gr.TabItem("Arena"):
                     self._build_arena_section()
                 with gr.TabItem("Leaderboard"):
-                    self._build_leaderboard_section()
+                    leaderboard_table = self._build_leaderboard_section()
+
+            tabs.select(
+                fn=self._handle_tab_select,
+                inputs=[],
+                outputs=[leaderboard_table],
+            )
 
         logger.debug("Gradio interface built successfully")
         return demo
