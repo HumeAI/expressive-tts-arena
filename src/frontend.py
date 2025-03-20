@@ -10,6 +10,8 @@ Users can compare the outputs and vote for their favorite in an interactive UI.
 
 # Standard Library Imports
 import asyncio
+import hashlib
+import json
 import time
 from typing import List, Tuple
 
@@ -43,18 +45,53 @@ from src.utils import (
 class Frontend:
     config: Config
     db_session_maker: AsyncDBSessionMaker
-    _leaderboard_data: List[List[str]] = [[]]
 
     def __init__(self, config: Config, db_session_maker: AsyncDBSessionMaker):
         self.config = config
         self.db_session_maker = db_session_maker
 
-    async def _update_leaderboard_data(self) -> None:
+        # leaderboard update state
+        self._leaderboard_data: List[List[str]] = [[]]
+        self._leaderboard_cache_hash = None
+        self._last_leaderboard_update_time = 0
+        self._min_refresh_interval = 30
+
+    async def _update_leaderboard_data(self, force: bool = False) -> bool:
         """
-        Fetches the latest leaderboard data
+        Fetches the latest leaderboard data only if needed based on cache and time constraints.
+        
+        Args:
+            force (bool): If True, bypass the time-based throttling.
+        
+        Returns:
+            bool: True if the leaderboard was updated, False otherwise.
         """
+        current_time = time.time()
+        time_since_last_update = current_time - self._last_leaderboard_update_time
+        
+        # Skip update if it's been less than min_refresh_interval seconds and not forced
+        if not force and time_since_last_update < self._min_refresh_interval:
+            logger.debug(f"Skipping leaderboard update: last updated {time_since_last_update:.1f}s ago.")
+            return False
+            
+        # Fetch the latest data
         latest_leaderboard_data = await get_leaderboard_data(self.db_session_maker)
+        
+        # Generate a hash of the new data to check if it's changed
+        data_str = json.dumps(str(latest_leaderboard_data))
+        data_hash = hashlib.md5(data_str.encode()).hexdigest()
+        
+        # Check if the data has changed
+        if data_hash == self._leaderboard_cache_hash and not force:
+            logger.debug("Leaderboard data unchanged since last fetch.")
+            return False
+        
+        # Update the cache and timestamp
         self._leaderboard_data = latest_leaderboard_data
+        self._leaderboard_cache_hash = data_hash
+        self._last_leaderboard_update_time = current_time
+        logger.info("Leaderboard data updated successfully.")
+        return True
 
     async def _generate_text(self, character_description: str) -> Tuple[gr.Textbox, str]:
         """
@@ -152,7 +189,7 @@ class Frontend:
 
             # Await both tasks concurrently using asyncio.gather()
             (generation_id_a, audio_a), (generation_id_b, audio_b) = await asyncio.gather(task_a, task_b)
-            logger.info(f"Synthesis Succeed for providers: {provider_a} and {provider_b}")
+            logger.info(f"Synthesis succeeded for providers: {provider_a} and {provider_b}")
 
             option_a = Option(provider=provider_a, audio=audio_a, generation_id=generation_id_a)
             option_b = Option(provider=provider_b, audio=audio_b, generation_id=generation_id_b)
@@ -168,13 +205,13 @@ class Frontend:
                 True,
             )
         except ElevenLabsError as ee:
-            logger.error(f"Synthesis Failed with ElevenLabsError during TTS generation: {ee!s}")
+            logger.error(f"Synthesis failed with ElevenLabsError during TTS generation: {ee!s}")
             raise gr.Error(f'There was an issue communicating with the Elevenlabs API: "{ee.message}"')
         except HumeError as he:
-            logger.error(f"Synthesis Failed with HumeError during TTS generation: {he!s}")
+            logger.error(f"Synthesis failed with HumeError during TTS generation: {he!s}")
             raise gr.Error(f'There was an issue communicating with the Hume API: "{he.message}"')
         except Exception as e:
-            logger.error(f"Synthesis Failed with an unexpected error during TTS generation: {e!s}")
+            logger.error(f"Synthesis failed with an unexpected error during TTS generation: {e!s}")
             raise gr.Error("An unexpected error occurred. Please try again shortly.")
 
     async def _vote(
@@ -275,20 +312,26 @@ class Frontend:
             gr.update(value=character_description), # Update character description
         )
 
-    async def _refresh_leaderboard(self) -> gr.DataFrame:
+    async def _refresh_leaderboard(self, force: bool = False) -> gr.DataFrame:
         """
         Asynchronously fetches and formats the latest leaderboard data.
 
+        Args:
+            force (bool): If True, bypass time-based throttling.
+
         Returns:
-            gr.DataFrame: A Gradio DataFrame update object containing the formatted leaderboard data,
-                        including rank, provider, model, win rate, and total votes.
-        Raises:
-            gr.Error: If the leaderboard data cannot be retrieved.
+            gr.DataFrame: Updated DataFrame or gr.skip() if no update needed
         """
-        await self._update_leaderboard_data()
+        data_updated = await self._update_leaderboard_data(force=force)
+
         if not self._leaderboard_data:
             raise gr.Error("Unable to retrieve leaderboard data. Please refresh the page or try again shortly.")
-        return gr.update(value=self._leaderboard_data)
+
+        # Only return an update if the data changed or force=True
+        if data_updated:
+            return gr.update(value=self._leaderboard_data)
+        else:
+            return gr.skip()
 
     async def _handle_tab_select(self, evt: gr.SelectData):
         """
@@ -296,13 +339,13 @@ class Frontend:
         
         Args:
             evt (gr.SelectData): Event data containing information about the selected tab
-            
+
         Returns:
-            gr.update: Update for the leaderboard table if the Leaderboard tab is selected
+            gr.update or gr.skip: Update for the leaderboard table if data changed, otherwise skip
         """
         # Check if the selected tab is "Leaderboard" by name
         if evt.value == "Leaderboard":
-            return await self._refresh_leaderboard()
+            return await self._refresh_leaderboard(force=False)
         return gr.skip()
 
     def _disable_ui(self) -> Tuple[
@@ -840,20 +883,28 @@ class Frontend:
                 elem_id="leaderboard-table"
             )
 
-        # --- Register event handlers ---
+        # Wrapper for the async refresh function
+        async def async_refresh_handler():
+            return await self._refresh_leaderboard(force=True)
+            
+        # Handler to re-enable the button after a refresh
+        def reenable_button():
+            time.sleep(3) # wait 3 seconds before enabling to prevent excessive data fetching
+            return gr.update(interactive=True)
+
         # Refresh button click event handler
         refresh_button.click(
             fn=lambda _=None: (gr.update(interactive=False)),
             inputs=[],
             outputs=[refresh_button],
         ).then(
-            fn=self._refresh_leaderboard,
+            fn=async_refresh_handler,
             inputs=[],
             outputs=[leaderboard_table]
         ).then(
-            fn=lambda _=None: (gr.update(interactive=True)),
+            fn=reenable_button,
             inputs=[],
-            outputs=[refresh_button],
+            outputs=[refresh_button]
         )
 
         return leaderboard_table
