@@ -2,7 +2,7 @@
 title: Expressive TTS Arena
 emoji: 🎤
 colorFrom: indigo
-colorTo: purple
+colorTo: gray
 sdk: docker
 app_file: src/main.py
 python_version: "3.11"
