@@ -21,7 +21,7 @@ dependencies = [
 [tool.uv]
 override-dependencies = [
     "aiofiles==24.1.0",
-    "sounddevice==0.4.6",
+    "sounddevice; sys_platform == 'never'",
 ]
 dev-dependencies = [
     "mypy>=1.15.0",
