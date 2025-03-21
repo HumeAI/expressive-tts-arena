@@ -56,7 +56,15 @@ class OpenAIConfig:
 
     @staticmethod
     def select_random_base_voice() -> str:
-        # OpenAI's Python SDK does not export a type for their base voice names, so we have to hard code them here
+        """
+        Randomly selects one of OpenAI's base voice options for TTS.
+
+        OpenAI's Python SDK doesn't export a type for their base voice names,
+        so we use a hardcoded list of the available voice options.
+
+        Returns:
+            str: A randomly selected OpenAI base voice name (e.g., 'alloy', 'nova', etc.)
+        """
         openai_base_voices = ["alloy", "ash", "coral", "echo", "fable", "onyx", "nova", "sage", "shimmer"]
         return random.choice(openai_base_voices)
 
