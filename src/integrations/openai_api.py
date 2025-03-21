@@ -110,8 +110,8 @@ async def text_to_speech_with_openai(
             - audio_file_path (str): Path to the saved audio file.
 
     Raises:
-        HumeError: For errors communicating with the OpenAI API.
-        UnretryableHumeError: For client-side HTTP errors (status code 4xx).
+        OpenAIError: For errors communicating with the OpenAI API.
+        UnretryableOpenAIError: For client-side HTTP errors (status code 4xx).
     """
     logger.debug(f"Synthesizing speech with OpenAI. Text length: {len(text)} characters.")
     openai_config = config.openai_config
