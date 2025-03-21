@@ -895,7 +895,9 @@ class Frontend:
                     gr.HTML(
                         value="""
                         <h2>Citation</h2>
-                        <p>When referencing this leaderboard or its dataset in academic publications, please cite:</p>
+                        <p style="padding: 0 8px;">
+                            When referencing this leaderboard or its dataset in academic publications, please cite:
+                        </p>
                         """,
                         padding=False,
                     )
@@ -916,8 +918,10 @@ class Frontend:
                     gr.HTML(
                         value="""
                         <h2>Terms of Use</h2>
-                        <p>Users are required to agree to the following terms before using the service:</p>
-                        <p>
+                        <p style="padding: 0 8px;">
+                            Users are required to agree to the following terms before using the service:
+                        </p>
+                        <p style="padding: 0 8px;">
                             All generated audio clips are provided for research and evaluation purposes only.
                             The audio content may not be redistributed or used for commercial purposes without
                             explicit permission. Users should not upload any private or personally identifiable
@@ -932,7 +936,9 @@ class Frontend:
                     gr.HTML(
                         value="""
                         <h2>Acknowledgements</h2>
-                        <p>We thank all participants who contributed their votes to help build this leaderboard.</p>
+                        <p style="padding: 0 8px;">
+                            We thank all participants who contributed their votes to help build this leaderboard.
+                        </p>
                         """,
                         padding=False,
                     )
