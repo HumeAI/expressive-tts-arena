@@ -35,7 +35,7 @@ TTS_PROVIDER_LINKS = {
         "provider_link": "https://elevenlabs.io/",
         "model_link": "https://elevenlabs.io/blog/rvg",
     },
-    "Open AI": {
+    "OpenAI": {
         "provider_link": "https://openai.com/",
         "model_link": "https://platform.openai.com/docs/models/gpt-4o-mini-tts",
     }
@@ -168,4 +168,3 @@ META_TAGS: List[Dict[str, str]] = [
         'content': '/static/arena-opengraph-logo.png'
     }
 ]
-

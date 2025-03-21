@@ -84,7 +84,8 @@ async def get_leaderboard_stats(db: AsyncSession) -> LeaderboardTableEntries:
     """
     default_leaderboard = [
         LeaderboardEntry("1", "", "", "0%", "0"),
-        LeaderboardEntry("2", "", "", "0%", "0")
+        LeaderboardEntry("2", "", "", "0%", "0"),
+        LeaderboardEntry("3", "", "", "0%", "0"),
     ]
 
     try:
@@ -108,12 +109,23 @@ async def get_leaderboard_stats(db: AsyncSession) -> LeaderboardTableEntries:
                     SUM(CASE WHEN winning_provider = 'ElevenLabs' THEN 1 ELSE 0 END) as wins
                 FROM vote_results
                 WHERE comparison_type != 'Hume AI - Hume AI'
+
+                UNION ALL
+
+                -- Get wins for OpenAI
+                SELECT
+                    'OpenAI' as provider,
+                    COUNT(*) as total_comparisons,
+                    SUM(CASE WHEN winning_provider = 'OpenAI' THEN 1 ELSE 0 END) as wins
+                FROM vote_results
+                WHERE comparison_type != 'Hume AI - Hume AI'
             )
             SELECT
                 provider,
                 CASE
                     WHEN provider = 'Hume AI' THEN 'Octave'
                     WHEN provider = 'ElevenLabs' THEN 'Voice Design'
+                    WHEN provider = 'OpenAI' THEN 'gpt-4o-mini-tts'
                 END as model,
                 CASE
                     WHEN total_comparisons > 0 THEN ROUND((wins * 100.0 / total_comparisons)::numeric, 2)
