@@ -23,7 +23,7 @@ from tenacity import after_log, before_log, retry, retry_if_exception, stop_afte
 
 # Local Application Imports
 from src.config import Config, logger
-from src.constants import CLIENT_ERROR_CODE, SERVER_ERROR_CODE
+from src.constants import CLIENT_ERROR_CODE, GENERIC_API_ERROR_MESSAGE, SERVER_ERROR_CODE
 from src.utils import truncate_text, validate_env_var
 
 PROMPT_TEMPLATE: str = """
@@ -246,7 +246,7 @@ def _extract_anthropic_error_message(e: APIError) -> str:
     Returns:
         str: A clean, user-friendly error message suitable for display to end users.
     """
-    clean_message = "An unknown error has occurred. Please try again later."
+    clean_message = GENERIC_API_ERROR_MESSAGE
 
     if hasattr(e, 'body') and isinstance(e.body, dict):
         error_body = e.body
