@@ -887,6 +887,54 @@ class Frontend:
                 elem_id="leaderboard-table"
             )
 
+        with gr.Accordion(label="Citation", open=False):
+            with gr.Column(variant="panel"):
+                with gr.Column(variant="panel"):
+                    gr.HTML(
+                        value="""
+                        <h2>Citation</h2>
+                        <p>When referencing this leaderboard or its dataset in academic publications, please cite:</p>
+                        """,
+                        padding=False,
+                    )
+                    gr.Markdown(
+                        value="""
+                        **BibTeX**
+                        ```BibTeX
+                        @misc{expressive-tts-arena,
+                            title = {Expressive TTS Arena: An Open Platform for Evaluating Text-to-Speech Expressiveness by Human Preference},
+                            author = {Alan Cowen, Zachary Greathouse, Richard Marmorstein, Jeremy Hadfield},
+                            year = {2025},
+                            publisher = {Hugging Face},
+                            howpublished = {\\url{https://huggingface.co/spaces/HumeAI/expressive-tts-arena}}
+                        }
+                        ```
+                        """
+                    )
+                    gr.HTML(
+                        value="""
+                        <h2>Terms of Use</h2>
+                        <p>Users are required to agree to the following terms before using the service:</p>
+                        <p>
+                            All generated audio clips are provided for research and evaluation purposes only.
+                            The audio content may not be redistributed or used for commercial purposes without
+                            explicit permission. Users should not upload any private or personally identifiable
+                            information. Please report any bugs, issues, or concerns to our
+                            <a href="https://discord.com/invite/humeai" target="_blank" class="provider-link">
+                                Discord community
+                            </a>.
+                        </p>
+                        """,
+                        padding=False,
+                    )
+                    gr.HTML(
+                        value="""
+                        <h2>Acknowledgements</h2>
+                        <p>We thank all participants who contributed their votes to help build this leaderboard.</p>
+                        """,
+                        padding=False,
+                    )
+
         # Wrapper for the async refresh function
         async def async_refresh_handler():
             return await self._refresh_leaderboard(force=True)
