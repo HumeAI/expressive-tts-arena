@@ -55,22 +55,22 @@ SAMPLE_CHARACTER_DESCRIPTIONS: dict = {
         "Speaking with controlled emotion, technical accuracy, measured pacing and thoughtful silences."
     ),
     "🎬 Noir Detective": (
-        "A 1940s private investigator narrating with a low, gravelly voice and deliberate pacing. "
+        "A 1940s private investigator narrating with a gravelly voice and deliberate pacing. "
         "Speaks with a cynical, world-weary tone that drops lower when delivering key observations."
     ),
     "🕯️ Victorian Ghost Storyteller": (
-        "A Victorian-era raconteur speaking with a refined British accent and formal, precise diction. Voice "
+        "A Victorian-era raconteur speaking with a refined English accent and formal, precise diction. Voice "
         "modulates between hushed, tense whispers and dramatic declarations when describing eerie occurrences."
     ),
-    "🌿 British Naturalist": (
-        "A wildlife documentarian speaking with a crisp, articulate British accent and clear enunciation. Voice "
+    "🌿 English Naturalist": (
+        "A wildlife documentarian speaking with a crisp, articulate English accent and clear enunciation. Voice "
         "alternates between hushed, excited whispers and enthusiastic explanations filled with genuine wonder."
     ),
     "🌟 Texan Storyteller": (
-        "A woman from rural Texas speaking with a warm voice and distinctive Southern drawl featuring elongated "
+        "A speaker from rural Texas speaking with a warm voice and distinctive Southern drawl featuring elongated "
         "vowels. Talks unhurriedly with a musical quality and occasional soft laughter."
     ),
-    "🏄 Surfer Dude": (
+    "🏄 Chill Surfer": (
         "A California surfer talking with a casual, slightly nasal voice and laid-back rhythm. Uses rising "
         "inflections at sentence ends and bursts into spontaneous laughter when excited."
     ),
@@ -78,11 +78,11 @@ SAMPLE_CHARACTER_DESCRIPTIONS: dict = {
         "The speaker has the voice of a seasoned horse race announcer, with a booming, energetic voice, "
         "a touch of old-school radio charm, and the enthusiastic delivery of a viral commentator."
     ),
-    "👑 Obnoxious Prince": (
-        "A prince of England speaks in a smug and authoritative voice in an obnoxious, proper English accent. "
-        "He is insecure, arrogant, and prone to tantrums."
+    "👑 Obnoxious Royal": (
+        "A member of the English royal family speaks in a smug and authoritative voice in an obnoxious, proper "
+        "English accent. He is insecure, arrogant, and prone to tantrums."
     ),
-    "🏰 Medieval Peasant Man": (
+    "🏰 Medieval Peasant": (
         "A film portrayal of a medieval peasant speaking with a thick cockney accent and a worn voice, "
         "dripping with sarcasm and self-effacing humor."
     ),
