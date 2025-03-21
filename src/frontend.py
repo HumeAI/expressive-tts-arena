@@ -13,7 +13,7 @@ import asyncio
 import hashlib
 import json
 import time
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 # Third-Party Library Imports
 import gradio as gr
@@ -27,15 +27,17 @@ from src.integrations import (
     AnthropicError,
     ElevenLabsError,
     HumeError,
+    OpenAIError,
     generate_text_with_claude,
     text_to_speech_with_elevenlabs,
     text_to_speech_with_hume,
+    text_to_speech_with_openai,
 )
 from src.utils import (
     create_shuffled_tts_options,
     determine_selected_option,
     get_leaderboard_data,
-    get_random_provider,
+    get_random_providers,
     submit_voting_results,
     validate_character_description_length,
     validate_text_length,
@@ -52,40 +54,40 @@ class Frontend:
 
         # leaderboard update state
         self._leaderboard_data: List[List[str]] = [[]]
-        self._leaderboard_cache_hash = None
-        self._last_leaderboard_update_time = 0
+        self._leaderboard_cache_hash: Optional[str] = None
+        self._last_leaderboard_update_time: float = 0.0
         self._min_refresh_interval = 30
 
     async def _update_leaderboard_data(self, force: bool = False) -> bool:
         """
         Fetches the latest leaderboard data only if needed based on cache and time constraints.
-        
+
         Args:
             force (bool): If True, bypass the time-based throttling.
-        
+
         Returns:
             bool: True if the leaderboard was updated, False otherwise.
         """
         current_time = time.time()
         time_since_last_update = current_time - self._last_leaderboard_update_time
-        
+
         # Skip update if it's been less than min_refresh_interval seconds and not forced
         if not force and time_since_last_update < self._min_refresh_interval:
             logger.debug(f"Skipping leaderboard update: last updated {time_since_last_update:.1f}s ago.")
             return False
-            
+
         # Fetch the latest data
         latest_leaderboard_data = await get_leaderboard_data(self.db_session_maker)
-        
+
         # Generate a hash of the new data to check if it's changed
         data_str = json.dumps(str(latest_leaderboard_data))
         data_hash = hashlib.md5(data_str.encode()).hexdigest()
-        
+
         # Check if the data has changed
         if data_hash == self._leaderboard_cache_hash and not force:
             logger.debug("Leaderboard data unchanged since last fetch.")
             return False
-        
+
         # Update the cache and timestamp
         self._leaderboard_data = latest_leaderboard_data
         self._leaderboard_cache_hash = data_hash
@@ -169,12 +171,12 @@ class Frontend:
             raise gr.Error(str(ve))
 
         text_modified = text != generated_text_state
-        provider_a = constants.HUME_AI # always compare with Hume
-        provider_b = get_random_provider(text_modified)
+        provider_a, provider_b = get_random_providers(text_modified)
 
         tts_provider_funcs = {
             constants.HUME_AI: text_to_speech_with_hume,
             constants.ELEVENLABS: text_to_speech_with_elevenlabs,
+            constants.OPENAI: text_to_speech_with_openai,
         }
 
         if provider_b not in tts_provider_funcs:
@@ -210,6 +212,9 @@ class Frontend:
         except HumeError as he:
             logger.error(f"Synthesis failed with HumeError during TTS generation: {he!s}")
             raise gr.Error(f'There was an issue communicating with the Hume API: "{he.message}"')
+        except OpenAIError as oe:
+            logger.error(f"Synthesis failed with OpenAIError during TTS generation: {oe!s}")
+            raise gr.Error(f'There was an issue communicating with the OpenAI API: "{oe.message}"')
         except Exception as e:
             logger.error(f"Synthesis failed with an unexpected error during TTS generation: {e!s}")
             raise gr.Error("An unexpected error occurred. Please try again shortly.")
@@ -330,13 +335,12 @@ class Frontend:
         # Only return an update if the data changed or force=True
         if data_updated:
             return gr.update(value=self._leaderboard_data)
-        else:
-            return gr.skip()
+        return gr.skip()
 
     async def _handle_tab_select(self, evt: gr.SelectData):
         """
         Handles tab selection events and refreshes the leaderboard if the Leaderboard tab is selected.
-        
+
         Args:
             evt (gr.SelectData): Event data containing information about the selected tab
 
@@ -886,7 +890,7 @@ class Frontend:
         # Wrapper for the async refresh function
         async def async_refresh_handler():
             return await self._refresh_leaderboard(force=True)
-            
+
         # Handler to re-enable the button after a refresh
         def reenable_button():
             time.sleep(3) # wait 3 seconds before enabling to prevent excessive data fetching
