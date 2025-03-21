@@ -137,9 +137,7 @@ class Frontend:
         Synthesizes two text-to-speech outputs, updates UI state components, and returns additional TTS metadata.
 
         This function generates TTS outputs using different providers based on the input text and its modification
-        state. Depending on the selected providers, it may:
-          - Synthesize one Hume and one ElevenLabs output (50% chance), or
-          - Synthesize two Hume outputs (50% chance).
+        state.
 
         The outputs are processed and shuffled, and the corresponding UI components for two audio players are updated.
         Additional metadata such as the comparison type, generation IDs, and state information are also returned.
@@ -152,8 +150,8 @@ class Frontend:
 
         Returns:
             Tuple containing:
-                - dict: Update for the first audio player (with autoplay enabled).
-                - dict: Update for the second audio player.
+                - gr.Audio: Update for the first audio player (with autoplay enabled).
+                - gr.Audio: Update for the second audio player.
                 - OptionMap: A mapping of option constants to their corresponding TTS providers.
                 - bool: Flag indicating whether the text was modified.
                 - str: The original text that was synthesized.
@@ -175,18 +173,15 @@ class Frontend:
 
         tts_provider_funcs = {
             constants.HUME_AI: text_to_speech_with_hume,
-            constants.ELEVENLABS: text_to_speech_with_elevenlabs,
             constants.OPENAI: text_to_speech_with_openai,
+            constants.ELEVENLABS: text_to_speech_with_elevenlabs,
         }
-
-        if provider_b not in tts_provider_funcs:
-            raise ValueError(f"Unsupported provider: {provider_b}")
 
         try:
             logger.info(f"Starting speech synthesis with providers: {provider_a} and {provider_b}")
 
             # Create two tasks for concurrent execution
-            task_a = text_to_speech_with_hume(character_description, text, self.config)
+            task_a = tts_provider_funcs[provider_a](character_description, text, self.config)
             task_b = tts_provider_funcs[provider_b](character_description, text, self.config)
 
             # Await both tasks concurrently using asyncio.gather()
@@ -206,15 +201,15 @@ class Frontend:
                 character_description,
                 True,
             )
-        except ElevenLabsError as ee:
-            logger.error(f"Synthesis failed with ElevenLabsError during TTS generation: {ee!s}")
-            raise gr.Error(f'There was an issue communicating with the Elevenlabs API: "{ee.message}"')
         except HumeError as he:
             logger.error(f"Synthesis failed with HumeError during TTS generation: {he!s}")
             raise gr.Error(f'There was an issue communicating with the Hume API: "{he.message}"')
         except OpenAIError as oe:
             logger.error(f"Synthesis failed with OpenAIError during TTS generation: {oe!s}")
             raise gr.Error(f'There was an issue communicating with the OpenAI API: "{oe.message}"')
+        except ElevenLabsError as ee:
+            logger.error(f"Synthesis failed with ElevenLabsError during TTS generation: {ee!s}")
+            raise gr.Error(f'There was an issue communicating with the Elevenlabs API: "{ee.message}"')
         except Exception as e:
             logger.error(f"Synthesis failed with an unexpected error during TTS generation: {e!s}")
             raise gr.Error("An unexpected error occurred. Please try again shortly.")
@@ -248,7 +243,7 @@ class Frontend:
 
         Returns:
             A tuple of:
-            - A boolean indicating if the vote was accepted.
+            - bool: A boolean indicating if the vote was accepted.
             - A dict update for hiding vote button A.
             - A dict update for hiding vote button B.
             - A dict update for showing vote result A textbox.
