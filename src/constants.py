@@ -80,7 +80,7 @@ SAMPLE_CHARACTER_DESCRIPTIONS: dict = {
     ),
     "👑 Obnoxious Royal": (
         "A member of the English royal family speaks in a smug and authoritative voice in an obnoxious, proper "
-        "English accent. He is insecure, arrogant, and prone to tantrums."
+        "English accent. They are insecure, arrogant, and prone to tantrums."
     ),
     "🏰 Medieval Peasant": (
         "A film portrayal of a medieval peasant speaking with a thick cockney accent and a worn voice, "
