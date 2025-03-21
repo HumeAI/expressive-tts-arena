@@ -435,7 +435,7 @@ class Frontend:
         Builds the Title section
         """
         gr.HTML(
-            """
+            value="""
             <div class="title-container">
                 <h1>Expressive TTS Arena</h1>
                 <div class="social-links">
@@ -472,9 +472,9 @@ class Frontend:
         with gr.Row():
             with gr.Column(scale=5):
                 gr.HTML(
-                    """
+                    value="""
                     <h2 class="tab-header">📋 Instructions</h2>
-                    <ol>
+                    <ol style="padding-left: 8px;">
                         <li>
                             Select a sample character, or input a custom character description and click
                             <strong>"Generate Text"</strong>, to generate your text input.
@@ -491,7 +491,8 @@ class Frontend:
                             <strong>"Select Option B"</strong>.
                         </li>
                     </ol>
-                    """
+                    """,
+                    padding=False,
                 )
             randomize_all_button = gr.Button(
                 "🎲 Randomize All",
@@ -858,15 +859,16 @@ class Frontend:
         with gr.Row():
             with gr.Column(scale=5):
                 gr.HTML(
-                    """
+                    value="""
                     <h2 class="tab-header">🏆 Leaderboard</h2>
-                    <p>
+                    <p style="padding-left: 8px;">
                         This leaderboard presents community voting results for different TTS providers, showing which
                         ones users found more expressive and natural-sounding. The win rate reflects how often each
                         provider was selected as the preferred option in head-to-head comparisons. Click the refresh
                         button to see the most up-to-date voting results.
                     </p>
-                    """
+                    """,
+                    padding=False,
                 )
             refresh_button = gr.Button(
                 "↻ Refresh",
