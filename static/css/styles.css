@@ -1,0 +1,96 @@
+/* Override Gradio vertical scroll bar styling */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none !important;
+}
+
+html,
+body {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+/* Remove Gradio footer */
+footer.svelte-1byz9vf {
+  display: none !important;
+}
+
+/* Title container styling */
+.title-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+
+.excerpt-container {
+  margin: 8px 0;
+}
+
+/* Social links container */
+.social-links {
+  display: flex;
+  gap: 12px;
+}
+
+/* Social media icons common styles */
+#github-link, 
+#discord-link {
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  transition: transform 0.2s ease-in-out;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Hover effect for social media icons */
+#github-link:hover, 
+#discord-link:hover {
+  transform: scale(1.15);
+}
+
+/* Discord icon specific styling */
+#discord-link {
+  background-image: url(
+    'https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a6a49cf127bf92de1e2_icon_clyde_blurple_RGB.png'
+  );
+  background-size: 90%;
+}
+  
+/* GitHub icon specific styling */
+#github-link {
+  background-image: url(
+    'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png'
+    );
+}
+
+.tab-header {
+  font-size: 18px;
+}
+
+/* Vote result styling */
+#vote-result-a textarea,
+#vote-result-b textarea {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* Winner styling */
+#vote-result-a.winner textarea,
+#vote-result-b.winner textarea {
+  background: #F97316;
+  color: #FFFFFF;
+}
+    
+.provider-link {
+  color: #F97316;
+  text-decoration: underline;
+}
+
+.provider-link:hover {
+  color: #EA580C;
+}

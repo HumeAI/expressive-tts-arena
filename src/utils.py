@@ -12,9 +12,10 @@ import os
 import random
 import time
 from pathlib import Path
-from typing import Tuple, cast
+from typing import Dict, List, Tuple, cast
 
 # Third-Party Library Imports
+from bs4 import BeautifulSoup
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Local Application Imports
@@ -203,34 +204,22 @@ def save_base64_audio_to_file(base64_audio: str, filename: str, config: Config) 
     return str(relative_path)
 
 
-def choose_providers(
-    text_modified: bool,
-    character_description: str,
-) -> Tuple[TTSProviderName, TTSProviderName]:
+def get_random_provider(text_modified: bool) -> TTSProviderName:
     """
-    Select two TTS providers based on whether the text has been modified.
-
-    The first provider is always set to "Hume AI". For the second provider, the function
-    selects "Hume AI" if the text has been modified or if a character description was
-    not provided; otherwise, it randomly chooses one from the TTS_PROVIDERS list.
+    Select a TTS provider based on whether the text has been modified.
 
     Args:
         text_modified (bool): A flag indicating whether the text has been modified.
-            - If True, both providers will be "Hume AI".
-            - If False, the second provider is randomly selected from TTS_PROVIDERS.
 
     Returns:
-        Tuple[TTSProviderName, TTSProviderName]: A tuple containing two TTS provider names,
-        where the first is always "Hume AI" and the second is determined by the text_modified
-        flag and random selection.
+        provider: A TTS provider selected based on the following criteria:
+            - If the text has been modified, it will be "Hume AI"
+            - Otherwise, it will be "Hume AI" 30% of the time and "ElevenLabs" 70% of the time
     """
+    if text_modified:
+        return constants.HUME_AI
 
-    hume_comparison_only = text_modified or not character_description
-
-    provider_a = constants.HUME_AI
-    provider_b = constants.HUME_AI if hume_comparison_only else random.choice(constants.TTS_PROVIDERS)
-
-    return provider_a, provider_b
+    return constants.HUME_AI if random.random() < 0.3 else constants.ELEVENLABS
 
 
 def create_shuffled_tts_options(option_a: Option, option_b: Option) -> OptionMap:
@@ -268,9 +257,7 @@ def create_shuffled_tts_options(option_a: Option, option_b: Option) -> OptionMap
     }
 
 
-def determine_selected_option(
-    selected_option_button: str,
-) -> Tuple[OptionKey, OptionKey]:
+def determine_selected_option(selected_option_button: str) -> Tuple[OptionKey, OptionKey]:
     """
     Determines the selected option and the alternative option based on the user's selection.
 
@@ -327,11 +314,30 @@ def _log_voting_results(voting_results: VotingResults) -> None:
     logger.info("Voting results:\n%s", json.dumps(voting_results, indent=4))
 
 
-async def _persist_vote(
-    db_session_maker: AsyncDBSessionMaker,
-    voting_results: VotingResults,
-    config: Config
-) -> None:
+async def _create_db_session(db_session_maker: AsyncDBSessionMaker) -> AsyncSession:
+    """
+    Creates a new database session using the provided session maker and checks if it's a dummy session.
+
+    A dummy session might be used in development or testing environments where database operations
+    should be simulated but not actually performed.
+
+    Args:
+        db_session_maker (AsyncDBSessionMaker): A callable that returns a new async database session.
+
+    Returns:
+        AsyncSession: A newly created database session that can be used for database operations.
+    """
+    session = db_session_maker()
+    is_dummy_session = getattr(session, "is_dummy", False)
+
+    if is_dummy_session:
+        await session.close()
+        return None
+
+    return session
+
+
+async def _persist_vote(db_session_maker: AsyncDBSessionMaker, voting_results: VotingResults) -> None:
     """
     Asynchronously persist a vote record in the database and handle potential failures.
     Designed to work safely in a background task context.
@@ -345,28 +351,17 @@ async def _persist_vote(
         None
     """
     # Create session
-    session = db_session_maker()
-    is_dummy_session = getattr(session, "is_dummy", False)
-
-    if is_dummy_session:
-        logger.info("Vote record created successfully.")
-        _log_voting_results(voting_results)
-        await session.close()
-        return
-
+    session = await _create_db_session(db_session_maker)
+    _log_voting_results(voting_results)
     try:
         await crud.create_vote(cast(AsyncSession, session), voting_results)
-        logger.info("Vote record created successfully.")
-        if config.app_env == "dev":
-            _log_voting_results(voting_results)
     except Exception as e:
-        # Log the error with traceback in production, without traceback in dev
-        logger.error(f"Failed to create vote record: {e}",
-                     exc_info=(config.app_env == "prod"))
-        _log_voting_results(voting_results)
+        # Log the error with traceback
+        logger.error(f"Failed to create vote record: {e}", exc_info=True)
     finally:
         # Always ensure the session is closed
-        await session.close()
+        if session is not None:
+            await session.close()
 
 
 async def submit_voting_results(
@@ -376,7 +371,6 @@ async def submit_voting_results(
     character_description: str,
     text: str,
     db_session_maker: AsyncDBSessionMaker,
-    config: Config,
 ) -> None:
     """
     Asynchronously constructs the voting results dictionary and persists a new vote record.
@@ -413,12 +407,55 @@ async def submit_voting_results(
             "is_custom_text": text_modified,
         }
 
-        await _persist_vote(db_session_maker, voting_results, config)
+        await _persist_vote(db_session_maker, voting_results)
 
+    # Catch exceptions at the top level of the background task to prevent unhandled exceptions in background tasks
     except Exception as e:
-        # Catch all exceptions at the top level of the background task
-        # to prevent unhandled exceptions in background tasks
         logger.error(f"Background task error in submit_voting_results: {e}", exc_info=True)
+
+
+async def get_leaderboard_data(db_session_maker: AsyncDBSessionMaker) -> List[List[str]]:
+    """
+    Fetches leaderboard data from voting results database
+
+    Returns:
+        LeaderboardTableEntries: A list of LeaderboardEntry objects containing rank, provider name anchor tag, model
+                                name anchor tag, win rate, and total votes.
+    """
+    # Create session
+    session = await _create_db_session(db_session_maker)
+    try:
+        leaderboard_data = await crud.get_leaderboard_stats(cast(AsyncSession, session))
+        logger.info("Fetched leaderboard data successfully.")
+        # return data formatted for the UI (adds links and styling)
+        return [
+            [
+                f'<p style="text-align: center;">{row[0]}</p>',
+                f"""
+                <a
+                    href="{constants.TTS_PROVIDER_LINKS[row[1]]["provider_link"]}"
+                    target="_blank"
+                    class="provider-link"
+                >{row[1]}</a>
+                """,
+                f"""<a
+                    href="{constants.TTS_PROVIDER_LINKS[row[1]]["model_link"]}"
+                    target="_blank"
+                    class="provider-link"
+                >{row[2]}</a>
+                """,
+                f'<p style="text-align: center;">{row[3]}</p>',
+                f'<p style="text-align: center;">{row[4]}</p>',
+            ] for row in leaderboard_data
+        ]
+    except Exception as e:
+        # Log the error with traceback
+        logger.error(f"Failed to fetch leaderboard data: {e}", exc_info=True)
+        return []
+    finally:
+        # Always ensure the session is closed
+        if session is not None:
+            await session.close()
 
 
 def validate_env_var(var_name: str) -> str:
@@ -433,19 +470,45 @@ def validate_env_var(var_name: str) -> str:
 
     Raises:
         ValueError: If the environment variable is not set.
-
-    Examples:
-        >>> import os
-        >>> os.environ["EXAMPLE_VAR"] = "example_value"
-        >>> validate_env_var("EXAMPLE_VAR")
-        'example_value'
-
-        >>> validate_env_var("MISSING_VAR")
-        Traceback (most recent call last):
-          ...
-        ValueError: MISSING_VAR is not set. Please ensure it is defined in your environment variables.
     """
     value = os.environ.get(var_name, "")
     if not value:
         raise ValueError(f"{var_name} is not set. Please ensure it is defined in your environment variables.")
     return value
+
+
+def update_meta_tags(html_content: str, meta_tags: List[Dict[str, str]]) -> str:
+    """
+    Safely updates the HTML content by adding or replacing meta tags in the head section
+    without affecting other elements, especially scripts and event handlers.
+
+    Args:
+        html_content: The original HTML content as a string
+        meta_tags: A list of dictionaries with meta tag attributes to add
+
+    Returns:
+        The modified HTML content with updated meta tags
+    """
+    # Parse the HTML
+    soup = BeautifulSoup(html_content, 'html.parser')
+    head = soup.head
+
+    # Remove existing meta tags that would conflict with our new ones
+    for meta_tag in meta_tags:
+        # Determine if we're looking for 'name' or 'property' attribute
+        attr_type = 'name' if 'name' in meta_tag else 'property'
+        attr_value = meta_tag.get(attr_type)
+
+        # Find and remove existing meta tags with the same name/property
+        existing_tags = head.find_all('meta', attrs={attr_type: attr_value})
+        for tag in existing_tags:
+            tag.decompose()
+
+    # Add the new meta tags to the head section
+    for meta_info in meta_tags:
+        new_meta = soup.new_tag('meta')
+        for attr, value in meta_info.items():
+            new_meta[attr] = value
+        head.append(new_meta)
+
+    return str(soup)

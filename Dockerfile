@@ -1,42 +1,46 @@
 # Use the official lightweight Python 3.11 slim image as the base
 FROM python:3.11-slim
 
+# Set up a non-root user for improved security
+RUN useradd -m -u 1000 user
+
+# Create app directory and set proper ownership
+RUN mkdir -p /app && chown -R user:user /app
+
 # Install uv and required system dependencies
-#   - `apt-get update` fetches the latest package lists
-#   - `apt-get install -y --no-install-recommends curl libpq-dev gcc build-essential` installs:
-#       - curl: to fetch the uv installer script
-#       - libpq-dev: provides pg_config required by psycopg2
-#       - gcc & build-essential: required for compiling C extensions (e.g. psycopg2)
-#   - `curl -LsSf` downloads and runs the uv installer script
-#   - `apt-get remove -y curl` removes curl after installation to save space
-#   - `apt-get clean && rm -rf /var/lib/apt/lists/*` removes cached package lists to reduce image size
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl libpq-dev gcc build-essential && \
+    mkdir -p /home/user/.local/bin && \
     curl -LsSf https://astral.sh/uv/install.sh | sh && \
+    cp /root/.local/bin/uv /usr/local/bin/ && \
+    cp /root/.local/bin/uvx /usr/local/bin/ && \
+    chmod +x /usr/local/bin/uv /usr/local/bin/uvx && \
+    chown -R user:user /home/user/.local && \
     apt-get remove -y curl && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Add uv to the system PATH so it can be run globally
-ENV PATH="/root/.local/bin:$PATH"
+# Switch to the non-root user
+USER user
+
+# Set environment variables for the user
+ENV HOME=/home/user \
+    PATH="/home/user/.local/bin:/usr/local/bin:$PATH"
 
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy dependency files first (pyproject.toml & uv.lock) to leverage Docker’s build cache
-#   - Ensures that if only the application code changes, dependencies do not need to be reinstalled
-COPY pyproject.toml uv.lock /app/
+# Copy dependency files first with proper ownership
+COPY --chown=user pyproject.toml uv.lock /app/
 
 # Install dependencies using uv
 #   - Reads pyproject.toml (and uv.lock, if available) to install dependencies
 #   - Creates a .venv in the project directory with all required packages
 RUN uv sync
 
-# Copy the remaining project files into the container
-COPY . .
+# Copy the remaining project files into the container with proper ownership
+COPY --chown=user . .
 
 # Document the port used by Gradio
-#   - This does not actually expose the port, it is just metadata for users
-#   - To actually expose the port, use `docker run -p 7860:7860 <image>`
 EXPOSE 7860
 
 # Define the command to start the application

@@ -14,12 +14,12 @@ Key Features:
 # Standard Library Imports
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import List, Optional, Union
 
 # Third-Party Library Imports
 from anthropic import APIError
 from anthropic.types import Message, ModelParam, TextBlock, ToolUseBlock
-from tenacity import after_log, before_log, retry, retry_if_exception, stop_after_attempt, wait_fixed
+from tenacity import after_log, before_log, retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 # Local Application Imports
 from src.config import Config, logger
@@ -109,11 +109,28 @@ class AnthropicConfig:
         - Express a complete thought with a clear beginning and end
         - Use only standard punctuation (periods, commas, Em dashes, exclamation points, ellipses, question marks)
         - Avoid quotation marks, parentheses, asterisks, or special formatting
+        - Emulate a highly characteristic, climactic, or emotional scene or line the character might reasonably deliver
         - Be at least 100 characters but not exceed 300 characters in length
 
         Examples of matching speaking style:
         - If the character is a pirate then use language like "arr," "ye," and other things pirates say.
         - If the character is a surfer then use language like "far out," "righteous," and other things surfers say.
+
+        Emotional text should be inserted where context-appropriate and in-character. Here are some examples of
+        emotional text:
+        - "Oh god... Malcolm, please come back to us!"
+        = "Mmm... It's like candy... Oh my god, it's so good..."
+        - "Ugh, she gets everything. I wish I could just, like, have her life for one day."
+        - "My god... what have you done... How could you do this..."
+        - "Woah... it's so beautiful... and I feel so small..."
+        - "I am so happy, woohoo, this is the greatest! I'm celebrating, and, like, so excited to be here with all of
+        you. Yay!"
+        - "Oh gosh, um, I didn't mean for that to happen. I hope I didn't, like, make things too awkward. Sorry, I
+        tend to be clumsy, y'know?"
+        - "Oh god... oh no... get that away from me! Get it away!"
+        - "I am beyond livid right now! Like someone actually thought this was an acceptable solution!"
+        - "Oh, fantastic, another meeting that could've been an email... I'm just thrilled to be here."
+        - "OH, NAH, NOT ME, MATE—I'VE SEEN ENOUGH! GET IT AWAY! BLOODY 'ELL, JESUS!"
 
         Respond ONLY with the dialogue itself. Do not include any explanations, quotation marks,
         or additional context.
@@ -141,7 +158,7 @@ class UnretryableAnthropicError(AnthropicError):
 @retry(
     retry=retry_if_exception(lambda e: not isinstance(e, UnretryableAnthropicError)),
     stop=stop_after_attempt(3),
-    wait=wait_fixed(2),
+    wait=wait_exponential(multiplier=1, min=2, max=5),
     before=before_log(logger, logging.DEBUG),
     after=after_log(logger, logging.DEBUG),
     reraise=True,
@@ -197,22 +214,47 @@ async def generate_text_with_claude(character_description: str, config: Config) 
         logger.warning(f"Unexpected response type: {type(blocks)}")
         return str(blocks or "No content generated.")
 
-    except Exception as e:
-        # If the error is an APIError, check if it's unretryable.
-        if isinstance(e, APIError):
-            status_code: Optional[int] = getattr(e, "status_code", None)
-            if status_code is not None and CLIENT_ERROR_CODE <= status_code < SERVER_ERROR_CODE:
-                error_body: Any = e.body
-                error_message: str = "Unknown error"
-                if isinstance(error_body, dict):
-                    error_message = cast(Dict[str, Any], error_body).get("error", {}).get("message", "Unknown error")
-                raise UnretryableAnthropicError(
-                    message=f'"{error_message}"',
-                    original_exception=e,
-                ) from e
+    except APIError as e:
+        logger.error(f"Anthropic API request failed: {e!s}")
+        clean_message = _extract_anthropic_error_message(e)
 
-        # For all other errors, wrap them in an AnthropicError.
-        raise AnthropicError(
-            message=str(e),
-            original_exception=e,
-        ) from e
+        if (
+            hasattr(e, 'status_code')
+            and e.status_code is not None
+            and CLIENT_ERROR_CODE <= e.status_code < SERVER_ERROR_CODE
+        ):
+            raise UnretryableAnthropicError(message=clean_message, original_exception=e) from e
+
+        raise AnthropicError(message=clean_message, original_exception=e) from e
+
+    except Exception as e:
+        error_type = type(e).__name__
+        error_message = str(e) if str(e) else f"An error of type {error_type} occurred"
+        logger.error(f"Error during Anthropic API call: {error_type} - {error_message}")
+        clean_message = "An unexpected error occurred while processing your request. Please try again later."
+
+        raise AnthropicError(message=clean_message, original_exception=e) from e
+
+
+def _extract_anthropic_error_message(e: APIError) -> str:
+    """
+    Extracts a clean, user-friendly error message from an Anthropic API error response.
+
+    Args:
+        e (APIError): The Anthropic API error exception containing response information.
+
+    Returns:
+        str: A clean, user-friendly error message suitable for display to end users.
+    """
+    clean_message = "An unknown error has occurred. Please try again later."
+
+    if hasattr(e, 'body') and isinstance(e.body, dict):
+        error_body = e.body
+        if (
+            'error' in error_body
+            and isinstance(error_body['error'], dict)
+            and 'message' in error_body['error']
+        ):
+            clean_message = error_body['error']['message']
+
+    return clean_message
