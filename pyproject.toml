@@ -12,6 +12,7 @@ dependencies = [
     "gradio>=5.18.0",
     "greenlet>=2.0.0",
     "hume>=0.7.8",
+    "openai>=1.68.0",
     "python-dotenv>=1.0.1",
     "sqlalchemy>=2.0.0",
     "tenacity>=9.0.0",
