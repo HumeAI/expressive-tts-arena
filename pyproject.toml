@@ -12,13 +12,17 @@ dependencies = [
     "gradio>=5.18.0",
     "greenlet>=2.0.0",
     "hume>=0.7.8",
+    "openai>=1.68.0",
     "python-dotenv>=1.0.1",
     "sqlalchemy>=2.0.0",
     "tenacity>=9.0.0",
 ]
 
 [tool.uv]
-override-dependencies = ["aiofiles==24.1.0"]
+override-dependencies = [
+    "aiofiles==24.1.0",
+    "sounddevice; sys_platform == 'never'",
+]
 dev-dependencies = [
     "mypy>=1.15.0",
     "pre-commit>=4.1.0",
@@ -84,7 +88,7 @@ select = [
     "TID",
     "W",
 ]
-per-file-ignores = { "src/constants.py" = ["E501"] }
+per-file-ignores = { "src/constants.py" = ["E501"], "src/frontend.py" = ["E501"] }
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 120

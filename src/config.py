@@ -22,7 +22,7 @@ from dotenv import load_dotenv
 
 # Local Application Imports
 if TYPE_CHECKING:
-    from src.integrations import AnthropicConfig, ElevenLabsConfig, HumeConfig
+    from src.integrations import AnthropicConfig, ElevenLabsConfig, HumeConfig, OpenAIConfig
 
 logger: logging.Logger = logging.getLogger("expressive_tts_arena")
 
@@ -37,6 +37,7 @@ class Config:
     anthropic_config: "AnthropicConfig"
     hume_config: "HumeConfig"
     elevenlabs_config: "ElevenLabsConfig"
+    openai_config: "OpenAIConfig"
 
     @classmethod
     def get(cls) -> "Config":
@@ -79,7 +80,7 @@ class Config:
         if debug:
             logger.debug("DEBUG mode enabled.")
 
-        from src.integrations import AnthropicConfig, ElevenLabsConfig, HumeConfig
+        from src.integrations import AnthropicConfig, ElevenLabsConfig, HumeConfig, OpenAIConfig
 
         return Config(
             app_env=app_env,
@@ -89,4 +90,5 @@ class Config:
             anthropic_config=AnthropicConfig(),
             hume_config=HumeConfig(),
             elevenlabs_config=ElevenLabsConfig(),
+            openai_config=OpenAIConfig(),
         )

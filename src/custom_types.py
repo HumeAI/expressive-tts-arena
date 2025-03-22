@@ -7,11 +7,16 @@ This module defines custom types for the application.
 # Standard Library Imports
 from typing import List, Literal, NamedTuple, Optional, TypedDict
 
-TTSProviderName = Literal["Hume AI", "ElevenLabs"]
+TTSProviderName = Literal["Hume AI", "ElevenLabs", "OpenAI"]
 """TTSProviderName represents the allowed provider names for TTS services."""
 
 
-ComparisonType = Literal["Hume AI - Hume AI", "Hume AI - ElevenLabs"]
+ComparisonType = Literal[
+    "Hume AI - Hume AI", 
+    "Hume AI - ElevenLabs", 
+    "Hume AI - OpenAI",
+    "OpenAI - ElevenLabs"
+]
 """Comparison type denoting which providers are compared."""
 
 
