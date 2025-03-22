@@ -10,7 +10,6 @@ from typing import Dict, List
 # Third-Party Library Imports
 from src.custom_types import (
     ComparisonType,
-    LeaderboardEntry,
     OptionKey,
     OptionLabel,
     TTSProviderName,
@@ -26,7 +25,7 @@ HUME_AI: TTSProviderName = "Hume AI"
 ELEVENLABS: TTSProviderName = "ElevenLabs"
 OPENAI: TTSProviderName = "OpenAI"
 
-TTS_PROVIDERS: List[TTSProviderName] = ["Hume AI", "ElevenLabs", "OpenAI"]
+TTS_PROVIDERS: List[TTSProviderName] = ["Hume AI", "OpenAI", "ElevenLabs"]
 TTS_PROVIDER_LINKS = {
     "Hume AI": {
         "provider_link": "https://hume.ai/",
@@ -168,11 +167,4 @@ META_TAGS: List[Dict[str, str]] = [
         'name': 'twitter:image',
         'content': '/static/arena-opengraph-logo.png'
     }
-]
-
-# Reflects and empty leaderboard state
-DEFAULT_LEADERBOARD: List[LeaderboardEntry] = [
-    LeaderboardEntry("1", "", "", "0%", "0"),
-    LeaderboardEntry("2", "", "", "0%", "0"),
-    LeaderboardEntry("3", "", "", "0%", "0"),
 ]

@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 # Local Application Imports
 from src.config import Config, logger
-from src.database.models import Base
+from src.database import Base
 
 
 async def init_tables():

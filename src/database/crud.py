@@ -5,6 +5,9 @@ This module defines the operations for the Expressive TTS Arena project's databa
 Since vote records are never updated or deleted, only functions to create and read votes are provided.
 """
 
+# Standard Library Imports
+from typing import List
+
 # Third-Party Library Imports
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -12,7 +15,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # Local Application Imports
 from src.config import logger
-from src.constants import DEFAULT_LEADERBOARD
 from src.custom_types import LeaderboardEntry, LeaderboardTableEntries, VotingResults
 from src.database.models import VoteResult
 
@@ -83,6 +85,12 @@ async def get_leaderboard_stats(db: AsyncSession) -> LeaderboardTableEntries:
         LeaderboardTableEntries: A list of LeaderboardEntry objects containing rank,
                                 provider name, model name, win rate, and total votes.
     """
+    default_leaderboard = [
+        LeaderboardEntry("1", "", "", "0%", "0"),
+        LeaderboardEntry("2", "", "", "0%", "0"),
+        LeaderboardEntry("3", "", "", "0%", "0"),
+    ]
+
     try:
         query = text(
             """
@@ -137,6 +145,10 @@ async def get_leaderboard_stats(db: AsyncSession) -> LeaderboardTableEntries:
         result = await db.execute(query)
         rows = result.fetchall()
 
+        # If no rows, return default
+        if not rows:
+            return default_leaderboard
+
         # Format the data for the leaderboard
         leaderboard_data = []
         for i, row in enumerate(rows, 1):
@@ -150,16 +162,161 @@ async def get_leaderboard_stats(db: AsyncSession) -> LeaderboardTableEntries:
             )
             leaderboard_data.append(leaderboard_entry)
 
-        # If no data was found, return default entries
-        if not leaderboard_data:
-            return DEFAULT_LEADERBOARD
-
         return leaderboard_data
 
     except SQLAlchemyError as e:
         logger.error(f"Database error while fetching leaderboard stats: {e}")
-        return DEFAULT_LEADERBOARD
+        return default_leaderboard
     except Exception as e:
         logger.error(f"Unexpected error while fetching leaderboard stats: {e}")
-        return DEFAULT_LEADERBOARD
+        return default_leaderboard
 
+
+async def get_head_to_head_battle_stats(db: AsyncSession) -> List[List[str]]:
+    """
+    Fetches the total number of voting results for each comparison type (excluding "Hume AI - Hume AI").
+
+    Args:
+        db (AsyncSession): The SQLAlchemy async database session.
+
+    Returns:
+        List[List[str]]: A list of lists, where each inner list contains the comparison type and the count.
+    """
+    default_counts = [
+        ["Hume AI - OpenAI", "0"],
+        ["Hume AI - ElevenLabs", "0"],
+        ["OpenAI - ElevenLabs", "0"],
+    ]
+
+    try:
+        query = text(
+            """
+            SELECT
+                comparison_type,
+                COUNT(*) as total
+            FROM vote_results
+            WHERE comparison_type != 'Hume AI - Hume AI'
+            GROUP BY comparison_type
+            ORDER BY comparison_type;
+            """
+        )
+
+        result = await db.execute(query)
+        rows = result.fetchall()
+
+        # If no rows, return default
+        if not rows:
+            return default_counts
+
+        # Format the results
+        formatted_results = []
+        for row in rows:
+            comparison_type, count = row
+            formatted_results.append([comparison_type, str(count)])
+
+        # Make sure all expected comparison types are included
+        expected_types = {"Hume AI - OpenAI", "Hume AI - ElevenLabs", "OpenAI - ElevenLabs"}
+        found_types = {row[0] for row in formatted_results}
+
+        # Add missing types with zero counts
+        for type_name in expected_types - found_types:
+            formatted_results.append([type_name, "0"])
+
+        # Sort the results by comparison type
+        formatted_results.sort(key=lambda x: x[0])
+
+        return formatted_results
+
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while fetching comparison counts: {e}")
+        return default_counts
+    except Exception as e:
+        logger.error(f"Unexpected error while fetching comparison counts: {e}")
+        return default_counts
+
+
+async def get_head_to_head_win_rate_stats(db: AsyncSession) -> List[List[str]]:
+    """
+    Calculates the win rate for each provider against the other in head-to-head comparisons.
+
+    Args:
+        db (AsyncSession): The SQLAlchemy async database session.
+
+    Returns:
+        List[List[str]]: A list of lists, where each inner list contains:
+            - The comparison type
+            - The win rate of the first provider (the one named first in the comparison type)
+            - The win rate of the second provider (the one named second in the comparison type)
+    """
+    default_win_rates = [
+        ["Hume AI - OpenAI", "0%", "0%"],
+        ["Hume AI - ElevenLabs", "0%", "0%"],
+        ["OpenAI - ElevenLabs", "0%", "0%"],
+    ]
+
+    try:
+        query = text(
+            """
+            SELECT
+                comparison_type,
+                CASE WHEN COUNT(*) > 0
+                    THEN ROUND(SUM(CASE
+                        WHEN comparison_type = 'Hume AI - OpenAI' AND winning_provider = 'Hume AI' THEN 1
+                        WHEN comparison_type = 'Hume AI - ElevenLabs' AND winning_provider = 'Hume AI' THEN 1
+                        WHEN comparison_type = 'OpenAI - ElevenLabs' AND winning_provider = 'OpenAI' THEN 1
+                        ELSE 0
+                    END) * 100.0 / COUNT(*), 2)
+                    ELSE 0
+                END as first_provider_win_rate,
+                CASE WHEN COUNT(*) > 0
+                    THEN ROUND(SUM(CASE
+                        WHEN comparison_type = 'Hume AI - OpenAI' AND winning_provider = 'OpenAI' THEN 1
+                        WHEN comparison_type = 'Hume AI - ElevenLabs' AND winning_provider = 'ElevenLabs' THEN 1
+                        WHEN comparison_type = 'OpenAI - ElevenLabs' AND winning_provider = 'ElevenLabs' THEN 1
+                        ELSE 0
+                    END) * 100.0 / COUNT(*), 2)
+                    ELSE 0
+                END as second_provider_win_rate
+            FROM vote_results
+            WHERE comparison_type != 'Hume AI - Hume AI'
+            GROUP BY comparison_type
+            ORDER BY comparison_type;
+            """
+        )
+
+        result = await db.execute(query)
+        rows = result.fetchall()
+
+        # If no rows, return default
+        if not rows:
+            return default_win_rates
+
+        # Format the results
+        formatted_results = []
+        for row in rows:
+            comparison_type, first_provider_win_rate, second_provider_win_rate = row
+            formatted_results.append([
+                comparison_type,
+                f"{first_provider_win_rate}%",
+                f"{second_provider_win_rate}%"
+            ])
+
+        # Make sure all expected comparison types are included
+        expected_types = {"Hume AI - OpenAI", "Hume AI - ElevenLabs", "OpenAI - ElevenLabs"}
+        found_types = {row[0] for row in formatted_results}
+
+        # Add missing types with zero win rates
+        for type_name in expected_types - found_types:
+            formatted_results.append([type_name, "0%", "0%"])
+
+        # Sort the results by comparison type
+        formatted_results.sort(key=lambda x: x[0])
+
+        return formatted_results
+
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while fetching provider win rates: {e}")
+        return default_win_rates
+    except Exception as e:
+        logger.error(f"Unexpected error while fetching provider win rates: {e}")
+        return default_win_rates
