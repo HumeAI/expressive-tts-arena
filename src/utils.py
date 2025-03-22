@@ -23,14 +23,20 @@ from src import constants
 from src.config import Config, logger
 from src.custom_types import (
     ComparisonType,
+    LeaderboardEntry,
     Option,
     OptionKey,
     OptionMap,
     TTSProviderName,
     VotingResults,
 )
-from src.database import crud
-from src.database.database import AsyncDBSessionMaker
+from src.database import (
+    AsyncDBSessionMaker,
+    create_vote,
+    get_head_to_head_battle_stats,
+    get_head_to_head_win_rate_stats,
+    get_leaderboard_stats,
+)
 
 
 def truncate_text(text: str, max_length: int = 50) -> str:
@@ -374,7 +380,7 @@ async def _persist_vote(db_session_maker: AsyncDBSessionMaker, voting_results: V
     session = await _create_db_session(db_session_maker)
     _log_voting_results(voting_results)
     try:
-        await crud.create_vote(cast(AsyncSession, session), voting_results)
+        await create_vote(cast(AsyncSession, session), voting_results)
     except Exception as e:
         # Log the error with traceback
         logger.error(f"Failed to create vote record: {e}", exc_info=True)
@@ -434,48 +440,158 @@ async def submit_voting_results(
         logger.error(f"Background task error in submit_voting_results: {e}", exc_info=True)
 
 
-async def get_leaderboard_data(db_session_maker: AsyncDBSessionMaker) -> List[List[str]]:
+async def get_leaderboard_data(
+    db_session_maker: AsyncDBSessionMaker
+) -> Tuple[List[List[str]], List[List[str]], List[List[str]]]:
     """
-    Fetches leaderboard data from voting results database
+    Fetches and formats all leaderboard data from the voting results database.
+
+    This function retrieves three different datasets:
+    1. Provider rankings with overall performance metrics
+    2. Head-to-head battle counts between providers
+    3. Win rate percentages for each provider against others
+
+    Args:
+        db_session_maker (AsyncDBSessionMaker): Factory function for creating async database sessions.
 
     Returns:
-        LeaderboardTableEntries: A list of LeaderboardEntry objects containing rank, provider name anchor tag, model
-                                name anchor tag, win rate, and total votes.
+        Tuple containing three datasets, each as List[List[str]]:
+            - leaderboard_data: Provider rankings with performance metrics
+            - battle_counts_data: Number of comparisons between each provider pair
+            - win_rate_data: Win percentages in head-to-head matchups
     """
     # Create session
     session = await _create_db_session(db_session_maker)
     try:
-        leaderboard_data = await crud.get_leaderboard_stats(cast(AsyncSession, session))
+        leaderboard_data_raw = await get_leaderboard_stats(cast(AsyncSession, session))
+        battle_counts_data_raw = await get_head_to_head_battle_stats(cast(AsyncSession, session))
+        win_rate_data_raw = await get_head_to_head_win_rate_stats(cast(AsyncSession, session))
+
         logger.info("Fetched leaderboard data successfully.")
-        # return data formatted for the UI (adds links and styling)
-        return [
-            [
-                f'<p style="text-align: center;">{row[0]}</p>',
-                f"""
-                <a
-                    href="{constants.TTS_PROVIDER_LINKS[row[1]]["provider_link"]}"
-                    target="_blank"
-                    class="provider-link"
-                >{row[1]}</a>
-                """,
-                f"""<a
-                    href="{constants.TTS_PROVIDER_LINKS[row[1]]["model_link"]}"
-                    target="_blank"
-                    class="provider-link"
-                >{row[2]}</a>
-                """,
-                f'<p style="text-align: center;">{row[3]}</p>',
-                f'<p style="text-align: center;">{row[4]}</p>',
-            ] for row in leaderboard_data
-        ]
+
+        leaderboard_data = _format_leaderboard_data(leaderboard_data_raw)
+        battle_counts_data = _format_battle_counts_data(battle_counts_data_raw)
+        win_rate_data = _format_win_rate_data(win_rate_data_raw)
+
+        return leaderboard_data, battle_counts_data, win_rate_data
     except Exception as e:
         # Log the error with traceback
         logger.error(f"Failed to fetch leaderboard data: {e}", exc_info=True)
-        return []
+        return [[]], [[]], [[]]
     finally:
         # Always ensure the session is closed
         if session is not None:
             await session.close()
+
+def _format_leaderboard_data(leaderboard_data_raw: List[LeaderboardEntry]) -> List[List[str]]:
+    """
+    Formats raw leaderboard data for display in the UI.
+
+    Converts LeaderboardEntry objects into HTML-formatted strings with appropriate
+    styling and links for provider and model information.
+
+    Args:
+        leaderboard_data_raw (List[LeaderboardEntry]): Raw leaderboard data from the database.
+
+    Returns:
+        List[List[str]]: Formatted HTML strings for each cell in the leaderboard table.
+    """
+    return [
+        [
+            f'<p style="text-align: center;">{row[0]}</p>',
+            f"""<a href="{constants.TTS_PROVIDER_LINKS[row[1]]["provider_link"]}"
+                target="_blank"
+                class="provider-link"
+            >{row[1]}</a>
+            """,
+            f"""<a href="{constants.TTS_PROVIDER_LINKS[row[1]]["model_link"]}"
+                target="_blank"
+                class="provider-link"
+            >{row[2]}</a>
+            """,
+            f'<p style="text-align: center;">{row[3]}</p>',
+            f'<p style="text-align: center;">{row[4]}</p>',
+        ] for row in leaderboard_data_raw
+    ]
+
+
+def _format_battle_counts_data(battle_counts_data_raw: List[List[str]]) -> List[List[str]]:
+    """
+    Formats battle count data into a matrix format for the UI.
+
+    Creates a provider-by-provider matrix showing the number of direct comparisons
+    between each pair of providers. Diagonal cells show dashes as providers aren't
+    compared against themselves.
+
+    Args:
+        battle_counts_data_raw (List[List[str]]): Raw battle count data from the database,
+            where each inner list contains [comparison_type, count].
+
+    Returns:
+        List[List[str]]: HTML-formatted matrix of battle counts between providers.
+    """
+    battle_counts_dict = {item[0]: item[1] for item in battle_counts_data_raw}
+    # Create canonical comparison keys based on your expected database formats
+    comparison_keys = {
+        ("Hume AI", "OpenAI"): "Hume AI - OpenAI",
+        ("Hume AI", "ElevenLabs"): "Hume AI - ElevenLabs",
+        ("OpenAI", "ElevenLabs"): "OpenAI - ElevenLabs"
+    }
+    return [
+        [
+            f'<p style="padding-left: 8px;"><strong>{row_provider}</strong></p>'
+        ] + [
+            f"""
+            <p style="text-align: center;">
+                {"-" if row_provider == col_provider
+                    else battle_counts_dict.get(
+                        comparison_keys.get((row_provider, col_provider)) or
+                        comparison_keys.get((col_provider, row_provider), "unknown"),
+                        "0"
+                    )
+                }
+            </p>
+            """ for col_provider in constants.TTS_PROVIDERS
+        ]
+        for row_provider in constants.TTS_PROVIDERS
+    ]
+
+
+def _format_win_rate_data(win_rate_data_raw: List[List[str]]) -> List[List[str]]:
+    """
+    Formats win rate data into a matrix format for the UI.
+
+    Creates a provider-by-provider matrix showing the percentage of times the row
+    provider won against the column provider. Diagonal cells show dashes as
+    providers aren't compared against themselves.
+
+    Args:
+        win_rate_data_raw (List[List[str]]): Raw win rate data from the database,
+            where each inner list contains [comparison_type, first_win_rate, second_win_rate].
+
+    Returns:
+        List[List[str]]: HTML-formatted matrix of win rates between providers.
+    """
+    # Create a clean lookup dictionary with provider pairs as keys
+    win_rates = {}
+    for comparison_type, first_win_rate, second_win_rate in win_rate_data_raw:
+        provider1, provider2 = comparison_type.split(" - ")
+        win_rates[(provider1, provider2)] = first_win_rate
+        win_rates[(provider2, provider1)] = second_win_rate
+
+    return [
+        [
+            f'<p style="padding-left: 8px;"><strong>{row_provider}</strong></p>'
+        ] + [
+            f"""
+                <p style="text-align: center;">
+                    {"-" if row_provider == col_provider else win_rates.get((row_provider, col_provider), "0%")}
+                </p>
+            """
+            for col_provider in constants.TTS_PROVIDERS
+        ]
+        for row_provider in constants.TTS_PROVIDERS
+    ]
 
 
 def validate_env_var(var_name: str) -> str:
