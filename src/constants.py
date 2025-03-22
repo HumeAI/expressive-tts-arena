@@ -10,6 +10,7 @@ from typing import Dict, List
 # Third-Party Library Imports
 from src.custom_types import (
     ComparisonType,
+    LeaderboardEntry,
     OptionKey,
     OptionLabel,
     TTSProviderName,
@@ -167,4 +168,11 @@ META_TAGS: List[Dict[str, str]] = [
         'name': 'twitter:image',
         'content': '/static/arena-opengraph-logo.png'
     }
+]
+
+# Reflects and empty leaderboard state
+DEFAULT_LEADERBOARD: List[LeaderboardEntry] = [
+    LeaderboardEntry("1", "", "", "0%", "0"),
+    LeaderboardEntry("2", "", "", "0%", "0"),
+    LeaderboardEntry("3", "", "", "0%", "0"),
 ]

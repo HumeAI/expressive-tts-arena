@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # Local Application Imports
 from src.config import logger
+from src.constants import DEFAULT_LEADERBOARD
 from src.custom_types import LeaderboardEntry, LeaderboardTableEntries, VotingResults
 from src.database.models import VoteResult
 
@@ -72,8 +73,8 @@ async def get_leaderboard_stats(db: AsyncSession) -> LeaderboardTableEntries:
     """
     Fetches voting statistics from the database to populate a leaderboard.
 
-    This function calculates voting statistics for TTS providers, excluding Hume-to-Hume
-    comparisons, and returns data structured for a leaderboard display.
+    This function calculates voting statistics for TTS providers, using only the relevant
+    comparison types for each provider, and returns data structured for a leaderboard display.
 
     Args:
         db (AsyncSession): The SQLAlchemy async database session.
@@ -82,58 +83,54 @@ async def get_leaderboard_stats(db: AsyncSession) -> LeaderboardTableEntries:
         LeaderboardTableEntries: A list of LeaderboardEntry objects containing rank,
                                 provider name, model name, win rate, and total votes.
     """
-    default_leaderboard = [
-        LeaderboardEntry("1", "", "", "0%", "0"),
-        LeaderboardEntry("2", "", "", "0%", "0"),
-        LeaderboardEntry("3", "", "", "0%", "0"),
-    ]
-
     try:
         query = text(
             """
-            WITH provider_stats AS (
-                -- Get wins for Hume AI
+            WITH all_providers AS (
+                SELECT provider FROM (VALUES ('Hume AI'), ('ElevenLabs'), ('OpenAI')) AS p(provider)
+            ),
+            provider_stats AS (
                 SELECT
                     'Hume AI' as provider,
                     COUNT(*) as total_comparisons,
                     SUM(CASE WHEN winning_provider = 'Hume AI' THEN 1 ELSE 0 END) as wins
                 FROM vote_results
-                WHERE comparison_type != 'Hume AI - Hume AI'
+                WHERE comparison_type IN ('Hume AI - ElevenLabs', 'Hume AI - OpenAI')
 
                 UNION ALL
 
-                -- Get wins for ElevenLabs
                 SELECT
                     'ElevenLabs' as provider,
                     COUNT(*) as total_comparisons,
                     SUM(CASE WHEN winning_provider = 'ElevenLabs' THEN 1 ELSE 0 END) as wins
                 FROM vote_results
-                WHERE comparison_type != 'Hume AI - Hume AI'
+                WHERE comparison_type IN ('Hume AI - ElevenLabs', 'OpenAI - ElevenLabs')
 
                 UNION ALL
 
-                -- Get wins for OpenAI
                 SELECT
                     'OpenAI' as provider,
                     COUNT(*) as total_comparisons,
                     SUM(CASE WHEN winning_provider = 'OpenAI' THEN 1 ELSE 0 END) as wins
                 FROM vote_results
-                WHERE comparison_type != 'Hume AI - Hume AI'
+                WHERE comparison_type IN ('Hume AI - OpenAI', 'OpenAI - ElevenLabs')
             )
             SELECT
-                provider,
+                p.provider,
                 CASE
-                    WHEN provider = 'Hume AI' THEN 'Octave'
-                    WHEN provider = 'ElevenLabs' THEN 'Voice Design'
-                    WHEN provider = 'OpenAI' THEN 'gpt-4o-mini-tts'
+                    WHEN p.provider = 'Hume AI' THEN 'Octave'
+                    WHEN p.provider = 'ElevenLabs' THEN 'Voice Design'
+                    WHEN p.provider = 'OpenAI' THEN 'gpt-4o-mini-tts'
                 END as model,
                 CASE
-                    WHEN total_comparisons > 0 THEN ROUND((wins * 100.0 / total_comparisons)::numeric, 2)
+                    WHEN COALESCE(ps.total_comparisons, 0) > 0
+                    THEN ROUND((COALESCE(ps.wins, 0) * 100.0 / COALESCE(ps.total_comparisons, 1))::numeric, 2)
                     ELSE 0
                 END as win_rate,
-                wins as total_votes
-            FROM provider_stats
-            ORDER BY win_rate DESC;
+                COALESCE(ps.wins, 0) as total_votes
+            FROM all_providers p
+            LEFT JOIN provider_stats ps ON p.provider = ps.provider
+            ORDER BY win_rate DESC, total_votes DESC;
             """
         )
 
@@ -155,13 +152,14 @@ async def get_leaderboard_stats(db: AsyncSession) -> LeaderboardTableEntries:
 
         # If no data was found, return default entries
         if not leaderboard_data:
-            return default_leaderboard
+            return DEFAULT_LEADERBOARD
 
         return leaderboard_data
 
     except SQLAlchemyError as e:
         logger.error(f"Database error while fetching leaderboard stats: {e}")
-        return default_leaderboard
+        return DEFAULT_LEADERBOARD
     except Exception as e:
         logger.error(f"Unexpected error while fetching leaderboard stats: {e}")
-        return default_leaderboard
+        return DEFAULT_LEADERBOARD
+
