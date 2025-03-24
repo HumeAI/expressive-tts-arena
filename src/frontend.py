@@ -22,7 +22,7 @@ import gradio as gr
 from src import constants
 from src.config import Config, logger
 from src.custom_types import Option, OptionMap
-from src.database.database import AsyncDBSessionMaker
+from src.database import AsyncDBSessionMaker
 from src.integrations import (
     AnthropicError,
     ElevenLabsError,
@@ -54,6 +54,8 @@ class Frontend:
 
         # leaderboard update state
         self._leaderboard_data: List[List[str]] = [[]]
+        self._battle_counts_data: List[List[str]] = [[]]
+        self._win_rates_data: List[List[str]] = [[]]
         self._leaderboard_cache_hash: Optional[str] = None
         self._last_leaderboard_update_time: float = 0.0
         self._min_refresh_interval = 30
@@ -77,7 +79,11 @@ class Frontend:
             return False
 
         # Fetch the latest data
-        latest_leaderboard_data = await get_leaderboard_data(self.db_session_maker)
+        (
+            latest_leaderboard_data,
+            latest_battle_counts_data,
+            latest_win_rates_data
+        ) = await get_leaderboard_data(self.db_session_maker)
 
         # Generate a hash of the new data to check if it's changed
         data_str = json.dumps(str(latest_leaderboard_data))
@@ -90,6 +96,8 @@ class Frontend:
 
         # Update the cache and timestamp
         self._leaderboard_data = latest_leaderboard_data
+        self._battle_counts_data = latest_battle_counts_data
+        self._win_rates_data = latest_win_rates_data
         self._leaderboard_cache_hash = data_hash
         self._last_leaderboard_update_time = current_time
         logger.info("Leaderboard data updated successfully.")
@@ -330,7 +338,7 @@ class Frontend:
             gr.update(value=character_description), # Update character description
         )
 
-    async def _refresh_leaderboard(self, force: bool = False) -> gr.DataFrame:
+    async def _refresh_leaderboard(self, force: bool = False) -> Tuple[gr.DataFrame, gr.DataFrame, gr.DataFrame]:
         """
         Asynchronously fetches and formats the latest leaderboard data.
 
@@ -338,17 +346,20 @@ class Frontend:
             force (bool): If True, bypass time-based throttling.
 
         Returns:
-            gr.DataFrame: Updated DataFrame or gr.skip() if no update needed
+            tuple: Updated DataFrames or gr.skip() if no update needed
         """
         data_updated = await self._update_leaderboard_data(force=force)
 
         if not self._leaderboard_data:
             raise gr.Error("Unable to retrieve leaderboard data. Please refresh the page or try again shortly.")
 
-        # Only return an update if the data changed or force=True
-        if data_updated:
-            return gr.update(value=self._leaderboard_data)
-        return gr.skip()
+        if data_updated or force:
+            return (
+                gr.update(value=self._leaderboard_data),
+                gr.update(value=self._battle_counts_data),
+                gr.update(value=self._win_rates_data)
+            )
+        return gr.skip(), gr.skip(), gr.skip()
 
     async def _handle_tab_select(self, evt: gr.SelectData):
         """
@@ -358,12 +369,11 @@ class Frontend:
             evt (gr.SelectData): Event data containing information about the selected tab
 
         Returns:
-            gr.update or gr.skip: Update for the leaderboard table if data changed, otherwise skip
+            tuple: Updates for the three tables if data changed, otherwise skip
         """
-        # Check if the selected tab is "Leaderboard" by name
         if evt.value == "Leaderboard":
             return await self._refresh_leaderboard(force=False)
-        return gr.skip()
+        return gr.skip(), gr.skip(), gr.skip()
 
     def _disable_ui(self) -> Tuple[
         gr.Button,
@@ -909,6 +919,37 @@ class Frontend:
                 elem_id="leaderboard-table"
             )
 
+        with gr.Column():
+            gr.HTML(
+                value="""
+                <h2 style="padding-top: 12px;" class="tab-header">📊 Head-to-Head Matchups</h2>
+                <p style="padding-left: 8px; width: 80%;">
+                    These tables show how each provider performs against others in direct comparisons.
+                    The first table shows the total number of comparisons between each pair of providers.
+                    The second table shows the win rate (percentage) of the row provider against the column provider.
+                </p>
+                """,
+                padding=False
+            )
+
+        with gr.Row(equal_height=True):
+            with gr.Column(min_width=420):
+                battle_counts_table = gr.DataFrame(
+                    headers=["", "Hume AI", "OpenAI", "ElevenLabs"],
+                    datatype=["html", "html", "html", "html"],
+                    column_widths=[132, 132, 132, 132],
+                    value=self._battle_counts_data,
+                    interactive=False,
+                )
+            with gr.Column(min_width=420):
+                win_rates_table = gr.DataFrame(
+                    headers=["", "Hume AI", "OpenAI", "ElevenLabs"],
+                    datatype=["html", "html", "html", "html"],
+                    column_widths=[132, 132, 132, 132],
+                    value=self._win_rates_data,
+                    interactive=False,
+                )
+
         with gr.Accordion(label="Citation", open=False):
             with gr.Column(variant="panel"):
                 with gr.Column(variant="panel"):
@@ -965,7 +1006,8 @@ class Frontend:
 
         # Wrapper for the async refresh function
         async def async_refresh_handler():
-            return await self._refresh_leaderboard(force=True)
+            leaderboard_update, battle_counts_update, win_rates_update = await self._refresh_leaderboard(force=True)
+            return leaderboard_update, battle_counts_update, win_rates_update
 
         # Handler to re-enable the button after a refresh
         def reenable_button():
@@ -980,14 +1022,14 @@ class Frontend:
         ).then(
             fn=async_refresh_handler,
             inputs=[],
-            outputs=[leaderboard_table]
+            outputs=[leaderboard_table, battle_counts_table, win_rates_table]  # Update all three tables
         ).then(
             fn=reenable_button,
             inputs=[],
             outputs=[refresh_button]
         )
 
-        return leaderboard_table
+        return leaderboard_table, battle_counts_table, win_rates_table
 
     async def build_gradio_interface(self) -> gr.Blocks:
         """
@@ -1004,12 +1046,12 @@ class Frontend:
                 with gr.TabItem("Arena"):
                     self._build_arena_section()
                 with gr.TabItem("Leaderboard"):
-                    leaderboard_table = self._build_leaderboard_section()
+                    leaderboard_table, battle_counts_table, win_rates_table = self._build_leaderboard_section()
 
             tabs.select(
                 fn=self._handle_tab_select,
                 inputs=[],
-                outputs=[leaderboard_table],
+                outputs=[leaderboard_table, battle_counts_table, win_rates_table],
             )
 
         logger.debug("Gradio interface built successfully")

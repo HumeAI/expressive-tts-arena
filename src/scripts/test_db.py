@@ -34,7 +34,7 @@ from sqlalchemy import text
 
 # Local Application Imports
 from src.config import Config, logger
-from src.database.database import engine, init_db
+from src.database import engine, init_db
 
 
 async def test_connection_async():
