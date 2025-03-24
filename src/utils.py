@@ -204,22 +204,37 @@ def save_base64_audio_to_file(base64_audio: str, filename: str, config: Config) 
     return str(relative_path)
 
 
-def get_random_provider(text_modified: bool) -> TTSProviderName:
+def get_random_providers(text_modified: bool) -> Tuple[TTSProviderName, TTSProviderName]:
     """
-    Select a TTS provider based on whether the text has been modified.
+    Select 2 TTS providers based on whether the text has been modified.
+
+    Probabilities:
+     - 50% HUME_AI, OPENAI
+     - 25% OPENAI, ELEVENLABS
+     - 20% HUME_AI, ELEVENLABS
+     - 5% HUME_AI, HUME_AI
+
+    If the `text_modified` argument is `True`, then 100% HUME_AI, HUME_AI
 
     Args:
-        text_modified (bool): A flag indicating whether the text has been modified.
+        text_modified (bool): A flag indicating whether the text has been modified, indicating a custom text input.
 
     Returns:
-        provider: A TTS provider selected based on the following criteria:
-            - If the text has been modified, it will be "Hume AI"
-            - Otherwise, it will be "Hume AI" 30% of the time and "ElevenLabs" 70% of the time
+        tuple: A tuple (TTSProviderName, TTSProviderName)
     """
     if text_modified:
-        return constants.HUME_AI
+        return constants.HUME_AI, constants.HUME_AI
 
-    return constants.HUME_AI if random.random() < 0.3 else constants.ELEVENLABS
+    # When modifying the probability distribution, make sure the weights match the order of provider pairs
+    provider_pairs = [
+        (constants.HUME_AI, constants.OPENAI),
+        (constants.OPENAI, constants.ELEVENLABS),
+        (constants.HUME_AI, constants.ELEVENLABS),
+        (constants.HUME_AI, constants.HUME_AI)
+    ]
+    weights = [0.5, 0.25, 0.2, 0.05]
+
+    return random.choices(provider_pairs, weights=weights, k=1)[0]
 
 
 def create_shuffled_tts_options(option_a: Option, option_b: Option) -> OptionMap:
@@ -285,9 +300,6 @@ def _determine_comparison_type(provider_a: TTSProviderName, provider_b: TTSProvi
     """
     Determine the comparison type based on the given TTS provider names.
 
-    If both providers are HUME_AI, the comparison type is HUME_TO_HUME.
-    If either provider is ELEVENLABS, the comparison type is HUME_TO_ELEVENLABS.
-
     Args:
         provider_a (TTSProviderName): The first TTS provider.
         provider_b (TTSProviderName): The second TTS provider.
@@ -302,8 +314,16 @@ def _determine_comparison_type(provider_a: TTSProviderName, provider_b: TTSProvi
     if provider_a == constants.HUME_AI and provider_b == constants.HUME_AI:
         return constants.HUME_TO_HUME
 
-    if constants.ELEVENLABS in (provider_a, provider_b):
+    providers = (provider_a, provider_b)
+
+    if constants.HUME_AI in providers and constants.ELEVENLABS in providers:
         return constants.HUME_TO_ELEVENLABS
+
+    if constants.HUME_AI in providers and constants.OPENAI in providers:
+        return constants.HUME_TO_OPENAI
+
+    if constants.ELEVENLABS in providers and constants.OPENAI in providers:
+        return constants.OPENAI_TO_ELEVENLABS
 
     raise ValueError(f"Invalid provider combination: {provider_a}, {provider_b}")
 

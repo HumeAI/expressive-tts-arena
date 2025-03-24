@@ -10,6 +10,7 @@ from typing import Dict, List
 # Third-Party Library Imports
 from src.custom_types import (
     ComparisonType,
+    LeaderboardEntry,
     OptionKey,
     OptionLabel,
     TTSProviderName,
@@ -23,8 +24,9 @@ RATE_LIMIT_ERROR_CODE = 429
 # UI constants
 HUME_AI: TTSProviderName = "Hume AI"
 ELEVENLABS: TTSProviderName = "ElevenLabs"
+OPENAI: TTSProviderName = "OpenAI"
 
-TTS_PROVIDERS: List[TTSProviderName] = ["Hume AI", "ElevenLabs"]
+TTS_PROVIDERS: List[TTSProviderName] = ["Hume AI", "ElevenLabs", "OpenAI"]
 TTS_PROVIDER_LINKS = {
     "Hume AI": {
         "provider_link": "https://hume.ai/",
@@ -33,11 +35,17 @@ TTS_PROVIDER_LINKS = {
     "ElevenLabs": {
         "provider_link": "https://elevenlabs.io/",
         "model_link": "https://elevenlabs.io/blog/rvg",
+    },
+    "OpenAI": {
+        "provider_link": "https://openai.com/",
+        "model_link": "https://platform.openai.com/docs/models/gpt-4o-mini-tts",
     }
 }
 
 HUME_TO_HUME: ComparisonType = "Hume AI - Hume AI"
 HUME_TO_ELEVENLABS: ComparisonType = "Hume AI - ElevenLabs"
+HUME_TO_OPENAI: ComparisonType = "Hume AI - OpenAI"
+OPENAI_TO_ELEVENLABS: ComparisonType = "OpenAI - ElevenLabs"
 
 CHARACTER_DESCRIPTION_MIN_LENGTH: int = 20
 CHARACTER_DESCRIPTION_MAX_LENGTH: int = 400
@@ -162,3 +170,9 @@ META_TAGS: List[Dict[str, str]] = [
     }
 ]
 
+# Reflects and empty leaderboard state
+DEFAULT_LEADERBOARD: List[LeaderboardEntry] = [
+    LeaderboardEntry("1", "", "", "0%", "0"),
+    LeaderboardEntry("2", "", "", "0%", "0"),
+    LeaderboardEntry("3", "", "", "0%", "0"),
+]
