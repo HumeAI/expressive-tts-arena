@@ -12,6 +12,7 @@ Users can compare the outputs and vote for their favorite in an interactive UI.
 import asyncio
 import hashlib
 import json
+import random
 import time
 from typing import List, Optional, Tuple
 
@@ -32,6 +33,8 @@ from src.common.utils import (
 from src.core import TTSService
 from src.database import AsyncDBSessionMaker
 from src.integrations import AnthropicError, ElevenLabsError, HumeError, OpenAIError, generate_text_with_claude
+
+from .constants import OPTION_A_LABEL, OPTION_B_LABEL, SAMPLE_CHARACTER_DESCRIPTIONS
 
 
 class Frontend:
@@ -301,11 +304,9 @@ class Frontend:
                 - sample_character_description_dropdown (select random)
                 - character_description_input (update value)
         """
-        import random
-
-        sample_keys = list(constants.SAMPLE_CHARACTER_DESCRIPTIONS.keys())
+        sample_keys = list(SAMPLE_CHARACTER_DESCRIPTIONS.keys())
         random_sample = random.choice(sample_keys)
-        character_description = constants.SAMPLE_CHARACTER_DESCRIPTIONS[random_sample]
+        character_description = SAMPLE_CHARACTER_DESCRIPTIONS[random_sample]
 
         logger.info(f"Randomize All: Selected '{random_sample}'")
 
@@ -502,7 +503,7 @@ class Frontend:
             )
 
         sample_character_description_dropdown = gr.Dropdown(
-            choices=list(constants.SAMPLE_CHARACTER_DESCRIPTIONS.keys()),
+            choices=list(SAMPLE_CHARACTER_DESCRIPTIONS.keys()),
             label="Sample Characters",
             info="Generate text with a sample character description.",
             value=None,
@@ -538,7 +539,7 @@ class Frontend:
             with gr.Column():
                 with gr.Group():
                     option_a_audio_player = gr.Audio(
-                        label=constants.OPTION_A_LABEL,
+                        label=OPTION_A_LABEL,
                         type="filepath",
                         interactive=False,
                         show_download_button=False,
@@ -554,7 +555,7 @@ class Frontend:
             with gr.Column():
                 with gr.Group():
                     option_b_audio_player = gr.Audio(
-                        label=constants.OPTION_B_LABEL,
+                        label=OPTION_B_LABEL,
                         type="filepath",
                         interactive=False,
                         show_download_button=False,
@@ -660,7 +661,7 @@ class Frontend:
         # 3. Generate text
         # 4. Enable interactive UI components
         sample_character_description_dropdown.select(
-            fn=lambda choice: constants.SAMPLE_CHARACTER_DESCRIPTIONS.get(choice, ""),
+            fn=lambda choice: SAMPLE_CHARACTER_DESCRIPTIONS.get(choice, ""),
             inputs=[sample_character_description_dropdown],
             outputs=[character_description_input],
         ).then(
