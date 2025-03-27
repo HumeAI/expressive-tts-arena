@@ -129,7 +129,7 @@ async def text_to_speech_with_elevenlabs(
 
     except ApiError as e:
         logger.error(f"ElevenLabs API request failed: {e!s}")
-        clean_message = _extract_elevenlabs_error_message(e)
+        clean_message = __extract_elevenlabs_error_message(e)
 
         if e.status_code is not None and CLIENT_ERROR_CODE <= e.status_code < SERVER_ERROR_CODE:
             raise UnretryableElevenLabsError(message=clean_message, original_exception=e) from e
@@ -145,7 +145,7 @@ async def text_to_speech_with_elevenlabs(
         raise ElevenLabsError(message=error_message, original_exception=e) from e
 
 
-def _extract_elevenlabs_error_message(e: ApiError) -> str:
+def __extract_elevenlabs_error_message(e: ApiError) -> str:
     """
     Extracts a clean, user-friendly error message from an ElevenLabs API error response.
 

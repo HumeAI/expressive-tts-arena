@@ -140,7 +140,7 @@ async def text_to_speech_with_hume(
     except ApiError as e:
         elapsed_time = time.time() - start_time
         logger.error(f"Hume API request failed after {elapsed_time:.2f} seconds: {e!s}")
-        clean_message = _extract_hume_api_error_message(e)
+        clean_message = __extract_hume_api_error_message(e)
         logger.error(f"Full Hume API error: {e!s}")
 
         if e.status_code is not None:
@@ -161,7 +161,7 @@ async def text_to_speech_with_hume(
         raise HumeError(message=clean_message, original_exception=e) from e
 
 
-def _extract_hume_api_error_message(e: ApiError) -> str:
+def __extract_hume_api_error_message(e: ApiError) -> str:
     """
     Extracts a clean, user-friendly error message from a Hume API error response.
 

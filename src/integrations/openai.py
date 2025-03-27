@@ -148,7 +148,7 @@ async def text_to_speech_with_openai(
         elapsed_time = time.time() - start_time
         logger.error(f"OpenAI API request failed after {elapsed_time:.2f} seconds: {e!s}")
         logger.error(f"Full OpenAI API error: {e!s}")
-        clean_message = _extract_openai_error_message(e)
+        clean_message = __extract_openai_error_message(e)
 
         if (
             hasattr(e, 'status_code')
@@ -168,7 +168,7 @@ async def text_to_speech_with_openai(
         raise OpenAIError(message=clean_message, original_exception=e) from e
 
 
-def _extract_openai_error_message(e: APIError) -> str:
+def __extract_openai_error_message(e: APIError) -> str:
     """
     Extracts a clean, user-friendly error message from an OpenAI API error response.
 

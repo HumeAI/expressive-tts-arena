@@ -9,7 +9,6 @@ These functions provide reusable logic to simplify code in other modules.
 import base64
 import json
 import os
-import random
 import time
 from pathlib import Path
 from typing import List, Tuple, cast
@@ -22,7 +21,6 @@ from src.common import constants
 from src.common.common_types import (
     ComparisonType,
     LeaderboardEntry,
-    Option,
     OptionKey,
     OptionMap,
     TTSProviderName,
@@ -132,7 +130,7 @@ def validate_text_length(text: str) -> None:
     logger.debug(f"Character description length validation passed for text: {truncated_text}")
 
 
-def _delete_files_older_than(directory: Path, minutes: int = 30) -> None:
+def __delete_files_older_than(directory: Path, minutes: int = 30) -> None:
     """
     Delete all files in the specified directory that are older than a given number of minutes.
 
@@ -191,7 +189,7 @@ def save_base64_audio_to_file(base64_audio: str, filename: str, config: Config) 
     file_path = Path(config.audio_dir) / filename
     num_minutes = 30
 
-    _delete_files_older_than(config.audio_dir, num_minutes)
+    __delete_files_older_than(config.audio_dir, num_minutes)
 
     # Write the binary audio data to the file.
     with file_path.open("wb") as audio_file:
@@ -207,74 +205,6 @@ def save_base64_audio_to_file(base64_audio: str, filename: str, config: Config) 
     logger.debug(f"Audio file relative path: {relative_path}")
 
     return str(relative_path)
-
-
-def get_random_providers(text_modified: bool) -> Tuple[TTSProviderName, TTSProviderName]:
-    """
-    Select 2 TTS providers based on whether the text has been modified.
-
-    Probabilities:
-     - 50% HUME_AI, OPENAI
-     - 25% OPENAI, ELEVENLABS
-     - 20% HUME_AI, ELEVENLABS
-     - 5% HUME_AI, HUME_AI
-
-    If the `text_modified` argument is `True`, then 100% HUME_AI, HUME_AI
-
-    Args:
-        text_modified (bool): A flag indicating whether the text has been modified, indicating a custom text input.
-
-    Returns:
-        tuple: A tuple (TTSProviderName, TTSProviderName)
-    """
-    if text_modified:
-        return constants.HUME_AI, constants.HUME_AI
-
-    # When modifying the probability distribution, make sure the weights match the order of provider pairs
-    provider_pairs = [
-        (constants.HUME_AI, constants.OPENAI),
-        (constants.OPENAI, constants.ELEVENLABS),
-        (constants.HUME_AI, constants.ELEVENLABS),
-        (constants.HUME_AI, constants.HUME_AI)
-    ]
-    weights = [0.5, 0.25, 0.2, 0.05]
-
-    return random.choices(provider_pairs, weights=weights, k=1)[0]
-
-
-def create_shuffled_tts_options(option_a: Option, option_b: Option) -> OptionMap:
-    """
-    Create and shuffle TTS generation options.
-
-    This function accepts two TTS generation options, shuffles them randomly,
-    and returns an OptionMap with keys 'option_a' and 'option_b' corresponding
-    to the shuffled options.
-
-    Args:
-        option_a (Option): The first TTS generation option.
-        option_b (Option): The second TTS generation option.
-
-    Returns:
-        OptionMap: A mapping of shuffled TTS options, where each option includes
-                   its provider, audio file path, and generation ID.
-    """
-
-    options = [option_a, option_b]
-    random.shuffle(options)
-    shuffled_option_a, shuffled_option_b = options
-
-    return {
-        "option_a": {
-            "provider": shuffled_option_a.provider,
-            "generation_id": shuffled_option_a.generation_id,
-            "audio_file_path": shuffled_option_a.audio,
-        },
-        "option_b": {
-            "provider": shuffled_option_b.provider,
-            "generation_id": shuffled_option_b.generation_id,
-            "audio_file_path": shuffled_option_b.audio,
-        },
-    }
 
 
 def determine_selected_option(selected_option_button: str) -> Tuple[OptionKey, OptionKey]:
@@ -301,7 +231,7 @@ def determine_selected_option(selected_option_button: str) -> Tuple[OptionKey, O
     return selected_option, other_option
 
 
-def _determine_comparison_type(provider_a: TTSProviderName, provider_b: TTSProviderName) -> ComparisonType:
+def __determine_comparison_type(provider_a: TTSProviderName, provider_b: TTSProviderName) -> ComparisonType:
     """
     Determine the comparison type based on the given TTS provider names.
 
@@ -333,13 +263,13 @@ def _determine_comparison_type(provider_a: TTSProviderName, provider_b: TTSProvi
     raise ValueError(f"Invalid provider combination: {provider_a}, {provider_b}")
 
 
-def _log_voting_results(voting_results: VotingResults) -> None:
+def __log_voting_results(voting_results: VotingResults) -> None:
     """Log the full voting results."""
 
     logger.info("Voting results:\n%s", json.dumps(voting_results, indent=4))
 
 
-async def _create_db_session(db_session_maker: AsyncDBSessionMaker) -> AsyncSession:
+async def __create_db_session(db_session_maker: AsyncDBSessionMaker) -> AsyncSession:
     """
     Creates a new database session using the provided session maker and checks if it's a dummy session.
 
@@ -362,7 +292,7 @@ async def _create_db_session(db_session_maker: AsyncDBSessionMaker) -> AsyncSess
     return session
 
 
-async def _persist_vote(db_session_maker: AsyncDBSessionMaker, voting_results: VotingResults) -> None:
+async def __persist_vote(db_session_maker: AsyncDBSessionMaker, voting_results: VotingResults) -> None:
     """
     Asynchronously persist a vote record in the database and handle potential failures.
     Designed to work safely in a background task context.
@@ -376,8 +306,8 @@ async def _persist_vote(db_session_maker: AsyncDBSessionMaker, voting_results: V
         None
     """
     # Create session
-    session = await _create_db_session(db_session_maker)
-    _log_voting_results(voting_results)
+    session = await __create_db_session(db_session_maker)
+    __log_voting_results(voting_results)
     try:
         await create_vote(cast(AsyncSession, session), voting_results)
     except Exception as e:
@@ -417,7 +347,7 @@ async def submit_voting_results(
         provider_a: TTSProviderName = option_map[constants.OPTION_A_KEY]["provider"]
         provider_b: TTSProviderName = option_map[constants.OPTION_B_KEY]["provider"]
 
-        comparison_type: ComparisonType = _determine_comparison_type(provider_a, provider_b)
+        comparison_type: ComparisonType = __determine_comparison_type(provider_a, provider_b)
 
         voting_results: VotingResults = {
             "comparison_type": comparison_type,
@@ -432,7 +362,7 @@ async def submit_voting_results(
             "is_custom_text": text_modified,
         }
 
-        await _persist_vote(db_session_maker, voting_results)
+        await __persist_vote(db_session_maker, voting_results)
 
     # Catch exceptions at the top level of the background task to prevent unhandled exceptions in background tasks
     except Exception as e:
@@ -460,7 +390,7 @@ async def get_leaderboard_data(
             - win_rate_data: Win percentages in head-to-head matchups
     """
     # Create session
-    session = await _create_db_session(db_session_maker)
+    session = await __create_db_session(db_session_maker)
     try:
         leaderboard_data_raw = await get_leaderboard_stats(cast(AsyncSession, session))
         battle_counts_data_raw = await get_head_to_head_battle_stats(cast(AsyncSession, session))
@@ -468,9 +398,9 @@ async def get_leaderboard_data(
 
         logger.debug("Fetched leaderboard data successfully.")
 
-        leaderboard_data = _format_leaderboard_data(leaderboard_data_raw)
-        battle_counts_data = _format_battle_counts_data(battle_counts_data_raw)
-        win_rate_data = _format_win_rate_data(win_rate_data_raw)
+        leaderboard_data = __format_leaderboard_data(leaderboard_data_raw)
+        battle_counts_data = __format_battle_counts_data(battle_counts_data_raw)
+        win_rate_data = __format_win_rate_data(win_rate_data_raw)
 
         return leaderboard_data, battle_counts_data, win_rate_data
     except Exception as e:
@@ -482,7 +412,7 @@ async def get_leaderboard_data(
         if session is not None:
             await session.close()
 
-def _format_leaderboard_data(leaderboard_data_raw: List[LeaderboardEntry]) -> List[List[str]]:
+def __format_leaderboard_data(leaderboard_data_raw: List[LeaderboardEntry]) -> List[List[str]]:
     """
     Formats raw leaderboard data for display in the UI.
 
@@ -514,7 +444,7 @@ def _format_leaderboard_data(leaderboard_data_raw: List[LeaderboardEntry]) -> Li
     ]
 
 
-def _format_battle_counts_data(battle_counts_data_raw: List[List[str]]) -> List[List[str]]:
+def __format_battle_counts_data(battle_counts_data_raw: List[List[str]]) -> List[List[str]]:
     """
     Formats battle count data into a matrix format for the UI.
 
@@ -556,7 +486,7 @@ def _format_battle_counts_data(battle_counts_data_raw: List[List[str]]) -> List[
     ]
 
 
-def _format_win_rate_data(win_rate_data_raw: List[List[str]]) -> List[List[str]]:
+def __format_win_rate_data(win_rate_data_raw: List[List[str]]) -> List[List[str]]:
     """
     Formats win rate data into a matrix format for the UI.
 

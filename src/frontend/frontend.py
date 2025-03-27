@@ -20,31 +20,33 @@ import gradio as gr
 
 # Local Application Imports
 from src.common import constants
-from src.common.common_types import Option, OptionMap
+from src.common.common_types import OptionMap
 from src.common.config import Config, logger
 from src.common.utils import (
-    create_shuffled_tts_options,
     determine_selected_option,
     get_leaderboard_data,
-    get_random_providers,
     submit_voting_results,
     validate_character_description_length,
     validate_text_length,
 )
+from src.core import TTSService
 from src.database import AsyncDBSessionMaker
-from src.integrations.anthropic import AnthropicError, generate_text_with_claude
-from src.integrations.elevenlabs import ElevenLabsError, text_to_speech_with_elevenlabs
-from src.integrations.hume import HumeError, text_to_speech_with_hume
-from src.integrations.openai import OpenAIError, text_to_speech_with_openai
+from src.integrations import AnthropicError, ElevenLabsError, HumeError, OpenAIError, generate_text_with_claude
 
 
 class Frontend:
-    config: Config
-    db_session_maker: AsyncDBSessionMaker
+    """
+    Main frontend class that coordinates all UI components and manages application state.
 
+    This class brings together the Arena and Leaderboard components and serves
+    as the primary entry point for the Gradio UI.
+    """
     def __init__(self, config: Config, db_session_maker: AsyncDBSessionMaker):
         self.config = config
         self.db_session_maker = db_session_maker
+
+        # Initialize services
+        self.tts_service = TTSService(config)
 
         # leaderboard update state
         self._leaderboard_data: List[List[str]] = [[]]
@@ -54,7 +56,7 @@ class Frontend:
         self._last_leaderboard_update_time: float = 0.0
         self._min_refresh_interval = 30
 
-    async def _update_leaderboard_data(self, force: bool = False) -> bool:
+    async def __update_leaderboard_data(self, force: bool = False) -> bool:
         """
         Fetches the latest leaderboard data only if needed based on cache and time constraints.
 
@@ -97,7 +99,7 @@ class Frontend:
         logger.debug("Leaderboard data updated successfully.")
         return True
 
-    async def _generate_text(self, character_description: str) -> Tuple[gr.Textbox, str]:
+    async def __generate_text(self, character_description: str) -> Tuple[gr.Textbox, str]:
         """
         Validates the character_description and generates text using Anthropic API.
 
@@ -129,7 +131,7 @@ class Frontend:
             logger.error(f"Text Generation Failed: Unexpected error while generating text: {e!s}")
             raise gr.Error("Failed to generate text. Please try again shortly.")
 
-    def _warn_user_about_custom_text(self, text: str, generated_text: str) -> None:
+    def __warn_user_about_custom_text(self, text: str, generated_text: str) -> None:
         """
         Shows a warning to the user if they have modified the generated text.
 
@@ -147,7 +149,7 @@ class Frontend:
         if text != generated_text:
             gr.Warning("When custom text is used, only Hume Octave outputs are generated.")
 
-    async def _synthesize_speech(
+    async def __synthesize_speech(
         self,
         character_description: str,
         text: str,
@@ -188,29 +190,9 @@ class Frontend:
             logger.warning(f"Validation error: {ve}")
             raise gr.Error(str(ve))
 
-        text_modified = text != generated_text_state
-        provider_a, provider_b = get_random_providers(text_modified)
-
-        tts_provider_funcs = {
-            constants.HUME_AI: text_to_speech_with_hume,
-            constants.OPENAI: text_to_speech_with_openai,
-            constants.ELEVENLABS: text_to_speech_with_elevenlabs,
-        }
-
         try:
-            logger.info(f"Starting speech synthesis with providers: {provider_a} and {provider_b}")
-
-            # Create two tasks for concurrent execution
-            task_a = tts_provider_funcs[provider_a](character_description, text, self.config)
-            task_b = tts_provider_funcs[provider_b](character_description, text, self.config)
-
-            # Await both tasks concurrently using asyncio.gather()
-            (generation_id_a, audio_a), (generation_id_b, audio_b) = await asyncio.gather(task_a, task_b)
-            logger.info(f"Synthesis succeeded for providers: {provider_a} and {provider_b}")
-
-            option_a = Option(provider=provider_a, audio=audio_a, generation_id=generation_id_a)
-            option_b = Option(provider=provider_b, audio=audio_b, generation_id=generation_id_b)
-            options_map: OptionMap = create_shuffled_tts_options(option_a, option_b)
+            text_modified = text != generated_text_state
+            options_map: OptionMap = await self.tts_service.synthesize_speech(character_description, text, text_modified)
 
             return (
                 gr.update(value=options_map["option_a"]["audio_file_path"], autoplay=True),
@@ -234,7 +216,7 @@ class Frontend:
             logger.error(f"Synthesis failed with an unexpected error during TTS generation: {e!s}")
             raise gr.Error("An unexpected error occurred. Please try again shortly.")
 
-    async def _vote(
+    async def __submit_vote(
         self,
         vote_submitted: bool,
         option_map: OptionMap,
@@ -310,7 +292,7 @@ class Frontend:
             gr.update(interactive=True),
         )
 
-    async def _randomize_character_description(self) -> Tuple[gr.Dropdown, gr.Textbox]:
+    async def __randomize_character_description(self) -> Tuple[gr.Dropdown, gr.Textbox]:
         """
         Randomly selects a character description, generates text, and synthesizes speech.
 
@@ -332,7 +314,7 @@ class Frontend:
             gr.update(value=character_description), # Update character description
         )
 
-    async def _refresh_leaderboard(self, force: bool = False) -> Tuple[gr.DataFrame, gr.DataFrame, gr.DataFrame]:
+    async def __refresh_leaderboard(self, force: bool = False) -> Tuple[gr.DataFrame, gr.DataFrame, gr.DataFrame]:
         """
         Asynchronously fetches and formats the latest leaderboard data.
 
@@ -342,7 +324,7 @@ class Frontend:
         Returns:
             tuple: Updated DataFrames or gr.skip() if no update needed
         """
-        data_updated = await self._update_leaderboard_data(force=force)
+        data_updated = await self.__update_leaderboard_data(force=force)
 
         if not self._leaderboard_data:
             raise gr.Error("Unable to retrieve leaderboard data. Please refresh the page or try again shortly.")
@@ -355,7 +337,7 @@ class Frontend:
             )
         return gr.skip(), gr.skip(), gr.skip()
 
-    async def _handle_tab_select(self, evt: gr.SelectData):
+    async def __handle_tab_select(self, evt: gr.SelectData):
         """
         Handles tab selection events and refreshes the leaderboard if the Leaderboard tab is selected.
 
@@ -367,10 +349,10 @@ class Frontend:
         """
         if evt.value == "Leaderboard":
 
-            return await self._refresh_leaderboard(force=False)
+            return await self.__refresh_leaderboard(force=False)
         return gr.skip(), gr.skip(), gr.skip()
 
-    def _disable_ui(self) -> Tuple[
+    def __disable_ui(self) -> Tuple[
         gr.Button,
         gr.Dropdown,
         gr.Textbox,
@@ -394,7 +376,7 @@ class Frontend:
             gr.update(interactive=False), # disable Select B Button
         )
 
-    def _enable_ui(self, should_enable_vote_buttons) -> Tuple[
+    def __enable_ui(self, should_enable_vote_buttons) -> Tuple[
         gr.Button,
         gr.Dropdown,
         gr.Textbox,
@@ -418,7 +400,7 @@ class Frontend:
             gr.update(interactive=should_enable_vote_buttons), # enable Select B Button
         )
 
-    def _reset_voting_ui(self) -> Tuple[
+    def __reset_voting_ui(self) -> Tuple[
         gr.Audio,
         gr.Audio,
         gr.Button,
@@ -448,7 +430,7 @@ class Frontend:
             False, # Reset should_enable_vote_buttons state
         )
 
-    def _build_title_section(self) -> None:
+    def __build_title_section(self) -> None:
         """
         Builds the Title section
         """
@@ -482,7 +464,7 @@ class Frontend:
             """
         )
 
-    def _build_arena_section(self) -> None:
+    def __build_arena_section(self) -> None:
         """
         Builds the Arena section
         """
@@ -611,7 +593,7 @@ class Frontend:
         # 5. Synthesize speech
         # 6. Enable interactive UI components
         randomize_all_button.click(
-            fn=self._disable_ui,
+            fn=self.__disable_ui,
             inputs=[],
             outputs=[
                 randomize_all_button,
@@ -624,7 +606,7 @@ class Frontend:
                 vote_button_b,
             ],
         ).then(
-            fn=self._reset_voting_ui,
+            fn=self.__reset_voting_ui,
             inputs=[],
             outputs=[
                 option_a_audio_player,
@@ -638,15 +620,15 @@ class Frontend:
                 should_enable_vote_buttons,
             ],
         ).then(
-            fn=self._randomize_character_description,
+            fn=self.__randomize_character_description,
             inputs=[],
             outputs=[sample_character_description_dropdown, character_description_input],
         ).then(
-            fn=self._generate_text,
+            fn=self.__generate_text,
             inputs=[character_description_input],
             outputs=[text_input, generated_text_state],
         ).then(
-            fn=self._synthesize_speech,
+            fn=self.__synthesize_speech,
             inputs=[character_description_input, text_input, generated_text_state],
             outputs=[
                 option_a_audio_player,
@@ -658,7 +640,7 @@ class Frontend:
                 should_enable_vote_buttons,
             ],
         ).then(
-            fn=self._enable_ui,
+            fn=self.__enable_ui,
             inputs=[should_enable_vote_buttons],
             outputs=[
                 randomize_all_button,
@@ -682,7 +664,7 @@ class Frontend:
             inputs=[sample_character_description_dropdown],
             outputs=[character_description_input],
         ).then(
-            fn=self._disable_ui,
+            fn=self.__disable_ui,
             inputs=[],
             outputs=[
                 randomize_all_button,
@@ -695,11 +677,11 @@ class Frontend:
                 vote_button_b,
             ],
         ).then(
-            fn=self._generate_text,
+            fn=self.__generate_text,
             inputs=[character_description_input],
             outputs=[text_input, generated_text_state],
         ).then(
-            fn=self._enable_ui,
+            fn=self.__enable_ui,
             inputs=[should_enable_vote_buttons],
             outputs=[
                 randomize_all_button,
@@ -718,7 +700,7 @@ class Frontend:
         # 2. Generate text
         # 3. Enable interactive UI components
         generate_text_button.click(
-            fn=self._disable_ui,
+            fn=self.__disable_ui,
             inputs=[],
             outputs=[
                 randomize_all_button,
@@ -731,11 +713,11 @@ class Frontend:
                 vote_button_b,
             ],
         ).then(
-            fn=self._generate_text,
+            fn=self.__generate_text,
             inputs=[character_description_input],
             outputs=[text_input, generated_text_state],
         ).then(
-            fn=self._enable_ui,
+            fn=self.__enable_ui,
             inputs=[should_enable_vote_buttons],
             outputs=[
                 randomize_all_button,
@@ -751,7 +733,7 @@ class Frontend:
 
         # "Text Input" blur event handler
         text_input.blur(
-            fn=self._warn_user_about_custom_text,
+            fn=self.__warn_user_about_custom_text,
             inputs=[text_input, generated_text_state],
             outputs=[],
         )
@@ -762,7 +744,7 @@ class Frontend:
         # 3. Synthesize speech, load audio players, and display vote button
         # 4. Enable interactive components in the UI
         synthesize_speech_button.click(
-            fn=self._disable_ui,
+            fn=self.__disable_ui,
             inputs=[],
             outputs=[
                 randomize_all_button,
@@ -775,7 +757,7 @@ class Frontend:
                 vote_button_b,
             ],
         ).then(
-            fn=self._reset_voting_ui,
+            fn=self.__reset_voting_ui,
             inputs=[],
             outputs=[
                 option_a_audio_player,
@@ -789,7 +771,7 @@ class Frontend:
                 should_enable_vote_buttons,
             ],
         ).then(
-            fn=self._synthesize_speech,
+            fn=self.__synthesize_speech,
             inputs=[character_description_input, text_input, generated_text_state],
             outputs=[
                 option_a_audio_player,
@@ -801,7 +783,7 @@ class Frontend:
                 should_enable_vote_buttons,
             ],
         ).then(
-            fn=self._enable_ui,
+            fn=self.__enable_ui,
             inputs=[should_enable_vote_buttons],
             outputs=[
                 randomize_all_button,
@@ -821,7 +803,7 @@ class Frontend:
             inputs=[],
             outputs=[vote_button_a, vote_button_b],
         ).then(
-            fn=self._vote,
+            fn=self.__submit_vote,
             inputs=[
                 vote_submitted_state,
                 option_map_state,
@@ -846,7 +828,7 @@ class Frontend:
             inputs=[],
             outputs=[vote_button_a, vote_button_b],
         ).then(
-            fn=self._vote,
+            fn=self.__submit_vote,
             inputs=[
                 vote_submitted_state,
                 option_map_state,
@@ -1001,7 +983,7 @@ class Frontend:
 
         # Wrapper for the async refresh function
         async def async_refresh_handler():
-            leaderboard_update, battle_counts_update, win_rates_update = await self._refresh_leaderboard(force=True)
+            leaderboard_update, battle_counts_update, win_rates_update = await self.__refresh_leaderboard(force=True)
             return leaderboard_update, battle_counts_update, win_rates_update
 
         # Handler to re-enable the button after a refresh
@@ -1034,17 +1016,17 @@ class Frontend:
             title="Expressive TTS Arena",
             css_paths="static/css/styles.css",
         ) as demo:
-            await self._update_leaderboard_data()
-            self._build_title_section()
+            await self.__update_leaderboard_data()
+            self.__build_title_section()
 
             with gr.Tabs() as tabs:
                 with gr.TabItem("Arena"):
-                    self._build_arena_section()
+                    self.__build_arena_section()
                 with gr.TabItem("Leaderboard"):
                     leaderboard_table, battle_counts_table, win_rates_table = self._build_leaderboard_section()
 
             tabs.select(
-                fn=self._handle_tab_select,
+                fn=self.__handle_tab_select,
                 inputs=[],
                 outputs=[leaderboard_table, battle_counts_table, win_rates_table],
             )

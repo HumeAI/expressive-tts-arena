@@ -75,7 +75,7 @@ META_TAGS: List[Dict[str, str]] = [
 ]
 
 
-def _update_meta_tags(html_content: str, meta_tags: List[Dict[str, str]]) -> str:
+def __update_meta_tags(html_content: str, meta_tags: List[Dict[str, str]]) -> str:
     """
     Safely updates the HTML content by adding or replacing meta tags in the head section
     without affecting other elements, especially scripts and event handlers.
@@ -139,7 +139,7 @@ class MetaTagInjectionMiddleware(BaseHTTPMiddleware):
             try:
                 # Decode, modify, and re-encode the content
                 content = response_body.decode("utf-8")
-                modified_content = _update_meta_tags(content, META_TAGS).encode("utf-8")
+                modified_content = __update_meta_tags(content, META_TAGS).encode("utf-8")
 
                 # Update content-length header to reflect modified content size
                 headers = dict(response.headers)
