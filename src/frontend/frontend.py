@@ -32,16 +32,10 @@ from src.common.utils import (
     validate_text_length,
 )
 from src.database import AsyncDBSessionMaker
-from src.integrations import (
-    AnthropicError,
-    ElevenLabsError,
-    HumeError,
-    OpenAIError,
-    generate_text_with_claude,
-    text_to_speech_with_elevenlabs,
-    text_to_speech_with_hume,
-    text_to_speech_with_openai,
-)
+from src.integrations.anthropic import AnthropicError, generate_text_with_claude
+from src.integrations.elevenlabs import ElevenLabsError, text_to_speech_with_elevenlabs
+from src.integrations.hume import HumeError, text_to_speech_with_hume
+from src.integrations.openai import OpenAIError, text_to_speech_with_openai
 
 
 class Frontend:
