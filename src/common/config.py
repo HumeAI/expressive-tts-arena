@@ -75,7 +75,7 @@ class Config:
         audio_dir = Path.cwd() / "static" / "audio"
         audio_dir.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"Audio directory set to {audio_dir}")
+        logger.debug(f"Audio directory set to {audio_dir}")
 
         if debug:
             logger.debug("DEBUG mode enabled.")

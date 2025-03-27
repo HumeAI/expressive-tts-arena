@@ -12,16 +12,14 @@ import os
 import random
 import time
 from pathlib import Path
-from typing import Dict, List, Tuple, cast
+from typing import List, Tuple, cast
 
 # Third-Party Library Imports
-from bs4 import BeautifulSoup
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Local Application Imports
-from src import constants
-from src.config import Config, logger
-from src.custom_types import (
+from src.common import constants
+from src.common.common_types import (
     ComparisonType,
     LeaderboardEntry,
     Option,
@@ -30,6 +28,7 @@ from src.custom_types import (
     TTSProviderName,
     VotingResults,
 )
+from src.common.config import Config, logger
 from src.database import (
     AsyncDBSessionMaker,
     create_vote,
@@ -467,7 +466,7 @@ async def get_leaderboard_data(
         battle_counts_data_raw = await get_head_to_head_battle_stats(cast(AsyncSession, session))
         win_rate_data_raw = await get_head_to_head_win_rate_stats(cast(AsyncSession, session))
 
-        logger.info("Fetched leaderboard data successfully.")
+        logger.debug("Fetched leaderboard data successfully.")
 
         leaderboard_data = _format_leaderboard_data(leaderboard_data_raw)
         battle_counts_data = _format_battle_counts_data(battle_counts_data_raw)
@@ -612,39 +611,3 @@ def validate_env_var(var_name: str) -> str:
         raise ValueError(f"{var_name} is not set. Please ensure it is defined in your environment variables.")
     return value
 
-
-def update_meta_tags(html_content: str, meta_tags: List[Dict[str, str]]) -> str:
-    """
-    Safely updates the HTML content by adding or replacing meta tags in the head section
-    without affecting other elements, especially scripts and event handlers.
-
-    Args:
-        html_content: The original HTML content as a string
-        meta_tags: A list of dictionaries with meta tag attributes to add
-
-    Returns:
-        The modified HTML content with updated meta tags
-    """
-    # Parse the HTML
-    soup = BeautifulSoup(html_content, 'html.parser')
-    head = soup.head
-
-    # Remove existing meta tags that would conflict with our new ones
-    for meta_tag in meta_tags:
-        # Determine if we're looking for 'name' or 'property' attribute
-        attr_type = 'name' if 'name' in meta_tag else 'property'
-        attr_value = meta_tag.get(attr_type)
-
-        # Find and remove existing meta tags with the same name/property
-        existing_tags = head.find_all('meta', attrs={attr_type: attr_value})
-        for tag in existing_tags:
-            tag.decompose()
-
-    # Add the new meta tags to the head section
-    for meta_info in meta_tags:
-        new_meta = soup.new_tag('meta')
-        for attr, value in meta_info.items():
-            new_meta[attr] = value
-        head.append(new_meta)
-
-    return str(soup)

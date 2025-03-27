@@ -12,8 +12,8 @@ TTSProviderName = Literal["Hume AI", "ElevenLabs", "OpenAI"]
 
 
 ComparisonType = Literal[
-    "Hume AI - Hume AI", 
-    "Hume AI - ElevenLabs", 
+    "Hume AI - Hume AI",
+    "Hume AI - ElevenLabs",
     "Hume AI - OpenAI",
     "OpenAI - ElevenLabs"
 ]

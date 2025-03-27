@@ -13,9 +13,10 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.common.common_types import LeaderboardEntry, LeaderboardTableEntries, VotingResults
+
 # Local Application Imports
-from src.config import logger
-from src.custom_types import LeaderboardEntry, LeaderboardTableEntries, VotingResults
+from src.common.config import logger
 from src.database.models import VoteResult
 
 
@@ -31,7 +32,6 @@ async def create_vote(db: AsyncSession, vote_data: VotingResults) -> VoteResult:
         VoteResult: The newly created vote record.
     """
     try:
-
         # Create vote record
         vote = VoteResult(
             comparison_type=vote_data["comparison_type"],

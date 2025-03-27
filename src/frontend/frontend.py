@@ -19,9 +19,18 @@ from typing import List, Optional, Tuple
 import gradio as gr
 
 # Local Application Imports
-from src import constants
-from src.config import Config, logger
-from src.custom_types import Option, OptionMap
+from src.common import constants
+from src.common.common_types import Option, OptionMap
+from src.common.config import Config, logger
+from src.common.utils import (
+    create_shuffled_tts_options,
+    determine_selected_option,
+    get_leaderboard_data,
+    get_random_providers,
+    submit_voting_results,
+    validate_character_description_length,
+    validate_text_length,
+)
 from src.database import AsyncDBSessionMaker
 from src.integrations import (
     AnthropicError,
@@ -32,15 +41,6 @@ from src.integrations import (
     text_to_speech_with_elevenlabs,
     text_to_speech_with_hume,
     text_to_speech_with_openai,
-)
-from src.utils import (
-    create_shuffled_tts_options,
-    determine_selected_option,
-    get_leaderboard_data,
-    get_random_providers,
-    submit_voting_results,
-    validate_character_description_length,
-    validate_text_length,
 )
 
 
@@ -100,7 +100,7 @@ class Frontend:
         self._win_rates_data = latest_win_rates_data
         self._leaderboard_cache_hash = data_hash
         self._last_leaderboard_update_time = current_time
-        logger.info("Leaderboard data updated successfully.")
+        logger.debug("Leaderboard data updated successfully.")
         return True
 
     async def _generate_text(self, character_description: str) -> Tuple[gr.Textbox, str]:
@@ -372,6 +372,7 @@ class Frontend:
             tuple: Updates for the three tables if data changed, otherwise skip
         """
         if evt.value == "Leaderboard":
+
             return await self._refresh_leaderboard(force=False)
         return gr.skip(), gr.skip(), gr.skip()
 

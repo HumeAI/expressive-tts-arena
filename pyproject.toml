@@ -88,7 +88,7 @@ select = [
     "TID",
     "W",
 ]
-per-file-ignores = { "src/constants.py" = ["E501"], "src/frontend.py" = ["E501"] }
+per-file-ignores = { "src/common/constants.py" = ["E501"], "src/frontend/frontend.py" = ["E501"], "src/middleware/meta_tag_injection.py" = ["E501"] }
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 120
