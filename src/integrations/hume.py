@@ -123,7 +123,7 @@ async def text_to_speech_with_hume(
         )
 
         elapsed_time = time.time() - start_time
-        logger.info(f"Hume API request completed in {elapsed_time:.2f} seconds")
+        logger.info(f"Hume API request completed in {elapsed_time:.2f} seconds.")
 
         generations = response.generations
         if not generations:
@@ -143,7 +143,7 @@ async def text_to_speech_with_hume(
         clean_message = __extract_hume_api_error_message(e)
         logger.error(f"Full Hume API error: {e!s}")
 
-        if e.status_code is not None:
+        if hasattr(e, 'status_code') and e.status_code is not None:
             if e.status_code == RATE_LIMIT_ERROR_CODE:
                 rate_limit_error_message = "We're working on scaling capacity. Please try again in a few seconds."
                 raise HumeError(message=rate_limit_error_message, original_exception=e) from e

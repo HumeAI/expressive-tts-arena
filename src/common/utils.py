@@ -36,100 +36,6 @@ from src.database import (
 )
 
 
-def truncate_text(text: str, max_length: int = 50) -> str:
-    """
-    Truncate a string to the specified length, appending ellipses if necessary.
-
-    Args:
-        text (str): The text to truncate.
-        max_length (int): The maximum length of the truncated string.
-
-    Returns:
-        str: The truncated text.
-
-    Examples:
-        >>> truncate_text("Hello, World!", 5)
-        'Hello...'
-        >>> truncate_text("Short string", 20)
-        'Short string'
-        >>> truncate_text("Edge case with zero length", 0)
-        ''
-    """
-    if max_length <= 0:
-        logger.warning(f"Invalid max_length={max_length}. Returning empty string.")
-        return ""
-
-    is_truncated = len(text) > max_length
-    if is_truncated:
-        logger.debug(f"Truncated text to {max_length} characters.")
-
-    return text[:max_length] + ("..." if is_truncated else "")
-
-
-def validate_character_description_length(character_description: str) -> None:
-    """
-    Validates that a voice description is within specified minimum and maximum length limits.
-
-    Args:
-        character_description (str): The input character description to validate.
-
-    Raises:
-        ValueError: If the character description is empty, too short, or exceeds max length.
-    """
-    stripped_character_description = character_description.strip()
-    character_description_length = len(stripped_character_description)
-
-    logger.debug(f"Voice description length being validated: {character_description_length} characters")
-
-    if character_description_length < constants.CHARACTER_DESCRIPTION_MIN_LENGTH:
-        raise ValueError(
-            f"Your character description is too short. Please enter at least "
-            f"{constants.CHARACTER_DESCRIPTION_MIN_LENGTH} characters. "
-            f"(Current length: {character_description_length})"
-        )
-    if character_description_length > constants.CHARACTER_DESCRIPTION_MAX_LENGTH:
-        raise ValueError(
-            f"Your character description is too long. Please limit it to "
-            f"{constants.CHARACTER_DESCRIPTION_MAX_LENGTH} characters. "
-            f"(Current length: {character_description_length})"
-        )
-
-    truncated_description = truncate_text(stripped_character_description)
-    logger.debug(f"Character description length validation passed for character_description: {truncated_description}")
-
-
-def validate_text_length(text: str) -> None:
-    """
-    Validates that a text input is within specified minimum and maximum length limits.
-
-    Args:
-        text (str): The input text to validate.
-
-    Raises:
-        ValueError: If the text is empty, too short, or exceeds max length.
-    """
-    stripped_text = text.strip()
-    text_length = len(stripped_text)
-
-    logger.debug(f"Voice description length being validated: {text_length} characters")
-
-    if text_length < constants.TEXT_MIN_LENGTH:
-        raise ValueError(
-            f"Your text is too short. Please enter at least "
-            f"{constants.TEXT_MIN_LENGTH} characters. "
-            f"(Current length: {text_length})"
-        )
-    if text_length > constants.TEXT_MAX_LENGTH:
-        raise ValueError(
-            f"Your text is too long. Please limit it to "
-            f"{constants.TEXT_MAX_LENGTH} characters. "
-            f"(Current length: {text_length})"
-        )
-
-    truncated_text = truncate_text(stripped_text)
-    logger.debug(f"Character description length validation passed for text: {truncated_text}")
-
-
 def __delete_files_older_than(directory: Path, minutes: int = 30) -> None:
     """
     Delete all files in the specified directory that are older than a given number of minutes.
@@ -205,30 +111,6 @@ def save_base64_audio_to_file(base64_audio: str, filename: str, config: Config) 
     logger.debug(f"Audio file relative path: {relative_path}")
 
     return str(relative_path)
-
-
-def determine_selected_option(selected_option_button: str) -> Tuple[OptionKey, OptionKey]:
-    """
-    Determines the selected option and the alternative option based on the user's selection.
-
-    Args:
-        selected_option_button (str): The option selected by the user, expected to be either
-            constants.OPTION_A_KEY or constants.OPTION_B_KEY.
-
-    Returns:
-        tuple: A tuple (selected_option, other_option) where:
-            - selected_option is the same as the selected_option.
-            - other_option is the alternative option.
-    """
-
-    if selected_option_button == constants.SELECT_OPTION_A:
-        selected_option, other_option = constants.OPTION_A_KEY, constants.OPTION_B_KEY
-    elif selected_option_button == constants.SELECT_OPTION_B:
-        selected_option, other_option = constants.OPTION_B_KEY, constants.OPTION_A_KEY
-    else:
-        raise ValueError(f"Invalid selected button: {selected_option_button}")
-
-    return selected_option, other_option
 
 
 def __determine_comparison_type(provider_a: TTSProviderName, provider_b: TTSProviderName) -> ComparisonType:

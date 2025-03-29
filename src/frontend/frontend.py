@@ -21,14 +21,11 @@ import gradio as gr
 
 # Local Application Imports
 from src.common import constants
-from src.common.common_types import OptionMap
+from src.common.common_types import OptionKey, OptionMap
 from src.common.config import Config, logger
 from src.common.utils import (
-    determine_selected_option,
     get_leaderboard_data,
     submit_voting_results,
-    validate_character_description_length,
-    validate_text_length,
 )
 from src.core import TTSService
 from src.database import AsyncDBSessionMaker
@@ -102,6 +99,60 @@ class Frontend:
         logger.debug("Leaderboard data updated successfully.")
         return True
 
+    def __validate_character_description_length(self, character_description: str) -> None:
+        """
+        Validates that a voice description is within specified minimum and maximum length limits.
+
+        Args:
+            character_description (str): The input character description to validate.
+
+        Raises:
+            ValueError: If the character description is empty, too short, or exceeds max length.
+        """
+        stripped_character_description = character_description.strip()
+        character_description_length = len(stripped_character_description)
+
+        if character_description_length < constants.CHARACTER_DESCRIPTION_MIN_LENGTH:
+            raise ValueError(
+                f"Your character description is too short. Please enter at least "
+                f"{constants.CHARACTER_DESCRIPTION_MIN_LENGTH} characters. "
+                f"(Current length: {character_description_length})"
+            )
+        if character_description_length > constants.CHARACTER_DESCRIPTION_MAX_LENGTH:
+            raise ValueError(
+                f"Your character description is too long. Please limit it to "
+                f"{constants.CHARACTER_DESCRIPTION_MAX_LENGTH} characters. "
+                f"(Current length: {character_description_length})"
+            )
+
+    def __validate_text_length(self, text: str) -> None:
+        """
+        Validates that a text input is within specified minimum and maximum length limits.
+
+        Args:
+            text (str): The input text to validate.
+
+        Raises:
+            ValueError: If the text is empty, too short, or exceeds max length.
+        """
+        stripped_text = text.strip()
+        text_length = len(stripped_text)
+
+        logger.debug(f"Voice description length being validated: {text_length} characters")
+
+        if text_length < constants.TEXT_MIN_LENGTH:
+            raise ValueError(
+                f"Your text is too short. Please enter at least "
+                f"{constants.TEXT_MIN_LENGTH} characters. "
+                f"(Current length: {text_length})"
+            )
+        if text_length > constants.TEXT_MAX_LENGTH:
+            raise ValueError(
+                f"Your text is too long. Please limit it to "
+                f"{constants.TEXT_MAX_LENGTH} characters. "
+                f"(Current length: {text_length})"
+            )
+
     async def __generate_text(self, character_description: str) -> Tuple[gr.Textbox, str]:
         """
         Validates the character_description and generates text using Anthropic API.
@@ -118,7 +169,7 @@ class Frontend:
             gr.Error: On validation or API errors.
         """
         try:
-            validate_character_description_length(character_description)
+            self.__validate_character_description_length(character_description)
         except ValueError as ve:
             logger.warning(f"Validation error: {ve}")
             raise gr.Error(str(ve))
@@ -187,10 +238,10 @@ class Frontend:
             gr.Error: If any API or unexpected errors occur during the TTS synthesis process.
         """
         try:
-            validate_character_description_length(character_description)
-            validate_text_length(text)
+            self.__validate_character_description_length(character_description)
+            self.__validate_text_length(text)
         except ValueError as ve:
-            logger.warning(f"Validation error: {ve}")
+            logger.error(f"Validation error: {ve}")
             raise gr.Error(str(ve))
 
         try:
@@ -218,6 +269,29 @@ class Frontend:
         except Exception as e:
             logger.error(f"Synthesis failed with an unexpected error during TTS generation: {e!s}")
             raise gr.Error("An unexpected error occurred. Please try again shortly.")
+
+    def __determine_selected_option(self, selected_option_button: str) -> Tuple[OptionKey, OptionKey]:
+        """
+        Determines the selected option and the alternative option based on the user's selection.
+
+        Args:
+            selected_option_button (str): The option selected by the user, expected to be either
+                constants.OPTION_A_KEY or constants.OPTION_B_KEY.
+
+        Returns:
+            tuple: A tuple (selected_option, other_option) where:
+                - selected_option is the same as the selected_option.
+                - other_option is the alternative option.
+        """
+
+        if selected_option_button == constants.SELECT_OPTION_A:
+            selected_option, other_option = constants.OPTION_A_KEY, constants.OPTION_B_KEY
+        elif selected_option_button == constants.SELECT_OPTION_B:
+            selected_option, other_option = constants.OPTION_B_KEY, constants.OPTION_A_KEY
+        else:
+            raise ValueError(f"Invalid selected button: {selected_option_button}")
+
+        return selected_option, other_option
 
     async def __submit_vote(
         self,
@@ -258,7 +332,7 @@ class Frontend:
         if not option_map or vote_submitted:
             return gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip()
 
-        selected_option, other_option = determine_selected_option(clicked_option_button)
+        selected_option, other_option = self.__determine_selected_option(clicked_option_button)
         selected_provider = option_map[selected_option]["provider"]
         other_provider = option_map[other_option]["provider"]
 

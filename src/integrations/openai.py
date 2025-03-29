@@ -26,7 +26,7 @@ from tenacity import after_log, before_log, retry, retry_if_exception, stop_afte
 
 # Local Application Imports
 from src.common.config import Config, logger
-from src.common.constants import CLIENT_ERROR_CODE, GENERIC_API_ERROR_MESSAGE, SERVER_ERROR_CODE
+from src.common.constants import CLIENT_ERROR_CODE, GENERIC_API_ERROR_MESSAGE, RATE_LIMIT_ERROR_CODE, SERVER_ERROR_CODE
 from src.common.utils import validate_env_var
 
 
@@ -135,7 +135,7 @@ async def text_to_speech_with_openai(
             voice=voice, # OpenAI requires a base voice to be specified
         ) as response:
             elapsed_time = time.time() - start_time
-            logger.info(f"OpenAI API request completed in {elapsed_time:.2f} seconds")
+            logger.info(f"OpenAI API request completed in {elapsed_time:.2f} seconds.")
 
             filename = f"openai_{voice}_{start_time}"
             audio_file_path = Path(config.audio_dir) / filename
@@ -150,12 +150,11 @@ async def text_to_speech_with_openai(
         logger.error(f"Full OpenAI API error: {e!s}")
         clean_message = __extract_openai_error_message(e)
 
-        if (
-            hasattr(e, 'status_code')
-            and e.status_code is not None
-            and CLIENT_ERROR_CODE <= e.status_code < SERVER_ERROR_CODE
-        ):
-            raise UnretryableOpenAIError(message=clean_message, original_exception=e) from e
+        if hasattr(e, 'status_code') and  e.status_code is not None:
+            if e.status_code == RATE_LIMIT_ERROR_CODE:
+                raise OpenAIError(message=clean_message, original_exception=e) from e
+            if CLIENT_ERROR_CODE <= e.status_code < SERVER_ERROR_CODE:
+                raise UnretryableOpenAIError(message=clean_message, original_exception=e) from e
 
         raise OpenAIError(message=clean_message, original_exception=e) from e
 

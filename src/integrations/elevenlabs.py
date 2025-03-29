@@ -26,7 +26,7 @@ from tenacity import after_log, before_log, retry, retry_if_exception, stop_afte
 
 # Local Application Imports
 from src.common.config import Config, logger
-from src.common.constants import CLIENT_ERROR_CODE, GENERIC_API_ERROR_MESSAGE, SERVER_ERROR_CODE
+from src.common.constants import CLIENT_ERROR_CODE, GENERIC_API_ERROR_MESSAGE, RATE_LIMIT_ERROR_CODE, SERVER_ERROR_CODE
 from src.common.utils import save_base64_audio_to_file, validate_env_var
 
 
@@ -113,7 +113,7 @@ async def text_to_speech_with_elevenlabs(
         )
 
         elapsed_time = time.time() - start_time
-        logger.info(f"Elevenlabs API request completed in {elapsed_time:.2f} seconds")
+        logger.info(f"Elevenlabs API request completed in {elapsed_time:.2f} seconds.")
 
         previews = response.previews
         if not previews:
@@ -131,8 +131,11 @@ async def text_to_speech_with_elevenlabs(
         logger.error(f"ElevenLabs API request failed: {e!s}")
         clean_message = __extract_elevenlabs_error_message(e)
 
-        if e.status_code is not None and CLIENT_ERROR_CODE <= e.status_code < SERVER_ERROR_CODE:
-            raise UnretryableElevenLabsError(message=clean_message, original_exception=e) from e
+        if hasattr(e, 'status_code') and  e.status_code is not None:
+            if e.status_code == RATE_LIMIT_ERROR_CODE:
+                raise ElevenLabsError(message=clean_message, original_exception=e) from e
+            if CLIENT_ERROR_CODE <= e.status_code < SERVER_ERROR_CODE:
+                raise UnretryableElevenLabsError(message=clean_message, original_exception=e) from e
 
         raise ElevenLabsError(message=clean_message, original_exception=e) from e
 
