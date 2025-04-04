@@ -6,11 +6,10 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.common.common_types import LeaderboardEntry, LeaderboardTableEntries, VotingResults
-
 # Local Application Imports
-from src.common.config import logger
-from src.database.models import VoteResult
+from src.common import LeaderboardEntry, LeaderboardTableEntries, VotingResults, logger
+
+from .models import VoteResult
 
 
 async def create_vote(db: AsyncSession, vote_data: VotingResults) -> VoteResult:

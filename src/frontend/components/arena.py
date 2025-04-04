@@ -8,9 +8,7 @@ from typing import Tuple, Union
 import gradio as gr
 
 # Local Application Imports
-from src.common import constants
-from src.common.common_types import OptionKey, OptionLabel, OptionMap
-from src.common.config import Config, logger
+from src.common import Config, OptionKey, OptionLabel, OptionMap, constants, logger
 from src.core import TTSService, VotingService
 from src.integrations import AnthropicError, ElevenLabsError, HumeError, OpenAIError, generate_text_with_claude
 

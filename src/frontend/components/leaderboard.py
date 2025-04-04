@@ -8,7 +8,7 @@ from typing import List, Optional, Tuple, Union
 import gradio as gr
 
 # Local Application Imports
-from src.common.config import logger
+from src.common import logger
 from src.core import VotingService
 
 

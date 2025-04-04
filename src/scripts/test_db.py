@@ -33,7 +33,7 @@ import sys
 from sqlalchemy import text
 
 # Local Application Imports
-from src.common.config import Config, logger
+from src.common import Config, logger
 from src.database import engine, init_db
 
 

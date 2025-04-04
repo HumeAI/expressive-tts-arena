@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 
 # Local Application Imports
-from src.common.config import Config, logger
+from .config import Config, logger
 
 
 def _delete_files_older_than(directory: Path, minutes: int = 30) -> None:

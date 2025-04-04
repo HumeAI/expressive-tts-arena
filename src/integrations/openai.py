@@ -11,7 +11,7 @@ from openai import APIError, AsyncOpenAI
 from tenacity import after_log, before_log, retry, retry_if_exception, stop_after_attempt, wait_fixed
 
 # Local Application Imports
-from src.common.config import Config, logger
+from src.common import Config, logger
 from src.common.constants import CLIENT_ERROR_CODE, GENERIC_API_ERROR_MESSAGE, RATE_LIMIT_ERROR_CODE, SERVER_ERROR_CODE
 from src.common.utils import validate_env_var
 

@@ -39,6 +39,7 @@ Expressive TTS Arena/
 ├── public/
 ├── src/
 │   ├── common/
+│   │   ├── __init__.py
 │   │   ├── common_types.py         # Application-wide custom type aliases and definitions.
 │   │   ├── config.py               # Manages application config (Singleton) loaded from env vars.
 │   │   ├── constants.py            # Application-wide constant values.

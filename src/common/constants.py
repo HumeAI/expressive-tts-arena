@@ -2,7 +2,7 @@
 from typing import List
 
 # Third-Party Library Imports
-from src.common.common_types import ComparisonType, OptionKey, TTSProviderName
+from .common_types import ComparisonType, OptionKey, TTSProviderName
 
 HUME_AI: TTSProviderName = "Hume AI"
 ELEVENLABS: TTSProviderName = "ElevenLabs"

@@ -6,16 +6,16 @@ from typing import List, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Local Application Imports
-from src.common import constants
-from src.common.common_types import (
+from src.common import (
     ComparisonType,
     LeaderboardEntry,
     OptionKey,
     OptionMap,
     TTSProviderName,
     VotingResults,
+    constants,
+    logger,
 )
-from src.common.config import logger
 from src.database import (
     AsyncDBSessionMaker,
     create_vote,
@@ -128,7 +128,6 @@ class VotingService:
 
     def _format_leaderboard_data(self, leaderboard_data_raw: List[LeaderboardEntry]) -> List[List[str]]:
         """Formats raw leaderboard entries into HTML strings for the UI table."""
-        # Ensure constants.TTS_PROVIDER_LINKS is accessible, maybe pass via __init__ if not global
         formatted_data = []
         for rank, provider, model, win_rate, votes in leaderboard_data_raw:
             provider_info = constants.TTS_PROVIDER_LINKS.get(provider, {})

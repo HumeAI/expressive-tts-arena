@@ -20,7 +20,7 @@ from sqlalchemy import (
 )
 
 # Local Application Imports
-from src.database.database import Base
+from .database import Base
 
 
 class OptionEnum(str, Enum):

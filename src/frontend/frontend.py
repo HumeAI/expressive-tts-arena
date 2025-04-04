@@ -5,10 +5,11 @@ from typing import Tuple, Union
 import gradio as gr
 
 # Local Application Imports
-from src.common.config import Config, logger
+from src.common import Config, logger
 from src.core import TTSService, VotingService
 from src.database import AsyncDBSessionMaker
-from src.frontend.components import Arena, Leaderboard
+
+from .components import Arena, Leaderboard
 
 
 class Frontend:

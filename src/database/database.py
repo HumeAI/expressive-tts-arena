@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 
 # Local Application Imports
-from src.common.config import Config, logger
+from src.common import Config, logger
 
 
 # Define the SQLAlchemy Base

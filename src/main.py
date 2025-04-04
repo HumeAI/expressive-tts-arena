@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 # Local Application Imports
-from src.common.config import Config, logger
+from src.common import Config, logger
 from src.database import init_db
 from src.frontend import Frontend
 from src.middleware import MetaTagInjectionMiddleware

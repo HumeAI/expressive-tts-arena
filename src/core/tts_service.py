@@ -4,8 +4,7 @@ import random
 from typing import Tuple
 
 # Local Application Imports
-from src.common.common_types import Option, OptionMap, TTSProviderName
-from src.common.config import Config, logger
+from src.common import Config, Option, OptionMap, TTSProviderName, logger
 from src.common.constants import ELEVENLABS, HUME_AI, OPENAI
 from src.integrations import (
     text_to_speech_with_elevenlabs,
