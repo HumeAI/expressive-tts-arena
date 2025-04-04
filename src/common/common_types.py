@@ -1,9 +1,3 @@
-"""
-custom_types.py
-
-This module defines custom types for the application.
-"""
-
 # Standard Library Imports
 from typing import List, Literal, NamedTuple, Optional, TypedDict
 
@@ -12,8 +6,8 @@ TTSProviderName = Literal["Hume AI", "ElevenLabs", "OpenAI"]
 
 
 ComparisonType = Literal[
-    "Hume AI - Hume AI", 
-    "Hume AI - ElevenLabs", 
+    "Hume AI - Hume AI",
+    "Hume AI - ElevenLabs",
     "Hume AI - OpenAI",
     "OpenAI - ElevenLabs"
 ]
@@ -41,7 +35,6 @@ class Option(NamedTuple):
         audio (str): The relative file path to the audio file produced by the TTS provider.
         generation_id (str): The unique identifier for this TTS generation.
     """
-
     provider: TTSProviderName
     audio: str
     generation_id: str
@@ -49,7 +42,6 @@ class Option(NamedTuple):
 
 class VotingResults(TypedDict):
     """Voting results data structure representing values we want to persist to the votes DB"""
-
     comparison_type: ComparisonType
     winning_provider: TTSProviderName
     winning_option: OptionKey
@@ -71,7 +63,6 @@ class OptionDetail(TypedDict):
         generation_id (Optional[str]): The unique identifier for this TTS generation, or None if not available.
         audio_file_path (str): The relative file path to the generated audio file.
     """
-
     provider: TTSProviderName
     generation_id: Optional[str]
     audio_file_path: str
@@ -85,7 +76,6 @@ class OptionMap(TypedDict):
         option_a: OptionDetail,
         option_b: OptionDetail
     """
-
     option_a: OptionDetail
     option_b: OptionDetail
 

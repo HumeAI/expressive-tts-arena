@@ -1,16 +1,3 @@
-"""
-hume_api.py
-
-This file defines the interaction with the Hume text-to-speech (TTS) API using the
-Hume Python SDK. It includes functionality for API request handling and processing API responses.
-
-Key Features:
-- Encapsulates all logic related to the Hume TTS API.
-- Implements retry logic for handling transient API errors.
-- Handles received audio and processes it for playback on the web.
-- Provides detailed logging for debugging and error tracking.
-"""
-
 # Standard Library Imports
 import logging
 import time
@@ -24,9 +11,8 @@ from hume.tts.types import Format, FormatMp3, PostedUtterance, ReturnTts
 from tenacity import after_log, before_log, retry, retry_if_exception, stop_after_attempt, wait_fixed
 
 # Local Application Imports
-from src.config import Config, logger
-from src.constants import CLIENT_ERROR_CODE, GENERIC_API_ERROR_MESSAGE, RATE_LIMIT_ERROR_CODE, SERVER_ERROR_CODE
-from src.utils import save_base64_audio_to_file, validate_env_var
+from src.common import Config, logger, save_base64_audio_to_file, validate_env_var
+from src.common.constants import CLIENT_ERROR_CODE, GENERIC_API_ERROR_MESSAGE, RATE_LIMIT_ERROR_CODE, SERVER_ERROR_CODE
 
 
 @dataclass(frozen=True)
@@ -58,7 +44,6 @@ class HumeConfig:
             timeout=self.request_timeout
         )
 
-
 class HumeError(Exception):
     """Custom exception for errors related to the Hume TTS API."""
 
@@ -67,7 +52,6 @@ class HumeError(Exception):
         self.original_exception = original_exception
         self.message = message
 
-
 class UnretryableHumeError(HumeError):
     """Custom exception for errors related to the Hume TTS API that should not be retried."""
 
@@ -75,7 +59,6 @@ class UnretryableHumeError(HumeError):
         super().__init__(message, original_exception)
         self.original_exception = original_exception
         self.message = message
-
 
 @retry(
     retry=retry_if_exception(lambda e: not isinstance(e, UnretryableHumeError)),
@@ -123,7 +106,7 @@ async def text_to_speech_with_hume(
         )
 
         elapsed_time = time.time() - start_time
-        logger.info(f"Hume API request completed in {elapsed_time:.2f} seconds")
+        logger.info(f"Hume API request completed in {elapsed_time:.2f} seconds.")
 
         generations = response.generations
         if not generations:
@@ -140,10 +123,10 @@ async def text_to_speech_with_hume(
     except ApiError as e:
         elapsed_time = time.time() - start_time
         logger.error(f"Hume API request failed after {elapsed_time:.2f} seconds: {e!s}")
-        clean_message = _extract_hume_api_error_message(e)
+        clean_message = __extract_hume_api_error_message(e)
         logger.error(f"Full Hume API error: {e!s}")
 
-        if e.status_code is not None:
+        if hasattr(e, 'status_code') and e.status_code is not None:
             if e.status_code == RATE_LIMIT_ERROR_CODE:
                 rate_limit_error_message = "We're working on scaling capacity. Please try again in a few seconds."
                 raise HumeError(message=rate_limit_error_message, original_exception=e) from e
@@ -160,8 +143,7 @@ async def text_to_speech_with_hume(
 
         raise HumeError(message=clean_message, original_exception=e) from e
 
-
-def _extract_hume_api_error_message(e: ApiError) -> str:
+def __extract_hume_api_error_message(e: ApiError) -> str:
     """
     Extracts a clean, user-friendly error message from a Hume API error response.
 

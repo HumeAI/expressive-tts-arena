@@ -1,13 +1,3 @@
-"""
-database.py
-
-This module sets up the SQLAlchemy database connection for the Expressive TTS Arena project.
-It initializes the PostgreSQL engine, creates a session factory for handling database transactions,
-and defines a declarative base class for ORM models.
-
-If no DATABASE_URL environment variable is set, then create a dummy database to fail gracefully.
-"""
-
 # Standard Library Imports
 from typing import Callable, Optional, TypeAlias, Union
 
@@ -16,13 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 
 # Local Application Imports
-from src.config import Config, logger
+from src.common import Config, logger
 
 
 # Define the SQLAlchemy Base
 class Base(DeclarativeBase):
     pass
-
 
 class DummyAsyncSession:
     is_dummy = True  # Flag to indicate this is a dummy session.
@@ -53,10 +42,8 @@ class DummyAsyncSession:
         # No-op: nothing to close.
         pass
 
-
 AsyncDBSessionMaker: TypeAlias = Union[async_sessionmaker[AsyncSession], Callable[[], DummyAsyncSession]]
 engine: Optional[AsyncEngine] = None
-
 
 def init_db(config: Config) -> AsyncDBSessionMaker:
     """
@@ -99,4 +86,3 @@ def init_db(config: Config) -> AsyncDBSessionMaker:
         return DummyAsyncSession()
 
     return async_dummy_session_factory
-

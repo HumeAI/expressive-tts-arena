@@ -1,10 +1,3 @@
-"""
-crud.py
-
-This module defines the operations for the Expressive TTS Arena project's database.
-Since vote records are never updated or deleted, only functions to create and read votes are provided.
-"""
-
 # Standard Library Imports
 from typing import List
 
@@ -14,9 +7,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Local Application Imports
-from src.config import logger
-from src.custom_types import LeaderboardEntry, LeaderboardTableEntries, VotingResults
-from src.database.models import VoteResult
+from src.common import LeaderboardEntry, LeaderboardTableEntries, VotingResults, logger
+
+from .models import VoteResult
 
 
 async def create_vote(db: AsyncSession, vote_data: VotingResults) -> VoteResult:
@@ -31,7 +24,6 @@ async def create_vote(db: AsyncSession, vote_data: VotingResults) -> VoteResult:
         VoteResult: The newly created vote record.
     """
     try:
-
         # Create vote record
         vote = VoteResult(
             comparison_type=vote_data["comparison_type"],

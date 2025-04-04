@@ -36,33 +36,48 @@ For support or to join the conversation, visit our [Discord](https://discord.com
 
 ```
 Expressive TTS Arena/
-├── public/                     # Directory for public assets
-├── src/                        
-│   ├── database/
-│   │   ├── __init__.py         # Makes database a package; expose ORM methods
-│   │   ├── crud.py             # Defines operations for interacting with database
-│   │   ├── database.py         # Sets up SQLAlchemy database connection
-│   │   └── models.py           # SQLAlchemy database models
-│   ├── integrations/
-│   │   ├── __init__.py         # Makes integrations a package; exposes API clients
-│   │   ├── anthropic_api.py    # Anthropic API integration
-│   │   ├── elevenlabs_api.py   # ElevenLabs API integration
-│   │   └── hume_api.py         # Hume API integration
+├── public/
+├── src/
+│   ├── common/
+│   │   ├── __init__.py
+│   │   ├── common_types.py         # Application-wide custom type aliases and definitions.
+│   │   ├── config.py               # Manages application config (Singleton) loaded from env vars.
+│   │   ├── constants.py            # Application-wide constant values.
+│   │   ├── utils.py                # General-purpose utility functions used across modules.
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── tts_service.py          # Service handling Text-to-Speech provider selection and API calls.
+│   │   ├── voting_service.py       # Service managing database operations for votes and leaderboards.
+│   ├── database/                   # Database access layer using SQLAlchemy.
+│   │   ├── __init__.py
+│   │   ├── crud.py                 # Data Access Objects (DAO) / CRUD operations for database models.
+│   │   ├── database.py             # Database connection setup (engine, session management).
+│   │   └── models.py               # SQLAlchemy ORM models defining database tables.
+│   ├── frontend/
+│   │   ├── components/
+│   │   │   │   ├── __init__.py     
+│   │   │   │   ├── arena.py        # UI definition and logic for the 'Arena' tab.
+│   │   │   │   ├── leaderboard.py  # UI definition and logic for the 'Leaderboard' tab.
+│   │   ├── __init__.py
+│   │   ├── frontend.py             # Main Gradio application class; orchestrates UI components and layout.
+│   ├── integrations/               # Modules for interacting with external third-party APIs.
+│   │   ├── __init__.py
+│   │   ├── anthropic_api.py        # Integration logic for the Anthropic API.
+│   │   ├── elevenlabs_api.py       # Integration logic for the ElevenLabs API.
+│   │   └── hume_api.py             # Integration logic for the Hume API.
+│   ├── middleware/
+│   │   ├── __init__.py
+│   │   ├── meta_tag_injection.py   # Middleware for injecting custom HTML meta tags into the Gradio page.
 │   ├── scripts/
-│   │   ├── __init__.py         # Makes scripts a package
-│   │   ├── init_db.py          # Script for initializing database
-│   │   ├── test_db.py          # Script for testing database connection
-│   ├── __init__.py             # Makes src a package
-│   ├── config.py               # Global config and logger setup
-│   ├── constants.py            # Global constants
-│   ├── custom_types.py         # Global custom types
-│   ├── frontend.py             # Gradio UI components
-│   ├── main.py                 # Entry file
-│   └── utils.py                # Utility functions
+│   │   ├── __init__.py
+│   │   ├── init_db.py              # Script to create database tables based on models.
+│   │   ├── test_db.py              # Script for testing the database connection configuration.
+│   ├── __init__.py
+│   ├── main.py                     # Main script to configure and run the Gradio application.
 │── static/
-│   ├── audio/                  # Directory for storing generated audio files
+│   ├── audio/                      # Temporary storage for generated audio files served to the UI.
 │   ├── css/
-│   │   ├── styles.css          # Defines custom css
+│   │   ├── styles.css              # Custom CSS overrides and styling for the Gradio UI.
 ├── .dockerignore
 ├── .env.example
 ├── .gitignore

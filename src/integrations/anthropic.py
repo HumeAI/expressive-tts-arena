@@ -1,18 +1,6 @@
-"""
-anthropic_api.py
-
-This file defines the asynchronous interaction with the Anthropic API, focusing on generating text using the Claude
-model. It includes functionality for input validation, asynchronous API request handling, and processing API responses.
-
-Key Features:
-- Encapsulates all logic related to the Anthropic API.
-- Implements asynchronous retry logic for handling transient API errors.
-- Validates the response content to ensure API compatibility.
-- Provides detailed logging for debugging and error tracking.
-"""
-
 # Standard Library Imports
 import logging
+import time
 from dataclasses import dataclass, field
 from typing import List, Optional, Union
 
@@ -22,11 +10,11 @@ from anthropic.types import Message, ModelParam, TextBlock, ToolUseBlock
 from tenacity import after_log, before_log, retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 # Local Application Imports
-from src.config import Config, logger
-from src.constants import CLIENT_ERROR_CODE, GENERIC_API_ERROR_MESSAGE, SERVER_ERROR_CODE
-from src.utils import truncate_text, validate_env_var
+from src.common import Config, logger
+from src.common.constants import CLIENT_ERROR_CODE, GENERIC_API_ERROR_MESSAGE, RATE_LIMIT_ERROR_CODE, SERVER_ERROR_CODE
+from src.common.utils import validate_env_var
 
-PROMPT_TEMPLATE: str = """
+SYSTEM_PROMPT: str = """
 <role>
 You are an expert at generating micro-content optimized for text-to-speech synthesis.
 Your absolute priority is delivering complete, untruncated responses within strict length limits.
@@ -54,7 +42,7 @@ Your absolute priority is delivering complete, untruncated responses within stri
 class AnthropicConfig:
     """Immutable configuration for interacting with the Anthropic API using the asynchronous client."""
     api_key: str = field(init=False)
-    system_prompt: str = field(init=False)
+    system_prompt: str = SYSTEM_PROMPT
     model: ModelParam = "claude-3-5-sonnet-latest"
     max_tokens: int = 300
 
@@ -64,14 +52,12 @@ class AnthropicConfig:
             raise ValueError("Anthropic Model is not set.")
         if not self.max_tokens:
             raise ValueError("Anthropic Max Tokens is not set.")
+        if not self.system_prompt:
+            raise ValueError("Anthropic system prompt is not set.")
 
         # Compute the API key from the environment.
         computed_api_key = validate_env_var("ANTHROPIC_API_KEY")
         object.__setattr__(self, "api_key", computed_api_key)
-
-        # Compute the system prompt using max_tokens and other logic.
-        computed_prompt = PROMPT_TEMPLATE.format(max_tokens=self.max_tokens)
-        object.__setattr__(self, "system_prompt", computed_prompt)
 
     @property
     def client(self):
@@ -181,20 +167,21 @@ async def generate_text_with_claude(character_description: str, config: Config) 
         UnretryableAnthropicError: For unretryable API errors.
         AnthropicError: For other errors communicating with the Anthropic API.
     """
+    logger.debug("Generating text with Anthropic.")
+    anthropic_config = config.anthropic_config
+    client = anthropic_config.client
+    start_time = time.time()
     try:
-        anthropic_config = config.anthropic_config
         prompt = anthropic_config.build_expressive_prompt(character_description)
-        logger.debug(f"Generating text with Claude. Character description length: {len(prompt)} characters.")
-
-        assert anthropic_config.system_prompt is not None, "system_prompt must be set."
-
-        response: Message = await anthropic_config.client.messages.create(
+        response: Message = await client.messages.create(
             model=anthropic_config.model,
             max_tokens=anthropic_config.max_tokens,
             system=anthropic_config.system_prompt,
             messages=[{"role": "user", "content": prompt}],
         )
-        logger.debug(f"API response received: {truncate_text(str(response))}")
+
+        elapsed_time = time.time() - start_time
+        logger.info(f"Anthropic API request completed in {elapsed_time:.2f} seconds.")
 
         if not hasattr(response, "content") or response.content is None:
             logger.error("Response is missing 'content'. Response: %s", response)
@@ -204,26 +191,25 @@ async def generate_text_with_claude(character_description: str, config: Config) 
 
         if isinstance(blocks, list):
             result = "\n\n".join(block.text for block in blocks if isinstance(block, TextBlock))
-            logger.debug(f"Processed response from list: {truncate_text(result)}")
             return result
 
         if isinstance(blocks, TextBlock):
-            logger.debug(f"Processed response from single TextBlock: {truncate_text(blocks.text)}")
             return blocks.text
 
         logger.warning(f"Unexpected response type: {type(blocks)}")
         return str(blocks or "No content generated.")
 
     except APIError as e:
-        logger.error(f"Anthropic API request failed: {e!s}")
-        clean_message = _extract_anthropic_error_message(e)
+        elapsed_time = time.time() - start_time
+        logger.error(f"Anthropic API request failed after {elapsed_time:.2f} seconds: {e!s}")
+        logger.error(f"Full Anthropic API error: {e!s}")
+        clean_message = __extract_anthropic_error_message(e)
 
-        if (
-            hasattr(e, 'status_code')
-            and e.status_code is not None
-            and CLIENT_ERROR_CODE <= e.status_code < SERVER_ERROR_CODE
-        ):
-            raise UnretryableAnthropicError(message=clean_message, original_exception=e) from e
+        if hasattr(e, 'status_code') and e.status_code is not None:
+            if e.status_code == RATE_LIMIT_ERROR_CODE:
+                raise AnthropicError(message=clean_message, original_exception=e) from e
+            if CLIENT_ERROR_CODE <= e.status_code < SERVER_ERROR_CODE:
+                raise UnretryableAnthropicError(message=clean_message, original_exception=e) from e
 
         raise AnthropicError(message=clean_message, original_exception=e) from e
 
@@ -236,7 +222,7 @@ async def generate_text_with_claude(character_description: str, config: Config) 
         raise AnthropicError(message=clean_message, original_exception=e) from e
 
 
-def _extract_anthropic_error_message(e: APIError) -> str:
+def __extract_anthropic_error_message(e: APIError) -> str:
     """
     Extracts a clean, user-friendly error message from an Anthropic API error response.
 

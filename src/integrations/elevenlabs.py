@@ -1,17 +1,3 @@
-"""
-elevenlabs_api.py
-
-This file defines the interaction with the ElevenLabs text-to-speech (TTS) API using the
-ElevenLabs Python SDK. It includes functionality for API request handling and processing API responses.
-
-Key Features:
-- Encapsulates all logic related to the ElevenLabs TTS API.
-- Implements retry logic using Tenacity for handling transient API errors.
-- Handles received audio and processes it for playback on the web.
-- Provides detailed logging for debugging and error tracking.
-- Utilizes robust error handling (EAFP) to validate API responses.
-"""
-
 # Standard Library Imports
 import logging
 import random
@@ -25,9 +11,8 @@ from elevenlabs.core import ApiError
 from tenacity import after_log, before_log, retry, retry_if_exception, stop_after_attempt, wait_fixed
 
 # Local Application Imports
-from src.config import Config, logger
-from src.constants import CLIENT_ERROR_CODE, GENERIC_API_ERROR_MESSAGE, SERVER_ERROR_CODE
-from src.utils import save_base64_audio_to_file, validate_env_var
+from src.common import Config, logger, save_base64_audio_to_file, validate_env_var
+from src.common.constants import CLIENT_ERROR_CODE, GENERIC_API_ERROR_MESSAGE, RATE_LIMIT_ERROR_CODE, SERVER_ERROR_CODE
 
 
 @dataclass(frozen=True)
@@ -55,7 +40,6 @@ class ElevenLabsConfig:
         """
         return AsyncElevenLabs(api_key=self.api_key)
 
-
 class ElevenLabsError(Exception):
     """Custom exception for errors related to the ElevenLabs TTS API."""
 
@@ -64,7 +48,6 @@ class ElevenLabsError(Exception):
         self.original_exception = original_exception
         self.message = message
 
-
 class UnretryableElevenLabsError(ElevenLabsError):
     """Custom exception for errors related to the ElevenLabs TTS API that should not be retried."""
 
@@ -72,7 +55,6 @@ class UnretryableElevenLabsError(ElevenLabsError):
         super().__init__(message, original_exception)
         self.original_exception = original_exception
         self.message = message
-
 
 @retry(
     retry=retry_if_exception(lambda e: not isinstance(e, UnretryableElevenLabsError)),
@@ -113,7 +95,7 @@ async def text_to_speech_with_elevenlabs(
         )
 
         elapsed_time = time.time() - start_time
-        logger.info(f"Elevenlabs API request completed in {elapsed_time:.2f} seconds")
+        logger.info(f"Elevenlabs API request completed in {elapsed_time:.2f} seconds.")
 
         previews = response.previews
         if not previews:
@@ -129,10 +111,13 @@ async def text_to_speech_with_elevenlabs(
 
     except ApiError as e:
         logger.error(f"ElevenLabs API request failed: {e!s}")
-        clean_message = _extract_elevenlabs_error_message(e)
+        clean_message = __extract_elevenlabs_error_message(e)
 
-        if e.status_code is not None and CLIENT_ERROR_CODE <= e.status_code < SERVER_ERROR_CODE:
-            raise UnretryableElevenLabsError(message=clean_message, original_exception=e) from e
+        if hasattr(e, 'status_code') and  e.status_code is not None:
+            if e.status_code == RATE_LIMIT_ERROR_CODE:
+                raise ElevenLabsError(message=clean_message, original_exception=e) from e
+            if CLIENT_ERROR_CODE <= e.status_code < SERVER_ERROR_CODE:
+                raise UnretryableElevenLabsError(message=clean_message, original_exception=e) from e
 
         raise ElevenLabsError(message=clean_message, original_exception=e) from e
 
@@ -144,8 +129,7 @@ async def text_to_speech_with_elevenlabs(
 
         raise ElevenLabsError(message=error_message, original_exception=e) from e
 
-
-def _extract_elevenlabs_error_message(e: ApiError) -> str:
+def __extract_elevenlabs_error_message(e: ApiError) -> str:
     """
     Extracts a clean, user-friendly error message from an ElevenLabs API error response.
 

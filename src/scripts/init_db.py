@@ -12,7 +12,7 @@ import sys
 from sqlalchemy.ext.asyncio import create_async_engine
 
 # Local Application Imports
-from src.config import Config, logger
+from src.common import Config, logger
 from src.database import Base
 
 

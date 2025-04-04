@@ -1,17 +1,3 @@
-"""
-openai_api.py
-
-This file defines the interaction with the OpenAI text-to-speech (TTS) API using the
-OpenAI Python SDK. It includes functionality for API request handling and processing API responses.
-
-Key Features:
-- Encapsulates all logic related to the OpenAI TTS API.
-- Implements retry logic using Tenacity for handling transient API errors.
-- Handles received audio and processes it for playback on the web.
-- Provides detailed logging for debugging and error tracking.
-- Utilizes robust error handling (EAFP) to validate API responses.
-"""
-
 # Standard Library Imports
 import logging
 import random
@@ -25,9 +11,9 @@ from openai import APIError, AsyncOpenAI
 from tenacity import after_log, before_log, retry, retry_if_exception, stop_after_attempt, wait_fixed
 
 # Local Application Imports
-from src.config import Config, logger
-from src.constants import CLIENT_ERROR_CODE, GENERIC_API_ERROR_MESSAGE, SERVER_ERROR_CODE
-from src.utils import validate_env_var
+from src.common import Config, logger
+from src.common.constants import CLIENT_ERROR_CODE, GENERIC_API_ERROR_MESSAGE, RATE_LIMIT_ERROR_CODE, SERVER_ERROR_CODE
+from src.common.utils import validate_env_var
 
 
 @dataclass(frozen=True)
@@ -68,7 +54,6 @@ class OpenAIConfig:
         openai_base_voices = ["alloy", "ash", "coral", "echo", "fable", "onyx", "nova", "sage", "shimmer"]
         return random.choice(openai_base_voices)
 
-
 class OpenAIError(Exception):
     """Custom exception for errors related to the OpenAI TTS API."""
 
@@ -77,7 +62,6 @@ class OpenAIError(Exception):
         self.original_exception = original_exception
         self.message = message
 
-
 class UnretryableOpenAIError(OpenAIError):
     """Custom exception for errors related to the OpenAI TTS API that should not be retried."""
 
@@ -85,7 +69,6 @@ class UnretryableOpenAIError(OpenAIError):
         super().__init__(message, original_exception)
         self.original_exception = original_exception
         self.message = message
-
 
 @retry(
     retry=retry_if_exception(lambda e: not isinstance(e, UnretryableOpenAIError)),
@@ -135,7 +118,7 @@ async def text_to_speech_with_openai(
             voice=voice, # OpenAI requires a base voice to be specified
         ) as response:
             elapsed_time = time.time() - start_time
-            logger.info(f"OpenAI API request completed in {elapsed_time:.2f} seconds")
+            logger.info(f"OpenAI API request completed in {elapsed_time:.2f} seconds.")
 
             filename = f"openai_{voice}_{start_time}"
             audio_file_path = Path(config.audio_dir) / filename
@@ -148,14 +131,13 @@ async def text_to_speech_with_openai(
         elapsed_time = time.time() - start_time
         logger.error(f"OpenAI API request failed after {elapsed_time:.2f} seconds: {e!s}")
         logger.error(f"Full OpenAI API error: {e!s}")
-        clean_message = _extract_openai_error_message(e)
+        clean_message = __extract_openai_error_message(e)
 
-        if (
-            hasattr(e, 'status_code')
-            and e.status_code is not None
-            and CLIENT_ERROR_CODE <= e.status_code < SERVER_ERROR_CODE
-        ):
-            raise UnretryableOpenAIError(message=clean_message, original_exception=e) from e
+        if hasattr(e, 'status_code') and  e.status_code is not None:
+            if e.status_code == RATE_LIMIT_ERROR_CODE:
+                raise OpenAIError(message=clean_message, original_exception=e) from e
+            if CLIENT_ERROR_CODE <= e.status_code < SERVER_ERROR_CODE:
+                raise UnretryableOpenAIError(message=clean_message, original_exception=e) from e
 
         raise OpenAIError(message=clean_message, original_exception=e) from e
 
@@ -167,8 +149,7 @@ async def text_to_speech_with_openai(
 
         raise OpenAIError(message=clean_message, original_exception=e) from e
 
-
-def _extract_openai_error_message(e: APIError) -> str:
+def __extract_openai_error_message(e: APIError) -> str:
     """
     Extracts a clean, user-friendly error message from an OpenAI API error response.
 
