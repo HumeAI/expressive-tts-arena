@@ -2,7 +2,7 @@
 import asyncio
 import random
 import time
-from typing import Tuple
+from typing import Tuple, Union
 
 # Third-Party Library Imports
 import gradio as gr
@@ -66,19 +66,42 @@ SAMPLE_CHARACTER_DESCRIPTIONS: dict = {
 }
 
 class Arena:
+    """
+    Handles the user interface logic, state management, and event handling
+    for the 'Arena' tab where users generate, synthesize, and compare TTS audio.
+    """
     def __init__(self, config: Config, db_session_maker: AsyncDBSessionMaker):
-        self.config = config
-        self.db_session_maker = db_session_maker
-        self.tts_service = TTSService(config)
+        """
+        Initializes the Arena component.
+
+        Args:
+            config: The application configuration object.
+            db_session_maker: An asynchronous database session factory.
+        """
+        self.config: Config = config
+        self.db_session_maker: AsyncDBSessionMaker = db_session_maker
+        self.tts_service: TTSService = TTSService(config)
 
     def validate_input_length(
         self,
         input_value: str,
         min_length: int,
         max_length: int,
-        input_name: str, # e.g., "character description", "text"
+        input_name: str,
     ) -> None:
-        """Validates input length against min/max limits."""
+        """
+        Validates input string length against minimum and maximum limits.
+
+        Args:
+            input_value: The string value to validate.
+            min_length: The minimum required length (inclusive).
+            max_length: The maximum allowed length (inclusive).
+            input_name: A descriptive name of the input field (e.g., "character description")
+                        used for error messages.
+
+        Raises:
+            ValueError: If the input length is outside the specified bounds.
+        """
         stripped_value = input_value.strip()
         value_length = len(stripped_value)
         logger.debug(f"Validating length for '{input_name}': {value_length} characters")
@@ -95,6 +118,15 @@ class Arena:
             )
 
     def validate_character_description_length(self, character_description: str) -> None:
+        """
+        Validates the character description length using predefined constants.
+
+        Args:
+            character_description: The input character description to validate.
+
+        Raises:
+            ValueError: If the character description length is invalid.
+        """
         self.validate_input_length(
             character_description,
             constants.CHARACTER_DESCRIPTION_MIN_LENGTH,
@@ -103,6 +135,15 @@ class Arena:
         )
 
     def validate_text_length(self, text: str) -> None:
+        """
+        Validates the input text length using predefined constants.
+
+        Args:
+            text: The input text to validate.
+
+        Raises:
+            ValueError: If the text length is invalid.
+        """
         self.validate_input_length(
             text,
             constants.TEXT_MIN_LENGTH,
@@ -110,20 +151,20 @@ class Arena:
             "text",
         )
 
-    async def generate_text(self, character_description: str) -> Tuple[gr.Textbox, str]:
+    async def generate_text(self, character_description: str) -> Tuple[dict, str]:
         """
-        Validates the character_description and generates text using Anthropic API.
+        Validates the character description and generates text using the Anthropic API.
 
         Args:
-            character_description (str): The user-provided text for character description.
+            character_description: The user-provided text for character description.
 
         Returns:
-            Tuple containing:
-              - The generated text update (as a dict from gr.update).
-              - The generated text string.
+            A tuple containing:
+              - A Gradio update dictionary for the text input component.
+              - The generated text string (also used for state).
 
         Raises:
-            gr.Error: On validation or API errors.
+            gr.Error: On validation failure or Anthropic API errors.
         """
         try:
             self.validate_character_description_length(character_description)
@@ -139,80 +180,78 @@ class Arena:
             logger.error(f"Text Generation Failed: AnthropicError while generating text: {ae!s}")
             raise gr.Error(f'There was an issue communicating with the Anthropic API: "{ae.message}"')
         except Exception as e:
-            logger.error(f"Text Generation Failed: Unexpected error while generating text: {e!s}")
+            logger.error(f"Text Generation Failed: Unexpected error while generating text: {e!s}", exc_info=True)
             raise gr.Error("Failed to generate text. Please try again shortly.")
 
     def warn_user_about_custom_text(self, text: str, generated_text: str) -> None:
         """
-        Shows a warning to the user if they have modified the generated text.
-
-        When users edit the generated text instead of using it as-is, only Hume Octave
-        outputs will be generated for comparison rather than comparing against other
-        providers. This function displays a warning to inform users of this limitation.
+        Displays a Gradio warning if the input text differs from the generated text state.
+        This informs the user that using custom text limits the comparison to only Hume outputs.
 
         Args:
-            text (str): The current text that will be used for synthesis.
-            generated_text (str): The original text that was generated by the system.
-
-        Returns:
-            None: This function displays a warning but does not return any value.
+            text: The current text in the input component.
+            generated_text: The original text generated by the system (stored in state).
         """
         if text != generated_text:
-            gr.Warning("When custom text is used, only Hume Octave outputs are generated.")
+            gr.Warning("When custom text is used, only Hume Octave outputs are generated for comparison.")
 
     async def synthesize_speech(
         self,
         character_description: str,
         text: str,
         generated_text_state: str,
-    ) -> Tuple[gr.Audio, gr.Audio, OptionMap, bool, str, str, bool]:
+    ) -> Tuple[dict, dict, OptionMap, bool, str, str, bool]:
         """
-        Synthesizes two text-to-speech outputs, updates UI state components, and returns additional TTS metadata.
+        Validates inputs and synthesizes two TTS outputs for comparison.
 
-        This function generates TTS outputs using different providers based on the input text and its modification
-        state.
-
-        The outputs are processed and shuffled, and the corresponding UI components for two audio players are updated.
-        Additional metadata such as the comparison type, generation IDs, and state information are also returned.
+        Generates TTS audio using different providers (or only Hume if text was
+        modified), updates UI state, and returns audio paths and metadata.
 
         Args:
-            character_description (str): The description of the character used for generating the voice.
-            text (str): The text content to be synthesized into speech.
-            generated_text_state (str): The previously generated text state, used to determine if the text has
-                                        been modified.
+            character_description: The description used for voice generation.
+            text: The text content to synthesize.
+            generated_text_state: The previously generated text state to check for modifications.
 
         Returns:
-            Tuple containing:
-                - gr.Audio: Update for the first audio player (with autoplay enabled).
-                - gr.Audio: Update for the second audio player.
-                - OptionMap: A mapping of option constants to their corresponding TTS providers.
-                - bool: Flag indicating whether the text was modified.
-                - str: The original text that was synthesized.
-                - str: The original character description.
-                - bool: Flag indicating whether the vote buttons should be enabled
+            A tuple containing:
+                - dict: Gradio update for the first audio player (Option A).
+                - dict: Gradio update for the second audio player (Option B).
+                - OptionMap: Mapping of options ('option_a', 'option_b') to provider details.
+                - bool: Flag indicating if the input text was modified from the generated state.
+                - str: The text string that was synthesized (for state).
+                - str: The character description used (for state).
+                - bool: Flag indicating whether the vote buttons should be enabled.
 
         Raises:
-            gr.Error: If any API or unexpected errors occur during the TTS synthesis process.
+            gr.Error: On validation failure or errors during TTS synthesis API calls.
         """
         try:
             self.validate_character_description_length(character_description)
             self.validate_text_length(text)
         except ValueError as ve:
-            logger.error(f"Validation error: {ve}")
+            logger.error(f"Validation error during speech synthesis: {ve}")
             raise gr.Error(str(ve))
 
         try:
             text_modified = text != generated_text_state
             options_map: OptionMap = await self.tts_service.synthesize_speech(character_description, text, text_modified)
 
+            # Ensure options_map has the expected keys before accessing
+            if "option_a" not in options_map or "option_b" not in options_map:
+                 logger.error(f"Invalid options_map received from TTS service: {options_map}")
+                 raise gr.Error("Internal error: Failed to retrieve synthesis results correctly.")
+            if not options_map.get("option_a") or not options_map.get("option_b"):
+                 logger.error(f"Missing data in options_map from TTS service: {options_map}")
+                 raise gr.Error("Internal error: Missing synthesis results.")
+
             return (
                 gr.update(value=options_map["option_a"]["audio_file_path"], autoplay=True),
                 gr.update(value=options_map["option_b"]["audio_file_path"]),
                 options_map,
                 text_modified,
-                text,
-                character_description,
-                True,
+                text, # text_state update
+                character_description, # character_description_state update
+                True, # should_enable_vote_buttons update
             )
         except HumeError as he:
             logger.error(f"Synthesis failed with HumeError during TTS generation: {he!s}")
@@ -224,29 +263,30 @@ class Arena:
             logger.error(f"Synthesis failed with ElevenLabsError during TTS generation: {ee!s}")
             raise gr.Error(f'There was an issue communicating with the Elevenlabs API: "{ee.message}"')
         except Exception as e:
-            logger.error(f"Synthesis failed with an unexpected error during TTS generation: {e!s}")
+            logger.error(f"Synthesis failed with an unexpected error during TTS generation: {e!s}", exc_info=True)
             raise gr.Error("An unexpected error occurred. Please try again shortly.")
 
-    def determine_selected_option(self, selected_option_button: str) -> Tuple[OptionKey, OptionKey]:
+    def determine_selected_option(self, selected_option_button_value: str) -> Tuple[OptionKey, OptionKey]:
         """
-        Determines the selected option and the alternative option based on the user's selection.
+        Determines the selected option key ('option_a'/'option_b') based on the button value.
 
         Args:
-            selected_option_button (str): The option selected by the user, expected to be either
-                constants.OPTION_A_KEY or constants.OPTION_B_KEY.
+            selected_option_button_value: The value property of the clicked vote button
+                                         (e.g., constants.SELECT_OPTION_A).
 
         Returns:
-            tuple: A tuple (selected_option, other_option) where:
-                - selected_option is the same as the selected_option.
-                - other_option is the alternative option.
-        """
+            A tuple (selected_option_key, other_option_key).
 
-        if selected_option_button == constants.SELECT_OPTION_A:
+        Raises:
+            ValueError: If the button value is not one of the expected constants.
+        """
+        if selected_option_button_value == constants.SELECT_OPTION_A:
             selected_option, other_option = constants.OPTION_A_KEY, constants.OPTION_B_KEY
-        elif selected_option_button == constants.SELECT_OPTION_B:
+        elif selected_option_button_value == constants.SELECT_OPTION_B:
             selected_option, other_option = constants.OPTION_B_KEY, constants.OPTION_A_KEY
         else:
-            raise ValueError(f"Invalid selected button: {selected_option_button}")
+            logger.error(f"Invalid selected button value received: {selected_option_button_value}")
+            raise ValueError(f"Invalid selected button: {selected_option_button_value}")
 
         return selected_option, other_option
 
@@ -254,87 +294,121 @@ class Arena:
         self,
         vote_submitted: bool,
         option_map: OptionMap,
-        clicked_option_button: str,
+        clicked_option_button_value: str, # Renamed for clarity (it's the button's value, not the component)
         text_modified: bool,
         character_description: str,
         text: str,
     ) -> Tuple[
-        bool,
-        gr.Button,
-        gr.Button,
-        gr.Textbox,
-        gr.Textbox,
-        gr.Button
+        Union[bool, gr.skip],
+        Union[dict, gr.skip],
+        Union[dict, gr.skip],
+        Union[dict, gr.skip],
+        Union[dict, gr.skip],
+        Union[dict, gr.skip]
     ]:
         """
-        Handles user voting and updates the UI to display vote results.
+        Handles user voting, submits results asynchronously, and updates the UI.
+
+        Prevents duplicate votes and updates button visibility and result textboxes.
 
         Args:
-            vote_submitted (bool): True if a vote was already submitted.
-            option_map (OptionMap): A dictionary mapping option labels to their details.
-            clicked_option_button (str): The button that was clicked.
-            text_modified (bool): Whether the text was modified by the user.
-            character_description (str): The character description.
-            text (str): The text used for synthesis.
+            vote_submitted: Boolean state indicating if a vote was already submitted for this pair.
+            option_map: The OptionMap dictionary containing details of the two options.
+            clicked_option_button_value: The value of the button that was clicked (e.g., constants.SELECT_OPTION_A).
+            text_modified: Boolean state indicating if the text was modified by the user.
+            character_description: The character description used for synthesis (from state).
+            text: The text used for synthesis (from state).
 
         Returns:
-            A tuple of:
-            - bool: A boolean indicating if the vote was accepted.
-            - A dict update for hiding vote button A.
-            - A dict update for hiding vote button B.
-            - A dict update for showing vote result A textbox.
-            - A dict update for showing vote result B textbox.
-            - A dict update for enabling the synthesize speech button.
+            A tuple of updates for various UI components and state variables,
+            or multiple gr.skip() objects if the vote is ignored (e.g., duplicate).
+            Elements are:
+            - bool | gr.skip: Update for vote_submitted_state (True if vote processed).
+            - dict | gr.skip: Update for vote_button_a (visibility).
+            - dict | gr.skip: Update for vote_button_b (visibility).
+            - dict | gr.skip: Update for vote_result_a (visibility, value, style).
+            - dict | gr.skip: Update for vote_result_b (visibility, value, style).
+            - dict | gr.skip: Update for synthesize_speech_button (interactivity).
         """
-        if not option_map or vote_submitted:
+        # If option_map is empty/invalid or vote already submitted, do nothing
+        if not isinstance(option_map, dict) or not option_map or vote_submitted:
+            logger.warning(f"Vote submission skipped. Option map valid: {isinstance(option_map, dict) and bool(option_map)}, Vote submitted: {vote_submitted}")
+            # Return gr.skip() for all outputs
             return gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip()
 
-        selected_option, other_option = self.determine_selected_option(clicked_option_button)
-        selected_provider = option_map[selected_option]["provider"]
-        other_provider = option_map[other_option]["provider"]
+        try:
+            selected_option, other_option = self.determine_selected_option(clicked_option_button_value)
 
-        # Process vote in the background without blocking the UI
-        asyncio.create_task(
-            submit_voting_results(
-                option_map,
-                selected_option,
-                text_modified,
-                character_description,
-                text,
-                self.db_session_maker,
+            # Ensure keys exist before accessing
+            if selected_option not in option_map or other_option not in option_map:
+                logger.error(f"Selected/Other option key missing in option_map: {selected_option}, {other_option}, Map: {option_map}")
+                raise gr.Error("Internal error: Could not process vote due to inconsistent data.")
+            if "provider" not in option_map[selected_option] or "provider" not in option_map[other_option]:
+                 logger.error(f"Provider missing in option_map entry: Map: {option_map}")
+                 raise gr.Error("Internal error: Could not process vote due to missing provider data.")
+
+            selected_provider = option_map[selected_option]["provider"]
+            other_provider = option_map[other_option]["provider"]
+
+            # Process vote in the background without blocking the UI
+            asyncio.create_task(
+                submit_voting_results(
+                    option_map,
+                    selected_option,
+                    text_modified,
+                    character_description,
+                    text,
+                    self.db_session_maker,
+                )
             )
-        )
+            logger.info(f"Vote submitted: Selected '{selected_provider}', Other '{other_provider}'")
 
-        # Build button text to display results
-        selected_label = f"{selected_provider} 🏆"
-        other_label = f"{other_provider}"
+            # Build result labels
+            selected_label = f"{selected_provider} 🏆"
+            other_label = f"{other_provider}"
 
-        return (
-            True,
-            gr.update(visible=False),
-            gr.update(visible=False),
-            (
-                gr.update(value=selected_label, visible=True, elem_classes="winner")
-                if selected_option == constants.OPTION_A_KEY
-                else gr.update(value=other_label, visible=True)
-            ),
-            (
-                gr.update(value=other_label, visible=True)
-                if selected_option == constants.OPTION_A_KEY
-                else gr.update(value=selected_label, visible=True, elem_classes="winner")
-            ),
-            gr.update(interactive=True),
-        )
+            # Determine which result box gets which label
+            result_a_update = gr.update(value=other_label, visible=True)
+            result_b_update = gr.update(value=selected_label, visible=True, elem_classes="winner")
+            if selected_option == constants.OPTION_A_KEY:
+                 result_a_update = gr.update(value=selected_label, visible=True, elem_classes="winner")
+                 result_b_update = gr.update(value=other_label, visible=True)
 
-    async def randomize_character_description(self) -> Tuple[gr.Dropdown, gr.Textbox]:
+
+            return (
+                True, # Update vote_submitted_state to True
+                gr.update(visible=False), # Hide vote button A
+                gr.update(visible=False), # Hide vote button B
+                result_a_update, # Show/update result textbox A
+                result_b_update, # Show/update result textbox B
+                gr.update(interactive=True), # Re-enable synthesize speech button
+            )
+        except ValueError as ve: # Catch error from determine_selected_option
+             logger.error(f"Vote submission failed due to invalid button value: {ve}", exc_info=True)
+             # Optionally raise gr.Error or just skip updates
+             gr.Error("An internal error occurred while processing your vote.")
+             return gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip()
+        except Exception as e:
+            logger.error(f"Vote submission failed unexpectedly: {e!s}", exc_info=True)
+            gr.Error("An unexpected error occurred while submitting your vote.")
+            # Still return skips to avoid partial UI updates
+            return gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip()
+
+    async def randomize_character_description(self) -> Tuple[dict, dict]:
         """
-        Randomly selects a character description, generates text, and synthesizes speech.
+        Selects a random character description from the predefined samples.
 
         Returns:
-            Tuple containing updates for:
-                - sample_character_description_dropdown (select random)
-                - character_description_input (update value)
+            A tuple containing Gradio update dictionaries for:
+                - The sample character dropdown component.
+                - The character description input component.
         """
+        # Ensure SAMPLE_CHARACTER_DESCRIPTIONS is not empty
+        if not SAMPLE_CHARACTER_DESCRIPTIONS:
+             logger.warning("SAMPLE_CHARACTER_DESCRIPTIONS is empty. Cannot randomize.")
+             # Return updates that clear the fields or do nothing
+             return gr.update(value=None), gr.update(value="")
+
         sample_keys = list(SAMPLE_CHARACTER_DESCRIPTIONS.keys())
         random_sample = random.choice(sample_keys)
         character_description = SAMPLE_CHARACTER_DESCRIPTIONS[random_sample]
@@ -342,23 +416,19 @@ class Arena:
         logger.info(f"Randomize All: Selected '{random_sample}'")
 
         return (
-            gr.update(value=random_sample), # Update dropdown
-            gr.update(value=character_description), # Update character description
+            gr.update(value=random_sample), # Update dropdown selection
+            gr.update(value=character_description), # Update character description text
         )
 
-    def disable_ui(self) -> Tuple[
-        gr.Button,
-        gr.Dropdown,
-        gr.Textbox,
-        gr.Button,
-        gr.Textbox,
-        gr.Button,
-        gr.Button,
-        gr.Button
-    ]:
+    def disable_ui(self) -> Tuple[dict, dict, dict, dict, dict, dict, dict, dict]:
         """
-        Disables all interactive components in the UI (except audio players)
+        Disables interactive UI components during processing.
+
+        Returns:
+            A tuple of Gradio update dictionaries to set interactive=False
+            for relevant buttons, dropdowns, and textboxes.
         """
+        logger.debug("Disabling UI components.")
         return(
             gr.update(interactive=False), # disable Randomize All button
             gr.update(interactive=False), # disable Character Description dropdown
@@ -370,19 +440,20 @@ class Arena:
             gr.update(interactive=False), # disable Select B Button
         )
 
-    def enable_ui(self, should_enable_vote_buttons) -> Tuple[
-        gr.Button,
-        gr.Dropdown,
-        gr.Textbox,
-        gr.Button,
-        gr.Textbox,
-        gr.Button,
-        gr.Button,
-        gr.Button
-    ]:
+    def enable_ui(self, should_enable_vote_buttons: bool) -> Tuple[dict, dict, dict, dict, dict, dict, dict, dict]:
         """
-        Enables all interactive components in the UI (except audio players)
+        Enables interactive UI components after processing.
+
+        Args:
+            should_enable_vote_buttons: Boolean indicating if the voting buttons
+                                         should be enabled (based on synthesis success).
+
+        Returns:
+            A tuple of Gradio update dictionaries to set interactive=True
+            for relevant buttons, dropdowns, and textboxes. Vote buttons'
+            interactivity depends on the input argument.
         """
+        logger.debug(f"Enabling UI components. Enable vote buttons: {should_enable_vote_buttons}")
         return(
             gr.update(interactive=True), # enable Randomize All button
             gr.update(interactive=True), # enable Character Description dropdown
@@ -390,44 +461,55 @@ class Arena:
             gr.update(interactive=True), # enable Generate Text button
             gr.update(interactive=True), # enable Input Text input
             gr.update(interactive=True), # enable Synthesize Speech Button
-            gr.update(interactive=should_enable_vote_buttons), # enable Select A Button
-            gr.update(interactive=should_enable_vote_buttons), # enable Select B Button
+            gr.update(interactive=should_enable_vote_buttons), # enable/disable Select A Button
+            gr.update(interactive=should_enable_vote_buttons), # enable/disable Select B Button
         )
 
-    def reset_voting_ui(self) -> Tuple[
-        gr.Audio,
-        gr.Audio,
-        gr.Button,
-        gr.Button,
-        gr.Textbox,
-        gr.Textbox,
-        OptionMap,
-        bool,
-        bool,
-    ]:
+    def reset_voting_ui(self) -> Tuple[dict, dict, dict, dict, dict, dict, OptionMap, bool, bool]:
         """
-        Resets voting UI state and clear audio players
+        Resets the voting UI elements to their initial state before new synthesis.
+
+        Clears audio players, makes vote buttons visible, hides result textboxes,
+        and resets associated state variables.
+
+        Returns:
+            A tuple containing updates for UI components and state variables:
+            - dict: Update for audio player A (clear value).
+            - dict: Update for audio player B (clear value, disable autoplay).
+            - dict: Update for vote button A (make visible).
+            - dict: Update for vote button B (make visible).
+            - dict: Update for vote result A (hide, clear style).
+            - dict: Update for vote result B (hide, clear style).
+            - OptionMap: Reset option_map_state to a default placeholder.
+            - bool: Reset vote_submitted_state to False.
+            - bool: Reset should_enable_vote_buttons state to False.
         """
+        logger.debug("Resetting voting UI.")
         default_option_map: OptionMap = {
             "option_a": {"provider": constants.HUME_AI, "generation_id": None, "audio_file_path": ""},
             "option_b": {"provider": constants.HUME_AI, "generation_id": None, "audio_file_path": ""},
         }
         return (
-            gr.update(value=None),  # clear audio for audio player A
-            gr.update(value=None, autoplay=False), # clear audio and disable autoplay for audio player B
-            gr.update(visible=True), # show vote button A
-            gr.update(visible=True), # show vote button B
-            gr.update(visible=False, elem_classes=[]), # hide vote result A and clear custom styling
-            gr.update(visible=False, elem_classes=[]), # hide vote result B and clear custom styling
-            default_option_map, # Reset option_map_state as a default OptionMap
+            gr.update(value=None, label=OPTION_A_LABEL),  # clear audio player A, reset label
+            gr.update(value=None, autoplay=False, label=OPTION_B_LABEL), # clear audio player B, ensure autoplay off, reset label
+            gr.update(visible=True, interactive=False), # show vote button A, ensure non-interactive until enabled
+            gr.update(visible=True, interactive=False), # show vote button B, ensure non-interactive until enabled
+            gr.update(value="", visible=False, elem_classes=[]), # hide vote result A, clear text/style
+            gr.update(value="", visible=False, elem_classes=[]), # hide vote result B, clear text/style
+            default_option_map, # Reset option_map_state
             False, # Reset vote_submitted_state
             False, # Reset should_enable_vote_buttons state
         )
 
     def build_arena_section(self) -> None:
         """
-        Builds the Arena section
+        Constructs the Gradio UI layout for the Arena tab and registers event handlers.
+
+        This method defines all the components within the Arena tab and connects
+        button clicks, dropdown selections, etc., to their corresponding handler functions.
         """
+        logger.debug("Building Arena UI section...")
+
         # --- UI components ---
         with gr.Row():
             with gr.Column(scale=5):
@@ -503,7 +585,7 @@ class Arena:
                         interactive=False,
                         show_download_button=False,
                     )
-                    vote_button_a = gr.Button(constants.SELECT_OPTION_A, interactive=False)
+                    vote_button_a = gr.Button(value=constants.SELECT_OPTION_A, interactive=False)
                     vote_result_a = gr.Textbox(
                         interactive=False,
                         visible=False,
@@ -519,7 +601,7 @@ class Arena:
                         interactive=False,
                         show_download_button=False,
                     )
-                    vote_button_b = gr.Button(constants.SELECT_OPTION_B, interactive=False)
+                    vote_button_b = gr.Button(value=constants.SELECT_OPTION_B, interactive=False)
                     vote_result_b = gr.Textbox(
                         interactive=False,
                         visible=False,
@@ -536,7 +618,7 @@ class Arena:
         # Track generated text state
         generated_text_state = gr.State("")
         # Track whether text that was used was generated or modified/custom
-        text_modified_state = gr.State()
+        text_modified_state = gr.State(False)
         # Track option map (option A and option B are randomized)
         option_map_state = gr.State({})  # OptionMap state as a dictionary
         # Track whether the user has voted for an option
@@ -817,3 +899,5 @@ class Arena:
             inputs=[option_map_state],
             outputs=[option_b_audio_player],
         )
+
+        logger.debug("Arena UI section built.")
