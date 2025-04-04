@@ -1,15 +1,3 @@
-"""
-config.py
-
-Global configuration and logger setup for the project.
-
-Key Features:
-- Uses environment variables defined in the system (Docker in production).
-- Loads a `.env` file only in development to simulate production variables locally.
-- Configures the logger for consistent logging across all modules.
-- Dynamically enables DEBUG logging in development and INFO logging in production (unless overridden).
-"""
-
 # Standard Library Imports
 import logging
 import os

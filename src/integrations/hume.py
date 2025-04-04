@@ -1,16 +1,3 @@
-"""
-hume_api.py
-
-This file defines the interaction with the Hume text-to-speech (TTS) API using the
-Hume Python SDK. It includes functionality for API request handling and processing API responses.
-
-Key Features:
-- Encapsulates all logic related to the Hume TTS API.
-- Implements retry logic for handling transient API errors.
-- Handles received audio and processes it for playback on the web.
-- Provides detailed logging for debugging and error tracking.
-"""
-
 # Standard Library Imports
 import logging
 import time
@@ -58,7 +45,6 @@ class HumeConfig:
             timeout=self.request_timeout
         )
 
-
 class HumeError(Exception):
     """Custom exception for errors related to the Hume TTS API."""
 
@@ -67,7 +53,6 @@ class HumeError(Exception):
         self.original_exception = original_exception
         self.message = message
 
-
 class UnretryableHumeError(HumeError):
     """Custom exception for errors related to the Hume TTS API that should not be retried."""
 
@@ -75,7 +60,6 @@ class UnretryableHumeError(HumeError):
         super().__init__(message, original_exception)
         self.original_exception = original_exception
         self.message = message
-
 
 @retry(
     retry=retry_if_exception(lambda e: not isinstance(e, UnretryableHumeError)),
@@ -159,7 +143,6 @@ async def text_to_speech_with_hume(
         clean_message = GENERIC_API_ERROR_MESSAGE
 
         raise HumeError(message=clean_message, original_exception=e) from e
-
 
 def __extract_hume_api_error_message(e: ApiError) -> str:
     """

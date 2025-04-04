@@ -1,9 +1,3 @@
-"""
-main.py
-
-This module is the entry point for the app. It loads configuration and starts the Gradio app.
-"""
-
 # Standard Library Imports
 import asyncio
 from pathlib import Path

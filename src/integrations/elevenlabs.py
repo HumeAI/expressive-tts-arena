@@ -1,17 +1,3 @@
-"""
-elevenlabs_api.py
-
-This file defines the interaction with the ElevenLabs text-to-speech (TTS) API using the
-ElevenLabs Python SDK. It includes functionality for API request handling and processing API responses.
-
-Key Features:
-- Encapsulates all logic related to the ElevenLabs TTS API.
-- Implements retry logic using Tenacity for handling transient API errors.
-- Handles received audio and processes it for playback on the web.
-- Provides detailed logging for debugging and error tracking.
-- Utilizes robust error handling (EAFP) to validate API responses.
-"""
-
 # Standard Library Imports
 import logging
 import random
@@ -55,7 +41,6 @@ class ElevenLabsConfig:
         """
         return AsyncElevenLabs(api_key=self.api_key)
 
-
 class ElevenLabsError(Exception):
     """Custom exception for errors related to the ElevenLabs TTS API."""
 
@@ -64,7 +49,6 @@ class ElevenLabsError(Exception):
         self.original_exception = original_exception
         self.message = message
 
-
 class UnretryableElevenLabsError(ElevenLabsError):
     """Custom exception for errors related to the ElevenLabs TTS API that should not be retried."""
 
@@ -72,7 +56,6 @@ class UnretryableElevenLabsError(ElevenLabsError):
         super().__init__(message, original_exception)
         self.original_exception = original_exception
         self.message = message
-
 
 @retry(
     retry=retry_if_exception(lambda e: not isinstance(e, UnretryableElevenLabsError)),
@@ -146,7 +129,6 @@ async def text_to_speech_with_elevenlabs(
         clean_message = GENERIC_API_ERROR_MESSAGE
 
         raise ElevenLabsError(message=error_message, original_exception=e) from e
-
 
 def __extract_elevenlabs_error_message(e: ApiError) -> str:
     """

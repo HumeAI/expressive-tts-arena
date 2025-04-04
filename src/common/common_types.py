@@ -1,9 +1,3 @@
-"""
-custom_types.py
-
-This module defines custom types for the application.
-"""
-
 # Standard Library Imports
 from typing import List, Literal, NamedTuple, Optional, TypedDict
 

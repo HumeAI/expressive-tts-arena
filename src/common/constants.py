@@ -1,9 +1,3 @@
-"""
-constants.py
-
-This module defines global constants used throughout the project.
-"""
-
 # Standard Library Imports
 from typing import List
 

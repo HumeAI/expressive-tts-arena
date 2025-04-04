@@ -1,10 +1,3 @@
-"""
-models.py
-
-This module defines the SQLAlchemy ORM models for the Expressive TTS Arena project.
-It currently defines the VoteResult model representing the vote_results table.
-"""
-
 # Standard Library Imports
 from enum import Enum
 
@@ -33,7 +26,6 @@ from src.database.database import Base
 class OptionEnum(str, Enum):
     OPTION_A = "option_a"
     OPTION_B = "option_b"
-
 
 class VoteResult(Base):
     __tablename__ = "vote_results"

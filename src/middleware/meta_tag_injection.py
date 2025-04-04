@@ -1,10 +1,3 @@
-"""
-meta_tag_injection.py
-
-This module contains middleware that injects metatags into responses from the FastAPI application by injecting meta
-tags into HTML responses.
-"""
-
 # Standard Library Imports
 from typing import Awaitable, Callable, Dict, List
 
@@ -74,7 +67,6 @@ META_TAGS: List[Dict[str, str]] = [
     }
 ]
 
-
 def __update_meta_tags(html_content: str, meta_tags: List[Dict[str, str]]) -> str:
     """
     Safely updates the HTML content by adding or replacing meta tags in the head section
@@ -110,7 +102,6 @@ def __update_meta_tags(html_content: str, meta_tags: List[Dict[str, str]]) -> st
         head.append(new_meta)
 
     return str(soup)
-
 
 class MetaTagInjectionMiddleware(BaseHTTPMiddleware):
     """

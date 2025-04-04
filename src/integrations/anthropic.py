@@ -1,16 +1,3 @@
-"""
-anthropic_api.py
-
-This file defines the asynchronous interaction with the Anthropic API, focusing on generating text using the Claude
-model. It includes functionality for input validation, asynchronous API request handling, and processing API responses.
-
-Key Features:
-- Encapsulates all logic related to the Anthropic API.
-- Implements asynchronous retry logic for handling transient API errors.
-- Validates the response content to ensure API compatibility.
-- Provides detailed logging for debugging and error tracking.
-"""
-
 # Standard Library Imports
 import logging
 import time

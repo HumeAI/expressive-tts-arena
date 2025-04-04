@@ -1,10 +1,3 @@
-"""
-crud.py
-
-This module defines the operations for the Expressive TTS Arena project's database.
-Since vote records are never updated or deleted, only functions to create and read votes are provided.
-"""
-
 # Standard Library Imports
 from typing import List
 
