@@ -6,6 +6,7 @@ import gradio as gr
 
 # Local Application Imports
 from src.common.config import Config, logger
+from src.core import TTSService, VotingService
 from src.database import AsyncDBSessionMaker
 from src.frontend.components import Arena, Leaderboard
 
@@ -26,14 +27,18 @@ class Frontend:
             db_session_maker: An asynchronous database session factory.
         """
         self.config = config
-        self.db_session_maker = db_session_maker
+
+        # Instantiate services
+        self.tts_service: TTSService = TTSService(config)
+        self.voting_service: VotingService = VotingService(db_session_maker)
+        logger.debug("Frontend initialized with TTSService and VotingService.")
 
         # Initialize components with dependencies
-        self.arena = Arena(config, db_session_maker)
-        self.leaderboard = Leaderboard(db_session_maker)
+        self.arena = Arena(config, self.tts_service, self.voting_service)
+        self.leaderboard = Leaderboard(self.voting_service)
         logger.debug("Frontend initialized with Arena and Leaderboard components.")
 
-    async def handle_tab_select(self, evt: gr.SelectData) -> Tuple[
+    async def _handle_tab_select(self, evt: gr.SelectData) -> Tuple[
         Union[dict, gr.skip],
         Union[dict, gr.skip],
         Union[dict, gr.skip],
@@ -65,8 +70,7 @@ class Frontend:
         Returns:
             The fully constructed Gradio Blocks application instance.
         """
-        # Pre-load leaderboard data before building UI that depends on it
-        await self.leaderboard.update_leaderboard_data(force=True)
+        logger.info("Building Gradio interface...")
 
         with gr.Blocks(title="Expressive TTS Arena", css_paths="static/css/styles.css") as demo:
             # --- Header HTML ---
@@ -109,11 +113,11 @@ class Frontend:
                         leaderboard_table,
                         battle_counts_table,
                         win_rates_table
-                    ) = self.leaderboard.build_leaderboard_section()
+                    ) = await self.leaderboard.build_leaderboard_section()
 
             # --- Top-level Event Handlers ---
             tabs.select(
-                fn=self.handle_tab_select,
+                fn=self._handle_tab_select,
                 inputs=[],
                 outputs=[leaderboard_table, battle_counts_table, win_rates_table],
             )

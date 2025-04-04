@@ -11,9 +11,7 @@ import gradio as gr
 from src.common import constants
 from src.common.common_types import OptionKey, OptionLabel, OptionMap
 from src.common.config import Config, logger
-from src.common.utils import submit_voting_results
-from src.core import TTSService
-from src.database import AsyncDBSessionMaker
+from src.core import TTSService, VotingService
 from src.integrations import AnthropicError, ElevenLabsError, HumeError, OpenAIError, generate_text_with_claude
 
 OPTION_A_LABEL: OptionLabel = "Option A"
@@ -70,19 +68,20 @@ class Arena:
     Handles the user interface logic, state management, and event handling
     for the 'Arena' tab where users generate, synthesize, and compare TTS audio.
     """
-    def __init__(self, config: Config, db_session_maker: AsyncDBSessionMaker):
+    def __init__(self, config: Config, tts_service: TTSService, voting_service: VotingService):
         """
         Initializes the Arena component.
 
         Args:
             config: The application configuration object.
-            db_session_maker: An asynchronous database session factory.
+            tts_service: The service for TTS operations.
+            voting_service: The service for voting/leaderboard DB operations.
         """
         self.config: Config = config
-        self.db_session_maker: AsyncDBSessionMaker = db_session_maker
-        self.tts_service: TTSService = TTSService(config)
+        self.tts_service = tts_service
+        self.voting_service = voting_service
 
-    def validate_input_length(
+    def _validate_input_length(
         self,
         input_value: str,
         min_length: int,
@@ -117,7 +116,7 @@ class Arena:
                 f"{max_length} characters. (Current length: {value_length})"
             )
 
-    def validate_character_description_length(self, character_description: str) -> None:
+    def _validate_character_description_length(self, character_description: str) -> None:
         """
         Validates the character description length using predefined constants.
 
@@ -127,14 +126,14 @@ class Arena:
         Raises:
             ValueError: If the character description length is invalid.
         """
-        self.validate_input_length(
+        self._validate_input_length(
             character_description,
             constants.CHARACTER_DESCRIPTION_MIN_LENGTH,
             constants.CHARACTER_DESCRIPTION_MAX_LENGTH,
             "character description",
         )
 
-    def validate_text_length(self, text: str) -> None:
+    def _validate_text_length(self, text: str) -> None:
         """
         Validates the input text length using predefined constants.
 
@@ -144,14 +143,14 @@ class Arena:
         Raises:
             ValueError: If the text length is invalid.
         """
-        self.validate_input_length(
+        self._validate_input_length(
             text,
             constants.TEXT_MIN_LENGTH,
             constants.TEXT_MAX_LENGTH,
             "text",
         )
 
-    async def generate_text(self, character_description: str) -> Tuple[dict, str]:
+    async def _generate_text(self, character_description: str) -> Tuple[dict, str]:
         """
         Validates the character description and generates text using the Anthropic API.
 
@@ -167,7 +166,7 @@ class Arena:
             gr.Error: On validation failure or Anthropic API errors.
         """
         try:
-            self.validate_character_description_length(character_description)
+            self._validate_character_description_length(character_description)
         except ValueError as ve:
             logger.warning(f"Validation error: {ve}")
             raise gr.Error(str(ve))
@@ -183,7 +182,7 @@ class Arena:
             logger.error(f"Text Generation Failed: Unexpected error while generating text: {e!s}", exc_info=True)
             raise gr.Error("Failed to generate text. Please try again shortly.")
 
-    def warn_user_about_custom_text(self, text: str, generated_text: str) -> None:
+    def _warn_user_about_custom_text(self, text: str, generated_text: str) -> None:
         """
         Displays a Gradio warning if the input text differs from the generated text state.
         This informs the user that using custom text limits the comparison to only Hume outputs.
@@ -195,7 +194,7 @@ class Arena:
         if text != generated_text:
             gr.Warning("When custom text is used, only Hume Octave outputs are generated for comparison.")
 
-    async def synthesize_speech(
+    async def _synthesize_speech(
         self,
         character_description: str,
         text: str,
@@ -226,8 +225,8 @@ class Arena:
             gr.Error: On validation failure or errors during TTS synthesis API calls.
         """
         try:
-            self.validate_character_description_length(character_description)
-            self.validate_text_length(text)
+            self._validate_character_description_length(character_description)
+            self._validate_text_length(text)
         except ValueError as ve:
             logger.error(f"Validation error during speech synthesis: {ve}")
             raise gr.Error(str(ve))
@@ -266,7 +265,7 @@ class Arena:
             logger.error(f"Synthesis failed with an unexpected error during TTS generation: {e!s}", exc_info=True)
             raise gr.Error("An unexpected error occurred. Please try again shortly.")
 
-    def determine_selected_option(self, selected_option_button_value: str) -> Tuple[OptionKey, OptionKey]:
+    def _determine_selected_option(self, selected_option_button_value: str) -> Tuple[OptionKey, OptionKey]:
         """
         Determines the selected option key ('option_a'/'option_b') based on the button value.
 
@@ -290,7 +289,7 @@ class Arena:
 
         return selected_option, other_option
 
-    async def submit_vote(
+    async def _submit_vote(
         self,
         vote_submitted: bool,
         option_map: OptionMap,
@@ -337,7 +336,7 @@ class Arena:
             return gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip()
 
         try:
-            selected_option, other_option = self.determine_selected_option(clicked_option_button_value)
+            selected_option, other_option = self._determine_selected_option(clicked_option_button_value)
 
             # Ensure keys exist before accessing
             if selected_option not in option_map or other_option not in option_map:
@@ -352,13 +351,12 @@ class Arena:
 
             # Process vote in the background without blocking the UI
             asyncio.create_task(
-                submit_voting_results(
+                self.voting_service.submit_vote(
                     option_map,
                     selected_option,
                     text_modified,
                     character_description,
                     text,
-                    self.db_session_maker,
                 )
             )
             logger.info(f"Vote submitted: Selected '{selected_provider}', Other '{other_provider}'")
@@ -383,7 +381,7 @@ class Arena:
                 result_b_update, # Show/update result textbox B
                 gr.update(interactive=True), # Re-enable synthesize speech button
             )
-        except ValueError as ve: # Catch error from determine_selected_option
+        except ValueError as ve: # Catch error from _determine_selected_option
              logger.error(f"Vote submission failed due to invalid button value: {ve}", exc_info=True)
              # Optionally raise gr.Error or just skip updates
              gr.Error("An internal error occurred while processing your vote.")
@@ -394,7 +392,7 @@ class Arena:
             # Still return skips to avoid partial UI updates
             return gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip()
 
-    async def randomize_character_description(self) -> Tuple[dict, dict]:
+    async def _randomize_character_description(self) -> Tuple[dict, dict]:
         """
         Selects a random character description from the predefined samples.
 
@@ -420,7 +418,7 @@ class Arena:
             gr.update(value=character_description), # Update character description text
         )
 
-    def disable_ui(self) -> Tuple[dict, dict, dict, dict, dict, dict, dict, dict]:
+    def _disable_ui(self) -> Tuple[dict, dict, dict, dict, dict, dict, dict, dict]:
         """
         Disables interactive UI components during processing.
 
@@ -440,7 +438,7 @@ class Arena:
             gr.update(interactive=False), # disable Select B Button
         )
 
-    def enable_ui(self, should_enable_vote_buttons: bool) -> Tuple[dict, dict, dict, dict, dict, dict, dict, dict]:
+    def _enable_ui(self, should_enable_vote_buttons: bool) -> Tuple[dict, dict, dict, dict, dict, dict, dict, dict]:
         """
         Enables interactive UI components after processing.
 
@@ -465,7 +463,7 @@ class Arena:
             gr.update(interactive=should_enable_vote_buttons), # enable/disable Select B Button
         )
 
-    def reset_voting_ui(self) -> Tuple[dict, dict, dict, dict, dict, dict, OptionMap, bool, bool]:
+    def _reset_voting_ui(self) -> Tuple[dict, dict, dict, dict, dict, dict, OptionMap, bool, bool]:
         """
         Resets the voting UI elements to their initial state before new synthesis.
 
@@ -635,7 +633,7 @@ class Arena:
         # 5. Synthesize speech
         # 6. Enable interactive UI components
         randomize_all_button.click(
-            fn=self.disable_ui,
+            fn=self._disable_ui,
             inputs=[],
             outputs=[
                 randomize_all_button,
@@ -648,7 +646,7 @@ class Arena:
                 vote_button_b,
             ],
         ).then(
-            fn=self.reset_voting_ui,
+            fn=self._reset_voting_ui,
             inputs=[],
             outputs=[
                 option_a_audio_player,
@@ -662,15 +660,15 @@ class Arena:
                 should_enable_vote_buttons,
             ],
         ).then(
-            fn=self.randomize_character_description,
+            fn=self._randomize_character_description,
             inputs=[],
             outputs=[sample_character_description_dropdown, character_description_input],
         ).then(
-            fn=self.generate_text,
+            fn=self._generate_text,
             inputs=[character_description_input],
             outputs=[text_input, generated_text_state],
         ).then(
-            fn=self.synthesize_speech,
+            fn=self._synthesize_speech,
             inputs=[character_description_input, text_input, generated_text_state],
             outputs=[
                 option_a_audio_player,
@@ -682,7 +680,7 @@ class Arena:
                 should_enable_vote_buttons,
             ],
         ).then(
-            fn=self.enable_ui,
+            fn=self._enable_ui,
             inputs=[should_enable_vote_buttons],
             outputs=[
                 randomize_all_button,
@@ -706,7 +704,7 @@ class Arena:
             inputs=[sample_character_description_dropdown],
             outputs=[character_description_input],
         ).then(
-            fn=self.disable_ui,
+            fn=self._disable_ui,
             inputs=[],
             outputs=[
                 randomize_all_button,
@@ -719,11 +717,11 @@ class Arena:
                 vote_button_b,
             ],
         ).then(
-            fn=self.generate_text,
+            fn=self._generate_text,
             inputs=[character_description_input],
             outputs=[text_input, generated_text_state],
         ).then(
-            fn=self.enable_ui,
+            fn=self._enable_ui,
             inputs=[should_enable_vote_buttons],
             outputs=[
                 randomize_all_button,
@@ -742,7 +740,7 @@ class Arena:
         # 2. Generate text
         # 3. Enable interactive UI components
         generate_text_button.click(
-            fn=self.disable_ui,
+            fn=self._disable_ui,
             inputs=[],
             outputs=[
                 randomize_all_button,
@@ -755,11 +753,11 @@ class Arena:
                 vote_button_b,
             ],
         ).then(
-            fn=self.generate_text,
+            fn=self._generate_text,
             inputs=[character_description_input],
             outputs=[text_input, generated_text_state],
         ).then(
-            fn=self.enable_ui,
+            fn=self._enable_ui,
             inputs=[should_enable_vote_buttons],
             outputs=[
                 randomize_all_button,
@@ -775,7 +773,7 @@ class Arena:
 
         # "Text Input" blur event handler
         text_input.blur(
-            fn=self.warn_user_about_custom_text,
+            fn=self._warn_user_about_custom_text,
             inputs=[text_input, generated_text_state],
             outputs=[],
         )
@@ -786,7 +784,7 @@ class Arena:
         # 3. Synthesize speech, load audio players, and display vote button
         # 4. Enable interactive components in the UI
         synthesize_speech_button.click(
-            fn=self.disable_ui,
+            fn=self._disable_ui,
             inputs=[],
             outputs=[
                 randomize_all_button,
@@ -799,7 +797,7 @@ class Arena:
                 vote_button_b,
             ],
         ).then(
-            fn=self.reset_voting_ui,
+            fn=self._reset_voting_ui,
             inputs=[],
             outputs=[
                 option_a_audio_player,
@@ -813,7 +811,7 @@ class Arena:
                 should_enable_vote_buttons,
             ],
         ).then(
-            fn=self.synthesize_speech,
+            fn=self._synthesize_speech,
             inputs=[character_description_input, text_input, generated_text_state],
             outputs=[
                 option_a_audio_player,
@@ -825,7 +823,7 @@ class Arena:
                 should_enable_vote_buttons,
             ],
         ).then(
-            fn=self.enable_ui,
+            fn=self._enable_ui,
             inputs=[should_enable_vote_buttons],
             outputs=[
                 randomize_all_button,
@@ -845,7 +843,7 @@ class Arena:
             inputs=[],
             outputs=[vote_button_a, vote_button_b],
         ).then(
-            fn=self.submit_vote,
+            fn=self._submit_vote,
             inputs=[
                 vote_submitted_state,
                 option_map_state,
@@ -870,7 +868,7 @@ class Arena:
             inputs=[],
             outputs=[vote_button_a, vote_button_b],
         ).then(
-            fn=self.submit_vote,
+            fn=self._submit_vote,
             inputs=[
                 vote_submitted_state,
                 option_map_state,

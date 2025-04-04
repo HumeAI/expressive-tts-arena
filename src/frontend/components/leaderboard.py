@@ -9,8 +9,7 @@ import gradio as gr
 
 # Local Application Imports
 from src.common.config import logger
-from src.common.utils import get_leaderboard_data
-from src.database import AsyncDBSessionMaker
+from src.core import VotingService
 
 
 class Leaderboard:
@@ -19,14 +18,14 @@ class Leaderboard:
 
     Includes caching and throttling for leaderboard data updates.
     """
-    def __init__(self, db_session_maker: AsyncDBSessionMaker):
+    def __init__(self, voting_service: VotingService):
         """
         Initializes the Leaderboard component.
 
         Args:
-            db_session_maker: An asynchronous database session factory.
+            voting_service: The service for voting/leaderboard DB operations.
         """
-        self.db_session_maker: AsyncDBSessionMaker = db_session_maker
+        self.voting_service = voting_service
 
         # leaderboard update state
         self.leaderboard_data: List[List[str]] = [[]]
@@ -36,7 +35,7 @@ class Leaderboard:
         self.last_leaderboard_update_time: float = 0.0
         self.min_refresh_interval: int = 30
 
-    async def update_leaderboard_data(self, force: bool = False) -> bool:
+    async def _update_leaderboard_data(self, force: bool = False) -> bool:
         """
         Fetches leaderboard data from the source if cache is stale or force=True.
 
@@ -64,15 +63,12 @@ class Leaderboard:
                 latest_leaderboard_data,
                 latest_battle_counts_data,
                 latest_win_rates_data
-            ) = await get_leaderboard_data(self.db_session_maker)
+            ) = await self.voting_service.get_formatted_leaderboard_data()
 
             # Check if data is valid before proceeding
-            if not isinstance(latest_leaderboard_data, list) or \
-               not isinstance(latest_battle_counts_data, list) or \
-               not isinstance(latest_win_rates_data, list):
+            if not latest_leaderboard_data or not latest_leaderboard_data[0]:
                 logger.error("Invalid data received from get_leaderboard_data.")
                 return False
-
 
             # Generate a hash of the primary leaderboard data to check for changes
             # Use a stable serialization format (sort_keys=True)
@@ -103,11 +99,11 @@ class Leaderboard:
         """
         Refreshes leaderboard data state and returns Gradio updates for the tables.
 
-        Calls `update_leaderboard_data` and returns updates only if data changed
+        Calls `_update_leaderboard_data` and returns updates only if data changed
         or `force` is True. Returns gr.skip() otherwise.
 
         Args:
-            force: If True, forces `update_leaderboard_data` to bypass throttling/cache.
+            force: If True, forces `_update_leaderboard_data` to bypass throttling/cache.
 
         Returns:
             A tuple of Gradio update dictionaries for the leaderboard, battle counts,
@@ -117,7 +113,7 @@ class Leaderboard:
             gr.Error: If leaderboard data is empty/invalid after attempting an update.
                       (Changed from previous: now raises only if data is *still* bad)
         """
-        data_updated = await self.update_leaderboard_data(force=force)
+        data_updated = await self._update_leaderboard_data(force=force)
 
         if not self.leaderboard_data or not isinstance(self.leaderboard_data[0], list):
             logger.error("Leaderboard data is empty or invalid after update attempt.")
@@ -133,7 +129,7 @@ class Leaderboard:
         logger.debug("Skipping leaderboard table updates (no data change).")
         return gr.skip(), gr.skip(), gr.skip()
 
-    def build_leaderboard_section(self) -> Tuple[gr.DataFrame, gr.DataFrame, gr.DataFrame]:
+    async def build_leaderboard_section(self) -> Tuple[gr.DataFrame, gr.DataFrame, gr.DataFrame]:
         """
         Constructs the Gradio UI layout for the Leaderboard tab.
 
@@ -147,6 +143,8 @@ class Leaderboard:
             These components are needed by the main Frontend class to wire up events.
         """
         logger.debug("Building Leaderboard UI section...")
+        # Pre-load leaderboard data before building UI that depends on it
+        await self._update_leaderboard_data(force=True)
 
         # --- UI components ---
         with gr.Row():

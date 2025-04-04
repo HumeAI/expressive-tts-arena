@@ -1,9 +1,3 @@
-"""
-tts_service.py
-
-This module provides a service for generating text-to-speech (TTS) outputs using different providers.
-"""
-
 # Standard Library Imports
 import asyncio
 import random
