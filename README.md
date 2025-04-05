@@ -22,7 +22,7 @@ license: mit
 
 ## Overview
 
-Expressive TTS Arena is an open-source web application for evaluating the expressiveness of voice generation and speech synthesis from different text-to-speech providers, including Hume AI and Elevenlabs.
+Expressive TTS Arena is an open-source web application for evaluating the expressiveness of voice generation and speech synthesis from different text-to-speech providers.
 
 For support or to join the conversation, visit our [Discord](https://discord.com/invite/humeai).
 
