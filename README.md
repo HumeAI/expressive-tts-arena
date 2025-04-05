@@ -14,7 +14,9 @@ license: mit
     <img src="https://storage.googleapis.com/hume-public-logos/hume/hume-banner.png">
     <h1>Expressive TTS Arena</h1>
     <p>
-        <strong> A web application for comparing and evaluating the expressiveness of different text-to-speech models </strong>
+        <strong> 
+            A web application for comparing and evaluating the expressiveness of different text-to-speech models 
+        </strong>
     </p>
 </div>
 
@@ -30,7 +32,7 @@ For support or to join the conversation, visit our [Discord](https://discord.com
 - [pip >=25.0](https://pypi.org/project/pip/)
 - [uv >=0.5.29](https://github.com/astral-sh/uv)
 - [Postgres](https://www.postgresql.org/download/)
-- API keys for Hume AI, Anthropic, and ElevenLabs
+- API keys for Hume AI, Anthropic, OpenAI, and ElevenLabs
 
 ## Project Structure
 
@@ -101,6 +103,7 @@ Expressive TTS Arena/
     HUME_API_KEY=YOUR_HUME_API_KEY
     ANTHROPIC_API_KEY=YOUR_ANTHROPIC_API_KEY
     ELEVENLABS_API_KEY=YOUR_ELEVENLABS_API_KEY
+    OPENAI_API_KEY=YOUR_OPENAI_API_KEY
     ```
 
 3. Run the application:
