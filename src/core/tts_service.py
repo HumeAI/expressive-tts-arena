@@ -40,10 +40,9 @@ class TTSService:
         Select 2 TTS providers based on whether the text has been modified.
 
         Probabilities:
-         - 50% HUME_AI, OPENAI
-         - 25% OPENAI, ELEVENLABS
-         - 20% HUME_AI, ELEVENLABS
-         - 5% HUME_AI, HUME_AI
+         - 1/3 HUME_AI & OPENAI
+         - 1/3 HUME_AI & ELEVENLABS
+         - 1/3 OPENAI & ELEVENLABS
 
         If the `text_modified` argument is `True`, then 100% HUME_AI, HUME_AI
 
@@ -59,13 +58,12 @@ class TTSService:
         # When modifying the probability distribution, make sure the weights match the order of provider pairs
         provider_pairs = [
             (HUME_AI, OPENAI),
-            (OPENAI, ELEVENLABS),
             (HUME_AI, ELEVENLABS),
-            (HUME_AI, HUME_AI)
+            (OPENAI, ELEVENLABS),
         ]
-        weights = [0.5, 0.25, 0.2, 0.05]
-
-        return random.choices(provider_pairs, weights=weights, k=1)[0]
+        weights = [1, 1, 1]
+        selected_pair = random.choices(provider_pairs, weights=weights, k=1)[0]
+        return selected_pair
 
     async def synthesize_speech(
         self,
