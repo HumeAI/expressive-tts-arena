@@ -43,7 +43,7 @@ class AnthropicConfig:
     """Immutable configuration for interacting with the Anthropic API using the asynchronous client."""
     api_key: str = field(init=False)
     system_prompt: str = SYSTEM_PROMPT
-    model: ModelParam = "claude-3-5-sonnet-latest"
+    model: ModelParam = "claude-sonnet-4-5"
     max_tokens: int = 300
 
     def __post_init__(self) -> None:
